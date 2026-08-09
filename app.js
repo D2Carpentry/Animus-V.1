@@ -3132,6 +3132,7 @@ document.querySelectorAll("[data-action-button]").forEach((button) => {
 setCopyMode("customer");
 
 const startupParams = new URLSearchParams(window.location.search);
+document.body.classList.toggle("embedded-estimator", startupParams.has("embedded"));
 
 if (startupParams.has("new")) {
   clearSavedEstimateDraft();
