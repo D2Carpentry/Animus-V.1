@@ -275,11 +275,11 @@ h2 {
 }
 
 .header-save-button svg {
-  width: 18px;
-  height: 18px;
+  width: 25px;
+  height: 25px;
   fill: none;
   stroke: currentColor;
-  stroke-width: 2;
+  stroke-width: 2.15;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
