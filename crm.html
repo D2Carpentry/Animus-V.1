@@ -6,7 +6,7 @@
     <title>D2 Command Center</title>
     <meta name="theme-color" content="#0d4a91">
     <link rel="icon" href="icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=20260808-calendar-popups">
+    <link rel="stylesheet" href="styles.css?v=20260808-embedded-estimator">
     <link rel="stylesheet" href="calendar-upgrade.css?v=20260808-calendar-popups">
   </head>
   <body class="crm-body">
@@ -69,6 +69,9 @@
               <strong id="archivedCount">0</strong>
             </button>
           </div>
+          <section class="crm-estimator-embed" id="crmEstimatorView" hidden>
+            <iframe id="crmEstimatorFrame" title="D2 Estimator"></iframe>
+          </section>
         </section>
 
         <section class="crm-layout crm-dashboard-view">
@@ -791,9 +794,6 @@
             </section>
           </section>
         </section>
-        <section class="crm-revenue-view crm-estimator-view" id="crmEstimatorView" hidden>
-          <iframe id="crmEstimatorFrame" title="D2 Estimator"></iframe>
-        </section>
       </section>
       <div class="crm-hidden-cloud-tools" hidden>
         <button type="button" class="icon-button" id="crmLoadCloud">Restore from Cloud</button>
@@ -827,7 +827,7 @@
         caches.keys().then((keys) => keys.forEach((key) => caches.delete(key)));
       }
     </script>
-    <script src="crm.js?v=20260808-calendar-popups"></script>
+    <script src="crm.js?v=20260808-embedded-estimator"></script>
     <script src="calendar-upgrade.js?v=20260808-calendar-popups"></script>
   </body>
 </html>

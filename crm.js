@@ -1522,7 +1522,7 @@ function openEstimatorInCommandCenter(url) {
   }
   frame.src = url;
   switchCrmView("estimator");
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  $("crmEstimatorView")?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function sendEstimateToEstimator(estimateData, target = "") {
@@ -4104,7 +4104,7 @@ function switchCrmView(view) {
   const showPrices = view === "prices";
   const showEstimator = view === "estimator";
   document.querySelectorAll(".crm-dashboard-view").forEach((section) => {
-    section.hidden = showRevenue || showCalendar || showInvoice || showExpenses || showReceipts || showPrices || showEstimator;
+    section.hidden = showRevenue || showCalendar || showInvoice || showExpenses || showReceipts || showPrices;
   });
   $("crmRevenueView").hidden = !showRevenue;
   $("crmCalendarView").hidden = !showCalendar;

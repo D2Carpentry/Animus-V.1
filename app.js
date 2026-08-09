@@ -2819,11 +2819,8 @@ function saveDraftBeforeLeaving() {
 }
 
 function warnBeforeLeaving(event) {
-  if (!hasWorkInProgress()) return;
   saveDraftBeforeLeaving();
-  event.preventDefault();
-  event.returnValue = "You have an estimate in progress. Are you sure you want to close this page?";
-  return event.returnValue;
+  return undefined;
 }
 
 function openFreshEstimateWindow() {

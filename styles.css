@@ -284,18 +284,19 @@ h2 {
   stroke-linejoin: round;
 }
 
-.crm-estimator-view {
+.crm-estimator-embed {
   display: block;
+  margin-top: 22px;
 }
 
-.crm-estimator-view[hidden] {
+.crm-estimator-embed[hidden] {
   display: none;
 }
 
-.crm-estimator-view iframe {
+.crm-estimator-embed iframe {
   width: 100%;
-  min-height: calc(100vh - 220px);
-  height: 1200px;
+  min-height: calc(100vh - 260px);
+  height: 980px;
   border: 0;
   border-radius: 18px;
   background: #f7f8fb;
