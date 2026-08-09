@@ -232,10 +232,22 @@ label {
 
 .mobile-filter-row,
 .mobile-action-row,
+.mobile-calendar-actions,
 .mobile-month-head {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.mobile-calendar-actions {
+  margin-bottom: 12px;
+}
+
+.mobile-calendar-actions button {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 9px;
+  font-size: 0.78rem;
 }
 
 .mobile-filter-row select {

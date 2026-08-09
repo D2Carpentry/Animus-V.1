@@ -2,6 +2,7 @@ const MOBILE_STORAGE_KEY = "d2CrmDemoFiles";
 const MOBILE_REVENUE_KEY = "d2CrmRevenueRows";
 const MOBILE_PRICE_KEY = "d2PriceDatabase";
 const MOBILE_DELETED_PRICE_KEY = "d2PriceDeletedIds";
+const MOBILE_EXTERNAL_CALENDAR_KEY = "d2ExternalCalendarEvents";
 const MOBILE_GOOGLE_SCRIPT_KEY = "d2GoogleScriptUrl";
 const MOBILE_RESTORE_VERSION_KEY = "d2MobileDashboardRestoreVersion";
 const MOBILE_DEFAULT_GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzZkie1W4LplkKwFoMq19suIHWsamKYNUwCt9xjnihTdy_dN271ou3lscTgq09bAGIG2w/exec";
@@ -35,6 +36,7 @@ let mobileFiles = [];
 let mobileRevenueRows = [];
 let mobilePriceRows = [];
 let mobileDeletedPriceIds = [];
+let mobileExternalCalendarEvents = [];
 let mobileActiveFileId = "";
 let mobileCurrentTab = "files";
 let mobileCalendarCursor = new Date();
@@ -111,6 +113,26 @@ function normalizeFile(file = {}) {
     notes: Array.isArray(file.notes) ? file.notes : [],
     timeline: Array.isArray(file.timeline) ? file.timeline : [],
     ...file,
+  };
+}
+
+function normalizeMobileCalendarEvent(event = {}) {
+  const startDate = event.date || (event.startIso ? dateKey(new Date(event.startIso)) : "");
+  if (!startDate) return null;
+  return {
+    eventId: event.eventId || event.id || "",
+    eventKey: event.eventKey || `google-${event.eventId || event.id || startDate}-${event.title || "event"}`,
+    source: event.source || "google",
+    type: event.type || "google",
+    title: event.title || "Google Calendar Event",
+    clientName: event.clientName || event.title || "Calendar Event",
+    date: startDate,
+    time: event.time || "",
+    startIso: event.startIso || "",
+    endIso: event.endIso || "",
+    notes: event.notes || "",
+    address: event.address || "",
+    calendarName: event.calendarName || "",
   };
 }
 
@@ -202,6 +224,12 @@ function loadLocalData() {
   } catch (error) {
     mobileDeletedPriceIds = [];
   }
+  try {
+    const savedEvents = JSON.parse(localStorage.getItem(MOBILE_EXTERNAL_CALENDAR_KEY) || "[]");
+    mobileExternalCalendarEvents = Array.isArray(savedEvents) ? savedEvents.map(normalizeMobileCalendarEvent).filter(Boolean) : [];
+  } catch (error) {
+    mobileExternalCalendarEvents = [];
+  }
   if (applyRestore && restoredFiles.length) {
     saveLocalData();
     markMobileRestoreApplied();
@@ -214,6 +242,7 @@ function saveLocalData() {
   localStorage.setItem(MOBILE_REVENUE_KEY, JSON.stringify(mobileRevenueRows));
   localStorage.setItem(MOBILE_PRICE_KEY, JSON.stringify(mobilePriceRows));
   localStorage.setItem(MOBILE_DELETED_PRICE_KEY, JSON.stringify(mobileDeletedPriceIds));
+  localStorage.setItem(MOBILE_EXTERNAL_CALENDAR_KEY, JSON.stringify(mobileExternalCalendarEvents));
 }
 
 function googleScriptUrl() {
@@ -267,6 +296,41 @@ function fetchCloudDashboard() {
     script.onerror = () => {
       cleanup();
       reject(new Error("Cloud load could not connect."));
+    };
+    script.src = url.toString();
+    document.body.appendChild(script);
+  });
+}
+
+function fetchGoogleCalendarEvents(startDate, endDate) {
+  return new Promise((resolve, reject) => {
+    const callbackName = `animusMobileCalendar${Date.now()}${Math.random().toString(16).slice(2)}`;
+    const script = document.createElement("script");
+    const timer = window.setTimeout(() => {
+      cleanup();
+      reject(new Error("Google Calendar import timed out."));
+    }, 20000);
+    function cleanup() {
+      window.clearTimeout(timer);
+      delete window[callbackName];
+      script.remove();
+    }
+    window[callbackName] = (response) => {
+      cleanup();
+      if (!response || response.ok === false) {
+        reject(new Error(response?.error || "Google Calendar import failed."));
+        return;
+      }
+      resolve(Array.isArray(response.events) ? response.events : []);
+    };
+    const url = new URL(googleScriptUrl());
+    url.searchParams.set("action", "calendarEvents");
+    url.searchParams.set("start", startDate);
+    url.searchParams.set("end", endDate);
+    url.searchParams.set("callback", callbackName);
+    script.onerror = () => {
+      cleanup();
+      reject(new Error("Google Calendar import could not connect."));
     };
     script.src = url.toString();
     document.body.appendChild(script);
@@ -478,10 +542,85 @@ function eventList() {
       ["Completion", file.anticipatedCompletionDate, ""],
     ].forEach(([type, date, time]) => {
       if (!date) return;
-      events.push({ fileId: file.id, date, time, title: `${type} · ${file.clientName || file.fileNumber}`, type });
+      events.push({
+        eventKey: `${file.id}-${type.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+        source: "dashboard",
+        fileId: file.id,
+        date,
+        time,
+        title: `${type} · ${file.clientName || file.fileNumber}`,
+        clientName: file.clientName || file.fileNumber || "",
+        address: file.projectAddress || "",
+        notes: file.nextAction || file.statusDetail || "",
+        type,
+      });
     });
   });
+  mobileExternalCalendarEvents.forEach((event) => {
+    const normalized = normalizeMobileCalendarEvent(event);
+    if (normalized) events.push(normalized);
+  });
   return events.sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`));
+}
+
+function calendarEventPayload(event) {
+  return {
+    eventKey: event.eventKey,
+    title: event.title || "D2 Calendar Event",
+    date: event.date,
+    time: event.time || "09:00",
+    startIso: event.startIso || "",
+    endIso: event.endIso || "",
+    address: event.address || "",
+    notes: event.notes || "",
+  };
+}
+
+function postCalendarEventToGoogle(event) {
+  return postToGoogle({
+    action: "calendarEvent",
+    calendarEvent: calendarEventPayload(event),
+  });
+}
+
+function dedupeMobileCalendarEvents(events = []) {
+  const seen = new Set();
+  return events.filter((event) => {
+    const key = String(event.eventKey || `${event.date}-${event.time}-${event.title}`).toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+async function importMobileGoogleCalendar() {
+  const button = $("mobileImportGoogleCalendar");
+  const originalText = button.textContent;
+  button.textContent = "Importing...";
+  const start = new Date(mobileCalendarCursor.getFullYear(), mobileCalendarCursor.getMonth() - 1, 1);
+  const end = new Date(mobileCalendarCursor.getFullYear() + 1, mobileCalendarCursor.getMonth() + 1, 0);
+  try {
+    const events = await fetchGoogleCalendarEvents(dateKey(start), dateKey(end));
+    mobileExternalCalendarEvents = dedupeMobileCalendarEvents(events.map(normalizeMobileCalendarEvent).filter(Boolean));
+    saveLocalData();
+    renderCalendar();
+    window.alert(`${mobileExternalCalendarEvents.length} Google Calendar event${mobileExternalCalendarEvents.length === 1 ? "" : "s"} imported into mobile.`);
+  } finally {
+    button.textContent = originalText;
+  }
+}
+
+async function syncMobileUpcomingCalendar() {
+  const today = dateKey(new Date());
+  const events = eventList().filter((event) => event.source !== "google" && event.date >= today);
+  if (!events.length) {
+    window.alert("No upcoming dashboard calendar events to sync.");
+    return;
+  }
+  for (const event of events) {
+    await postCalendarEventToGoogle(event);
+  }
+  window.alert(`${events.length} upcoming event${events.length === 1 ? "" : "s"} sent to Google Calendar.`);
 }
 
 function renderCalendar() {
@@ -513,15 +652,20 @@ function renderSelectedDay() {
   const events = eventList().filter((event) => event.date === mobileSelectedDate);
   $("mobileSelectedDayTitle").textContent = formatDate(mobileSelectedDate);
   $("mobileSelectedDayEvents").innerHTML = events.length ? events.map((event) => `
-    <button type="button" class="mobile-event-pill" data-file-id="${escapeHtml(event.fileId)}">
+    <button type="button" class="mobile-event-pill" data-file-id="${escapeHtml(event.fileId || "")}" data-calendar-info="${escapeHtml(event.eventKey || "")}">
       ${escapeHtml(event.time ? `${event.time} · ` : "")}${escapeHtml(event.title)}
     </button>
   `).join("") : `<p class="mobile-helper">No events on this day.</p>`;
-  document.querySelectorAll(".mobile-event-pill[data-file-id]").forEach((button) => {
+  document.querySelectorAll(".mobile-event-pill").forEach((button) => {
     button.addEventListener("click", () => {
-      mobileActiveFileId = button.dataset.fileId;
-      renderDetail();
-      setTab("detail");
+      if (button.dataset.fileId) {
+        mobileActiveFileId = button.dataset.fileId;
+        renderDetail();
+        setTab("detail");
+        return;
+      }
+      const event = eventList().find((entry) => entry.eventKey === button.dataset.calendarInfo);
+      if (event) window.alert(`${event.title}\n${formatDate(event.date)}${event.time ? ` at ${event.time}` : ""}${event.notes ? `\n\n${event.notes}` : ""}`);
     });
   });
 }
@@ -619,6 +763,15 @@ $("mobilePrevMonth").addEventListener("click", () => {
 $("mobileNextMonth").addEventListener("click", () => {
   mobileCalendarCursor = new Date(mobileCalendarCursor.getFullYear(), mobileCalendarCursor.getMonth() + 1, 1);
   renderCalendar();
+});
+$("mobileImportGoogleCalendar").addEventListener("click", () => {
+  importMobileGoogleCalendar().catch(() => window.alert("Google Calendar could not be imported. Confirm the Google Apps Script is deployed and authorized."));
+});
+$("mobileSyncCalendar").addEventListener("click", () => {
+  syncMobileUpcomingCalendar().catch(() => window.alert("Calendar sync could not be sent. Check the Google connection and try again."));
+});
+$("mobileOpenGoogleCalendar").addEventListener("click", () => {
+  window.open("https://calendar.google.com/calendar/u/0/r", "_blank", "noopener");
 });
 $("mobileOpenDesktop").addEventListener("click", () => {
   window.location.href = "crm.html";
