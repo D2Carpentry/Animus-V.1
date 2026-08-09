@@ -40,6 +40,24 @@ function openCalendarPanel(panelId) {
   panel.hidden = false;
 }
 
+function renderCalendarSelectedSummary(event = null) {
+  const target = $("crmCalendarSelectedSummary");
+  if (!target) return;
+  if (!event) {
+    target.innerHTML = `
+      <strong>New Calendar Event</strong>
+      <span>Choose a file, date, time, color, and notes.</span>
+    `;
+    return;
+  }
+  target.innerHTML = `
+    <strong>${escapeHtml(event.title || "Calendar Event")}</strong>
+    <span>${escapeHtml(formatCalendarDate(event.date, event.time))}</span>
+    <span>${escapeHtml(event.fileNumber || "No file number")} · ${escapeHtml(event.address || "No address added")}</span>
+    <span>${escapeHtml(event.phone || "No phone")}${event.email ? ` · ${escapeHtml(event.email)}` : ""}</span>
+  `;
+}
+
 function dayStart(date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }
@@ -253,6 +271,7 @@ function selectCalendarEvent(eventKey) {
   if ($("crmCalendarType") && CRM_CALENDAR_TYPES[event.type]) $("crmCalendarType").value = event.type;
   if ($("crmCalendarFile") && event.fileId) $("crmCalendarFile").value = event.fileId;
   if ($("crmCalendarColor")) $("crmCalendarColor").value = event.color || "";
+  renderCalendarSelectedSummary(event);
   renderCalendarGrid();
   renderCalendarAgenda();
 }
@@ -295,6 +314,7 @@ if ($("crmShowCalendarAdd")) {
     if ($("crmCalendarNotes")) $("crmCalendarNotes").value = "";
     if ($("crmCalendarColor")) $("crmCalendarColor").value = "";
     renderCalendarFileOptions();
+    renderCalendarSelectedSummary(null);
     openCalendarPanel("crmCalendarEventPanel");
   });
 }
@@ -302,3 +322,9 @@ if ($("crmShowCalendarAdd")) {
 document.querySelectorAll("[data-calendar-close]").forEach((button) => {
   button.addEventListener("click", closeCalendarPanels);
 });
+
+if ($("crmCalendarPopovers")) {
+  $("crmCalendarPopovers").addEventListener("click", (event) => {
+    if (event.target === $("crmCalendarPopovers")) closeCalendarPanels();
+  });
+}
