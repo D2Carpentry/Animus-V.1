@@ -598,6 +598,7 @@ function persistRestoredDashboardIfNeeded() {
 }
 
 function buildDashboardSyncPayload() {
+  captureCurrentDashboardEdits();
   return {
     action: "dashboardSync",
     syncedAt: new Date().toISOString(),
@@ -630,6 +631,73 @@ function postCalendarEventToGoogle(event) {
     action: "calendarEvent",
     calendarEvent: event,
   });
+}
+
+function captureOpenFinancialEdits() {
+  const file = normalizeCrmFile(activeFile());
+  if (!file) return;
+  const estimatePanel = $("crmEstimateEditPanel");
+  const estimateInput = $("crmEstimateAmountInput");
+  if (estimatePanel && estimateInput && !estimatePanel.hidden) {
+    const oldAmount = Number(file.estimateTotal) || 0;
+    const newAmount = parseMoney(estimateInput.value);
+    file.estimateTotal = newAmount;
+    if (file.editableEstimate?.totals) file.editableEstimate.totals.total = newAmount;
+    if (oldAmount !== newAmount) {
+      addSystemNote(file, `Estimate amount changed from ${crmCurrency.format(oldAmount)} to ${crmCurrency.format(newAmount)}.`);
+    }
+  }
+  const materialPanel = $("crmMaterialEditPanel");
+  const materialInput = $("crmMaterialAmountInput");
+  if (materialPanel && materialInput && !materialPanel.hidden) {
+    const oldAmount = Number(file.materialTotal) || 0;
+    const newAmount = parseMoney(materialInput.value);
+    file.materialTotal = newAmount;
+    if (file.editableEstimate?.backend) file.editableEstimate.backend.estimatedMaterialCost = newAmount;
+    if (oldAmount !== newAmount) {
+      addSystemNote(file, `Materials amount changed from ${crmCurrency.format(oldAmount)} to ${crmCurrency.format(newAmount)}.`);
+    }
+  }
+}
+
+function captureVisibleRevenueEdits() {
+  document.querySelectorAll("[data-revenue-edit]").forEach((field) => {
+    const row = crmRevenueRows.find((entry) => entry.id === field.dataset.revenueEdit);
+    if (!row) return;
+    const key = field.dataset.revenueField;
+    if (["gross", "expenses", "labor"].includes(key)) {
+      row[key] = parseMoney(field.value);
+    } else if (key === "date") {
+      row[key] = normalizeDate(field.value);
+    } else {
+      row[key] = field.value;
+    }
+    row.profit = revenueProfit(row);
+    syncRevenueExpenseTotal(row);
+  });
+  syncActiveExpenseDetailEdits();
+}
+
+function captureVisibleFileExpenseEdits() {
+  const file = normalizeCrmFile(activeFile());
+  if (!file || !Array.isArray(file.expenseLines)) return;
+  document.querySelectorAll("[data-file-expense-field]").forEach((field) => {
+    const line = file.expenseLines.find((entry) => entry.id === field.dataset.fileExpenseId);
+    if (!line) return;
+    const key = field.dataset.fileExpenseField;
+    line[key] = key === "amount" ? parseMoney(field.value) : field.value;
+  });
+  syncFileExpensesToRevenue(file);
+}
+
+function captureCurrentDashboardEdits() {
+  if (document.activeElement && typeof document.activeElement.blur === "function") {
+    document.activeElement.blur();
+  }
+  saveActiveFile();
+  captureOpenFinancialEdits();
+  captureVisibleFileExpenseEdits();
+  captureVisibleRevenueEdits();
 }
 
 function fetchGoogleCalendarEvents(startDate, endDate) {
@@ -711,7 +779,7 @@ function fetchDashboardFromGoogle() {
 }
 
 async function saveDashboardToGoogle() {
-  saveActiveFile();
+  captureCurrentDashboardEdits();
   saveCrmFiles();
   saveRevenueRows();
   savePriceRows();
