@@ -38,7 +38,7 @@
         <button type="button" class="icon-button" data-crm-view="calendar">Calendar</button>
         <button type="button" class="icon-button" data-crm-view="revenue">Revenue</button>
         <button type="button" class="icon-button" data-crm-view="prices">Price Database</button>
-        <a class="icon-button" href="index.html?new=1">Estimator</a>
+        <button type="button" class="icon-button" data-crm-view="estimator">Estimator</button>
       </nav>
 
       <section class="crm-dashboard">
@@ -790,6 +790,9 @@
               <div class="crm-price-list" id="crmPriceList"></div>
             </section>
           </section>
+        </section>
+        <section class="crm-revenue-view crm-estimator-view" id="crmEstimatorView" hidden>
+          <iframe id="crmEstimatorFrame" title="D2 Estimator"></iframe>
         </section>
       </section>
       <div class="crm-hidden-cloud-tools" hidden>

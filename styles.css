@@ -284,6 +284,24 @@ h2 {
   stroke-linejoin: round;
 }
 
+.crm-estimator-view {
+  display: block;
+}
+
+.crm-estimator-view[hidden] {
+  display: none;
+}
+
+.crm-estimator-view iframe {
+  width: 100%;
+  min-height: calc(100vh - 220px);
+  height: 1200px;
+  border: 0;
+  border-radius: 18px;
+  background: #f7f8fb;
+  box-shadow: 0 0 0 1px rgba(13, 74, 145, 0.12);
+}
+
 .workspace {
   display: grid;
   gap: 26px;

@@ -1135,10 +1135,7 @@ function openDateField(id) {
 }
 
 function requireCrmReason(message, notePrefix) {
-  const file = normalizeCrmFile(activeFile());
-  if (!file) return;
-  const reason = window.prompt(message);
-  if (reason) addSystemNote(file, `${notePrefix}: ${reason}`);
+  return;
 }
 
 function handleCrmControlWorkflow(event) {
@@ -1184,8 +1181,6 @@ function handleStatusWorkflow() {
   }
 
   if (status === "Contact Established" && detail === "Inspection Pending") {
-    const reason = window.prompt("Inspection is pending. Add a note explaining what is needed.");
-    if (reason) addSystemNote(file, `Inspection pending: ${reason}`);
     $("crmNextAction").value = "Schedule inspection";
   }
 
@@ -1202,32 +1197,22 @@ function handleStatusWorkflow() {
   if (status === "Inspection Completed" && detail === "Estimate Sent") {
     $("crmEstimateStatus").value = "Sent";
     if (!$("crmFollowUpDate").value) {
-      const followUp = window.prompt("Estimate sent. Set follow-up date. Use YYYY-MM-DD.");
-      if (followUp) {
-        $("crmFollowUpDate").value = followUp;
-        $("crmNextActionDate").value = followUp;
-      }
+      $("crmNextAction").value = "Set estimate follow-up date";
+      openDateField("crmFollowUpDate");
     }
-    const made = window.confirm("Has the estimate follow-up been made?");
-    addSystemNote(file, made ? "Estimate sent and follow-up has been made." : "Estimate sent. Follow-up still needs to be made.");
-    if (!made) $("crmNextAction").value = "Follow up on sent estimate";
+    addSystemNote(file, "Estimate sent.");
+    $("crmNextAction").value = "Follow up on sent estimate";
   }
 
   if (status === "In Negotiation") {
     $("crmEstimateStatus").value = "Sent";
     if (!$("crmFollowUpDate").value) {
-      const followUp = window.prompt("Set a follow-up date for this negotiation. Use YYYY-MM-DD.");
-      if (followUp) {
-        $("crmFollowUpDate").value = followUp;
-        $("crmNextActionDate").value = followUp;
-      }
+      openDateField("crmFollowUpDate");
     }
     $("crmNextAction").value = "Follow up on negotiation";
   }
 
   if (status === "Job Won" && detail === "Start Date Pending") {
-    const reason = window.prompt("Start date is not established. Add a note explaining why.");
-    if (reason) addSystemNote(file, `Start date pending: ${reason}`);
     $("crmNextAction").value = "Establish start date";
   }
 
@@ -1243,8 +1228,7 @@ function handleStatusWorkflow() {
       openDateField("crmAnticipatedCompletionDate");
     }
     if (!$("crmMidpointDeposit").value) {
-      const reason = window.prompt("Midpoint deposit is not entered yet. Add a note explaining why.");
-      if (reason) addSystemNote(file, `Midpoint deposit not secured: ${reason}`);
+      $("crmNextAction").value = "Confirm midpoint deposit";
     }
   }
 
@@ -1253,8 +1237,6 @@ function handleStatusWorkflow() {
       $("crmClosingCallCompleted").value = "Yes";
     }
     if (detail === "Closing Call Needed" || $("crmClosingCallCompleted").value !== "Yes") {
-      const reason = window.prompt("Closing call has not been made. Add a note explaining why.");
-      if (reason) addSystemNote(file, `Closing call not completed: ${reason}`);
       $("crmNextAction").value = "Complete closing call";
     }
   }
@@ -1263,23 +1245,18 @@ function handleStatusWorkflow() {
     $("crmPaidInFull").value = "Yes";
     $("crmFinalPaymentSecured").value = "Yes";
     if (detail === "Invoice Not Sent") {
-      const reason = window.prompt("Invoice has not been sent. Add a note explaining why.");
-      if (reason) addSystemNote(file, `Closed/Paid without invoice sent: ${reason}`);
+      $("crmNextAction").value = "Send invoice";
     } else {
       $("crmInvoiceStatus").value = "Sent";
+      $("crmNextAction").value = "Archived for future marketing";
     }
-    $("crmNextAction").value = "Archived for future marketing";
     activateCrmFilter("archive");
   }
 
   if (status === "Job Lost / Closed") {
     $("crmNextAction").value = "Future marketing follow-up";
     if (!$("crmFollowUpDate").value) {
-      const followUp = window.prompt("Set a future marketing follow-up date, if desired. Use YYYY-MM-DD.");
-      if (followUp) {
-        $("crmFollowUpDate").value = followUp;
-        $("crmNextActionDate").value = followUp;
-      }
+      openDateField("crmFollowUpDate");
     }
     addSystemNote(file, "Job lost/closed. Contact information retained for future marketing follow-up.");
     activateCrmFilter("archive");
@@ -1537,6 +1514,17 @@ function estimateDataFromCrmFile(file) {
   };
 }
 
+function openEstimatorInCommandCenter(url) {
+  const frame = $("crmEstimatorFrame");
+  if (!frame) {
+    window.location.href = url;
+    return;
+  }
+  frame.src = url;
+  switchCrmView("estimator");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
 function sendEstimateToEstimator(estimateData, target = "") {
   try {
     localStorage.setItem("d2EstimateStudio", JSON.stringify(estimateData));
@@ -1547,11 +1535,9 @@ function sendEstimateToEstimator(estimateData, target = "") {
   const estimatorUrl = new URL("index.html", window.location.href);
   if (target) estimatorUrl.hash = target.replace(/^#/, "");
   estimatorUrl.searchParams.set("fromDashboard", "1");
+  estimatorUrl.searchParams.set("embedded", "1");
   estimatorUrl.searchParams.set("open", Date.now().toString());
-  const opened = window.open(estimatorUrl.toString(), "_blank", "noopener");
-  if (!opened) {
-    window.location.href = estimatorUrl.toString();
-  }
+  openEstimatorInCommandCenter(estimatorUrl.toString());
   return true;
 }
 
@@ -1717,7 +1703,7 @@ function searchCrmFile() {
 function initialDashboardView() {
   const params = new URLSearchParams(window.location.search);
   const view = String(params.get("view") || "").trim().toLowerCase();
-  return ["dashboard", "revenue", "expenses", "prices", "invoice"].includes(view) ? view : "dashboard";
+  return ["dashboard", "calendar", "revenue", "expenses", "prices", "invoice", "estimator"].includes(view) ? view : "dashboard";
 }
 
 function applyInitialFileRoute() {
@@ -4116,8 +4102,9 @@ function switchCrmView(view) {
   const showExpenses = view === "expenses";
   const showReceipts = showExpenses;
   const showPrices = view === "prices";
+  const showEstimator = view === "estimator";
   document.querySelectorAll(".crm-dashboard-view").forEach((section) => {
-    section.hidden = showRevenue || showCalendar || showInvoice || showExpenses || showReceipts || showPrices;
+    section.hidden = showRevenue || showCalendar || showInvoice || showExpenses || showReceipts || showPrices || showEstimator;
   });
   $("crmRevenueView").hidden = !showRevenue;
   $("crmCalendarView").hidden = !showCalendar;
@@ -4125,6 +4112,7 @@ function switchCrmView(view) {
   $("crmExpensesView").hidden = !showExpenses;
   $("crmReceiptView").hidden = !showReceipts;
   $("crmPriceView").hidden = !showPrices;
+  $("crmEstimatorView").hidden = !showEstimator;
   document.querySelectorAll("[data-crm-view]").forEach((button) => {
     button.classList.toggle("active", button.dataset.crmView === view);
   });
@@ -4133,6 +4121,12 @@ function switchCrmView(view) {
   if (showExpenses) renderFileExpenses();
   if (showReceipts) renderReceiptScanner();
   if (showPrices) renderPriceDatabase();
+  if (showEstimator && !$("crmEstimatorFrame").getAttribute("src")) {
+    const estimatorUrl = new URL("index.html", window.location.href);
+    estimatorUrl.searchParams.set("new", "1");
+    estimatorUrl.searchParams.set("embedded", "1");
+    $("crmEstimatorFrame").src = estimatorUrl.toString();
+  }
 }
 
 function escapeHtml(value) {

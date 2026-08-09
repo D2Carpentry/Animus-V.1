@@ -3089,7 +3089,6 @@ $("printPaymentInvoice").addEventListener("click", () => printPaymentInvoice());
 $("assignmentEnglish").addEventListener("click", () => generateAssignmentSheetLanguage("en"));
 $("assignmentSpanish").addEventListener("click", () => generateAssignmentSheetLanguage("es"));
 $("printAssignmentSheet").addEventListener("click", () => printAssignmentSheet());
-window.addEventListener("beforeunload", warnBeforeLeaving);
 window.addEventListener("pagehide", saveDraftBeforeLeaving);
 document.querySelectorAll("[data-copy-mode]").forEach((button) => {
   button.addEventListener("click", () => showEstimateDocument(button.dataset.copyMode));
