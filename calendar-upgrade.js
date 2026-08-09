@@ -54,7 +54,7 @@ function renderCalendarEventList(targetId, events, emptyText = "No calendar even
   const target = $(targetId);
   if (!target) return;
   target.innerHTML = events.length ? events.map((event) => `
-    <article class="crm-calendar-event${event.eventKey === d2SelectedCalendarEventKey ? " selected" : ""}" data-calendar-select="${escapeHtml(event.eventKey)}">
+    <article class="crm-calendar-event${event.eventKey === d2SelectedCalendarEventKey ? " selected" : ""}" data-calendar-select="${escapeHtml(event.eventKey)}" role="button" tabindex="0" aria-label="Open ${escapeHtml(event.title)} calendar event">
       <div class="crm-calendar-date">
         <strong>${escapeHtml(formatCalendarDate(event.date, event.time))}</strong>
         <span>${escapeHtml(event.typeLabel)}</span>
@@ -84,6 +84,11 @@ function renderCalendarEventList(targetId, events, emptyText = "No calendar even
   target.querySelectorAll("[data-calendar-select]").forEach((eventCard) => {
     eventCard.addEventListener("click", (event) => {
       if (event.target.closest("button")) return;
+      selectCalendarEvent(eventCard.dataset.calendarSelect);
+    });
+    eventCard.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
       selectCalendarEvent(eventCard.dataset.calendarSelect);
     });
   });
