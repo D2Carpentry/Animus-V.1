@@ -1,11 +1,14 @@
-const CACHE_NAME = "d2-estimate-studio-v113-lead-deeplink-reset-revenue";
+const CACHE_NAME = "d2-estimate-studio-v114-animus-mobile-menu";
 const APP_FILES = [
   "./",
   "./index.html",
   "./crm.html",
+  "./mobile.html",
   "./styles.css",
+  "./mobile.css",
   "./app.js",
   "./crm.js",
+  "./mobile.js",
   "./dashboard-restore-data.js",
   "./revenue-data.js",
   "./materials-database.js",
