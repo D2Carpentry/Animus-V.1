@@ -601,7 +601,7 @@ function buildDashboardSyncPayload() {
   return {
     action: "dashboardSync",
     syncedAt: new Date().toISOString(),
-    source: "D2 Dashboard",
+    source: "D2 Command Center",
     dashboardFiles: crmFiles,
     revenueRows: crmRevenueRows,
     priceRows: crmPriceRows,
@@ -716,29 +716,33 @@ async function saveDashboardToGoogle() {
   saveRevenueRows();
   savePriceRows();
   saveDeletedPriceIds();
-  $("crmSaveDemo").textContent = "Saving...";
+  $("crmSaveDemo").title = "Saving...";
+  $("crmSaveDemo").setAttribute("aria-label", "Saving");
   const posted = await postPayloadToGoogle(buildDashboardSyncPayload());
   if (!posted) {
-    $("crmSaveDemo").textContent = "Save Dashboard";
+    $("crmSaveDemo").title = "Save";
+    $("crmSaveDemo").setAttribute("aria-label", "Save");
     window.alert("Google Drive save is not connected yet. After we deploy the Google save link, paste it here once.");
   } else {
-    $("crmSaveDemo").textContent = "Saved";
+    $("crmSaveDemo").title = "Saved";
+    $("crmSaveDemo").setAttribute("aria-label", "Saved");
     window.setTimeout(() => {
-      $("crmSaveDemo").textContent = "Save Dashboard";
+      $("crmSaveDemo").title = "Save";
+      $("crmSaveDemo").setAttribute("aria-label", "Save");
     }, 1400);
   }
   renderCrm();
 }
 
 async function loadDashboardFromGoogle() {
-  const confirmed = window.confirm("Load the latest Dashboard from D2 Google Drive? This will replace the dashboard data currently shown in this browser.");
+  const confirmed = window.confirm("Restore the latest Command Center backup from D2 Google Drive? This will replace the data currently shown in this browser.");
   if (!confirmed) return;
   const button = $("crmLoadCloud");
   if (button) button.textContent = "Loading...";
   try {
     const dashboard = await fetchDashboardFromGoogle();
     if (!dashboard) {
-      window.alert("No cloud Dashboard backup was found yet. Save Dashboard first after the new D2 script is deployed.");
+      window.alert("No cloud Command Center backup was found yet. Use Save first after the new D2 script is deployed.");
       return;
     }
     const files = Array.isArray(dashboard.dashboardFiles) ? dashboard.dashboardFiles : [];
@@ -756,9 +760,9 @@ async function loadDashboardFromGoogle() {
     savePriceRows();
     saveDeletedPriceIds();
     renderCrm();
-    window.alert("Dashboard loaded from D2 Google Drive.");
+    window.alert("Command Center restored from D2 Google Drive.");
   } finally {
-    if (button) button.textContent = "Load Cloud";
+    if (button) button.textContent = "Restore from Cloud";
   }
 }
 
@@ -1645,7 +1649,7 @@ function searchCrmFile() {
 function initialDashboardView() {
   const params = new URLSearchParams(window.location.search);
   const view = String(params.get("view") || "").trim().toLowerCase();
-  return ["dashboard", "revenue", "expenses", "receipts", "prices", "invoice"].includes(view) ? view : "dashboard";
+  return ["dashboard", "revenue", "expenses", "prices", "invoice"].includes(view) ? view : "dashboard";
 }
 
 function applyInitialFileRoute() {
@@ -4042,7 +4046,7 @@ function switchCrmView(view) {
   const showCalendar = view === "calendar";
   const showInvoice = view === "invoice";
   const showExpenses = view === "expenses";
-  const showReceipts = view === "receipts";
+  const showReceipts = showExpenses;
   const showPrices = view === "prices";
   document.querySelectorAll(".crm-dashboard-view").forEach((section) => {
     section.hidden = showRevenue || showCalendar || showInvoice || showExpenses || showReceipts || showPrices;
@@ -4129,7 +4133,7 @@ $("crmSaveDemo").addEventListener("click", () => {
   saveDashboardToGoogle();
 });
 $("crmLoadCloud").addEventListener("click", () => {
-  loadDashboardFromGoogle().catch(() => window.alert("Dashboard could not be loaded from D2 Google Drive. Confirm the new Google Apps Script is deployed."));
+  loadDashboardFromGoogle().catch(() => window.alert("Command Center could not be restored from D2 Google Drive. Confirm the new Google Apps Script is deployed."));
 });
 $("crmCalendarFilter").addEventListener("change", (event) => {
   crmCalendarFilter = event.target.value;
@@ -4224,9 +4228,6 @@ $("crmEstimateFileUpload").addEventListener("change", (event) => {
 });
 document.querySelectorAll("[data-crm-view]").forEach((button) => {
   button.addEventListener("click", () => switchCrmView(button.dataset.crmView));
-});
-document.querySelectorAll("[data-reset-page]").forEach((button) => {
-  button.addEventListener("click", () => window.location.reload());
 });
 window.addEventListener("focus", () => {
   if (refreshCrmFilesFromStorage()) renderCrm();

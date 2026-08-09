@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>D2 Dashboard</title>
+    <title>D2 Command Center</title>
     <meta name="theme-color" content="#0d4a91">
     <link rel="icon" href="icon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="styles.css?v=20260808-calendar-popups">
@@ -16,27 +16,30 @@
           <img src="assets/d2-logo.png" alt="D2 Carpentry and Design logo">
           <div>
             <p class="eyebrow">D2 Carpentry and Design</p>
-            <h1>Dashboard</h1>
+            <h1>Command Center</h1>
           </div>
         </div>
         <div class="crm-header-search">
           <input id="crmFileSearch" type="search" placeholder="Search name, phone, or file #">
           <button type="button" id="crmSearchFile">Search</button>
-          <button class="icon-button reset-page-button" type="button" data-reset-page title="Reload page" aria-label="Reload page">↻</button>
+          <button class="icon-button header-save-button" type="button" id="crmSaveDemo" title="Save" aria-label="Save">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 3h12l2 2v16H5z"></path>
+              <path d="M8 3v6h8V3"></path>
+              <path d="M8 15h8v6H8z"></path>
+            </svg>
+          </button>
         </div>
       </header>
 
-      <nav class="crm-actions crm-nav-actions" aria-label="Dashboard actions">
+      <nav class="crm-actions crm-nav-actions" aria-label="Command Center actions">
         <button type="button" class="icon-button primary-action" id="crmNewFile">+ New File</button>
-        <button type="button" class="icon-button active" data-crm-view="dashboard">Dashboard</button>
+        <button type="button" class="icon-button active" data-crm-view="dashboard">Command Center</button>
         <button type="button" class="icon-button" data-crm-view="calendar">Calendar</button>
         <button type="button" class="icon-button" data-crm-view="revenue">Revenue</button>
-        <button type="button" class="icon-button" data-crm-view="expenses">Expenses</button>
-        <button type="button" class="icon-button" data-crm-view="receipts">Receipts</button>
         <button type="button" class="icon-button" data-crm-view="prices">Price Database</button>
         <a class="icon-button" href="index.html?new=1">Estimator</a>
-        <button type="button" class="icon-button" id="crmSaveDemo">Save Dashboard</button>
-        <button type="button" class="icon-button" id="crmLoadCloud">Load Cloud</button>
+        <button type="button" class="icon-button" id="crmLoadCloud">Restore from Cloud</button>
       </nav>
 
       <section class="crm-dashboard">
@@ -651,9 +654,7 @@
               <div id="crmReceiptPreview" class="crm-receipt-preview"></div>
             </aside>
           </section>
-        </section>
-
-        <section class="crm-revenue-view" id="crmReceiptView" hidden>
+          <section class="crm-revenue-view crm-expenses-receipts-section" id="crmReceiptView">
           <section class="crm-command-panel crm-revenue-hero">
             <div class="crm-command-copy">
               <h2>Receipt Scanner</h2>
@@ -731,6 +732,7 @@
               <button type="button" id="crmReceiptParsePaste">Turn Paste Into Lines</button>
               <p class="crm-helper-text">Automatic reading from the photo is not connected yet. This gives us the receipt workflow now, and OCR can be plugged in later.</p>
             </aside>
+          </section>
           </section>
         </section>
 

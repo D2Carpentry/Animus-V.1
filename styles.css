@@ -257,6 +257,7 @@ h2 {
   color: #a83232;
 }
 
+.header-save-button,
 .reset-page-button {
   min-width: 42px;
   width: 42px;
@@ -265,6 +266,22 @@ h2 {
   border-radius: 999px;
   font-size: 1.15rem;
   line-height: 1;
+}
+
+.header-save-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.header-save-button svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .workspace {
