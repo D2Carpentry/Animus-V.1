@@ -14,14 +14,6 @@ ANIMUS is the D2 Carpentry & Design estimating, dashboard, calendar, revenue, ex
 - `revenue-data.js` - Revenue seed/restore data
 - `google-apps-script-backend.js` - Google Drive / Calendar script backend
 
-## Current setup notes
+## Storage plan
 
-- GitHub repository name planned: `ANIMUS`
-- Software name: `ANIMUS`
-- Business Google account target: `D2carpentryanddesign@gmail.com`
-- Current working source folder:
-  `/Users/d2/Documents/Codex/2026-05-24/i-need-to-create-a-simple`
-
-## Safety note
-
-Do not delete the old GitHub repository or old files until the new ANIMUS site is tested and confirmed live.
+GitHub hosts the ANIMUS app code. Google Drive / Google Apps Script should be the long-term source of truth for dashboard files, revenue, prices, receipts, and calendar data.
