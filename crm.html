@@ -6,8 +6,8 @@
     <title>D2 Dashboard</title>
     <meta name="theme-color" content="#0d4a91">
     <link rel="icon" href="icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=20260808-calendar-room">
-    <link rel="stylesheet" href="calendar-upgrade.css?v=20260808-calendar-room">
+    <link rel="stylesheet" href="styles.css?v=20260808-calendar-popups">
+    <link rel="stylesheet" href="calendar-upgrade.css?v=20260808-calendar-popups">
   </head>
   <body class="crm-body">
     <main class="crm-shell">
@@ -391,9 +391,10 @@
           <section class="crm-command-panel crm-revenue-hero">
             <div class="crm-command-copy">
               <h2>Calendar</h2>
-              <p>Live schedule built from Dashboard files. Sync events to the business Google Calendar so they appear on your phone and Mac.</p>
             </div>
             <div class="crm-calendar-actions">
+              <button type="button" id="crmShowCalendarAgenda">Upcoming Events</button>
+              <button type="button" id="crmShowCalendarAdd">Add Event</button>
               <button type="button" id="crmImportGoogleCalendar">Import Google Calendar</button>
               <button type="button" id="crmSyncAllCalendar">Sync Upcoming</button>
               <button type="button" id="crmOpenGoogleCalendar">Open Google Calendar</button>
@@ -428,24 +429,27 @@
               <div class="crm-calendar-grid" id="crmCalendarGrid"></div>
             </section>
 
-            <aside class="crm-revenue-side">
-              <section class="panel crm-detail-card crm-calendar-agenda-panel">
+            <aside class="crm-revenue-side crm-calendar-popovers" id="crmCalendarPopovers" hidden>
+              <section class="panel crm-detail-card crm-calendar-agenda-panel" id="crmCalendarAgendaPanel" hidden>
                 <div class="panel-header">
                   <h2>Upcoming</h2>
+                  <button type="button" class="crm-calendar-popup-close" data-calendar-close>Close</button>
                 </div>
                 <div class="crm-calendar-list" id="crmCalendarAgenda"></div>
               </section>
 
-              <section class="panel crm-detail-card">
+              <section class="panel crm-detail-card" id="crmCalendarDayPanel" hidden>
                 <div class="panel-header">
                   <h2>Day Details</h2>
+                  <button type="button" class="crm-calendar-popup-close" data-calendar-close>Close</button>
                 </div>
                 <div class="crm-calendar-list" id="crmCalendarList"></div>
               </section>
 
-              <section class="panel crm-detail-card">
+              <section class="panel crm-detail-card" id="crmCalendarEventPanel" hidden>
                 <div class="panel-header">
                   <h2>Event Details</h2>
+                  <button type="button" class="crm-calendar-popup-close" data-calendar-close>Close</button>
                 </div>
                 <div class="field-grid">
                   <label>
@@ -459,6 +463,18 @@
                       <option value="followUp">Follow-Up</option>
                       <option value="start">Job Start</option>
                       <option value="completion">Completion</option>
+                    </select>
+                  </label>
+                  <label>
+                    Color
+                    <select id="crmCalendarColor">
+                      <option value="">Default</option>
+                      <option value="blue">Blue</option>
+                      <option value="green">Green</option>
+                      <option value="purple">Purple</option>
+                      <option value="red">Red</option>
+                      <option value="gold">Gold</option>
+                      <option value="slate">Slate</option>
                     </select>
                   </label>
                   <label>
@@ -801,7 +817,7 @@
         caches.keys().then((keys) => keys.forEach((key) => caches.delete(key)));
       }
     </script>
-    <script src="crm.js?v=20260808-clickable-calendar-events"></script>
-    <script src="calendar-upgrade.js?v=20260808-clickable-calendar-events"></script>
+    <script src="crm.js?v=20260808-calendar-popups"></script>
+    <script src="calendar-upgrade.js?v=20260808-calendar-popups"></script>
   </body>
 </html>

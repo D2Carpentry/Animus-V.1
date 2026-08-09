@@ -1,5 +1,45 @@
 var d2SelectedCalendarEventKey = "";
 
+const D2_CALENDAR_COLOR_VALUES = {
+  blue: "#2f6fed",
+  green: "#3f8f6b",
+  purple: "#815ac0",
+  red: "#b84f55",
+  gold: "#b88928",
+  slate: "#557d80",
+};
+
+const D2_CALENDAR_TYPE_COLORS = {
+  inspection: "#557d80",
+  start: "#557d80",
+  completion: "#557d80",
+  followUp: "#8f4e69",
+  follow: "#8f4e69",
+  google: "#8f4e69",
+};
+
+function calendarEventColor(event = {}) {
+  return D2_CALENDAR_COLOR_VALUES[event.color] || D2_CALENDAR_TYPE_COLORS[event.type] || "#557d80";
+}
+
+function closeCalendarPanels() {
+  const wrapper = $("crmCalendarPopovers");
+  if (wrapper) wrapper.hidden = true;
+  ["crmCalendarAgendaPanel", "crmCalendarDayPanel", "crmCalendarEventPanel"].forEach((id) => {
+    const panel = $(id);
+    if (panel) panel.hidden = true;
+  });
+}
+
+function openCalendarPanel(panelId) {
+  const wrapper = $("crmCalendarPopovers");
+  const panel = $(panelId);
+  if (!wrapper || !panel) return;
+  closeCalendarPanels();
+  wrapper.hidden = false;
+  panel.hidden = false;
+}
+
 function dayStart(date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }
@@ -54,7 +94,7 @@ function renderCalendarEventList(targetId, events, emptyText = "No calendar even
   const target = $(targetId);
   if (!target) return;
   target.innerHTML = events.length ? events.map((event) => `
-    <article class="crm-calendar-event${event.eventKey === d2SelectedCalendarEventKey ? " selected" : ""}" data-calendar-select="${escapeHtml(event.eventKey)}" role="button" tabindex="0" aria-label="Open ${escapeHtml(event.title)} calendar event">
+    <article class="crm-calendar-event${event.eventKey === d2SelectedCalendarEventKey ? " selected" : ""}" style="--calendar-event-color: ${escapeHtml(calendarEventColor(event))};" data-calendar-select="${escapeHtml(event.eventKey)}" role="button" tabindex="0" aria-label="Open ${escapeHtml(event.title)} calendar event">
       <div class="crm-calendar-date">
         <strong>${escapeHtml(formatCalendarDate(event.date, event.time))}</strong>
         <span>${escapeHtml(event.typeLabel)}</span>
@@ -85,11 +125,13 @@ function renderCalendarEventList(targetId, events, emptyText = "No calendar even
     eventCard.addEventListener("click", (event) => {
       if (event.target.closest("button")) return;
       selectCalendarEvent(eventCard.dataset.calendarSelect);
+      openCalendarPanel("crmCalendarEventPanel");
     });
     eventCard.addEventListener("keydown", (event) => {
       if (event.key !== "Enter" && event.key !== " ") return;
       event.preventDefault();
       selectCalendarEvent(eventCard.dataset.calendarSelect);
+      openCalendarPanel("crmCalendarEventPanel");
     });
   });
 }
@@ -137,7 +179,7 @@ function renderCalendarGrid() {
         <div class="crm-calendar-week-days">${days.join("")}</div>
         <div class="crm-calendar-week-bars">
           ${bars.map((bar) => `
-            <button type="button" class="crm-calendar-chip crm-calendar-bar ${escapeHtml(bar.event.type)}${bar.event.eventKey === d2SelectedCalendarEventKey ? " selected" : ""}" style="grid-column: ${bar.column} / span ${bar.span}; grid-row: ${bar.row};" data-calendar-event-key="${escapeHtml(bar.event.eventKey)}" data-calendar-event-day="${escapeHtml(bar.dateKey)}" title="${escapeHtml(bar.title)}">
+            <button type="button" class="crm-calendar-chip crm-calendar-bar ${escapeHtml(bar.event.type)}${bar.event.eventKey === d2SelectedCalendarEventKey ? " selected" : ""}" style="grid-column: ${bar.column} / span ${bar.span}; grid-row: ${bar.row}; --calendar-event-color: ${escapeHtml(calendarEventColor(bar.event))};" data-calendar-event-key="${escapeHtml(bar.event.eventKey)}" data-calendar-event-day="${escapeHtml(bar.dateKey)}" title="${escapeHtml(bar.title)}">
               ${escapeHtml(bar.title)}
             </button>
           `).join("")}
@@ -154,6 +196,7 @@ function renderCalendarGrid() {
       if ($("crmCalendarNotes")) $("crmCalendarNotes").value = "";
       renderCalendarGrid();
       renderCalendarSelectedDay();
+      openCalendarPanel("crmCalendarDayPanel");
     });
   });
   grid.querySelectorAll("[data-calendar-event-day]").forEach((button) => {
@@ -161,6 +204,7 @@ function renderCalendarGrid() {
       crmSelectedCalendarDate = button.dataset.calendarEventDay;
       $("crmCalendarDate").value = crmSelectedCalendarDate;
       selectCalendarEvent(button.dataset.calendarEventKey || "");
+      openCalendarPanel("crmCalendarEventPanel");
     });
   });
 }
@@ -208,6 +252,7 @@ function selectCalendarEvent(eventKey) {
   if ($("crmCalendarNotes")) $("crmCalendarNotes").value = event.notes || "";
   if ($("crmCalendarType") && CRM_CALENDAR_TYPES[event.type]) $("crmCalendarType").value = event.type;
   if ($("crmCalendarFile") && event.fileId) $("crmCalendarFile").value = event.fileId;
+  if ($("crmCalendarColor")) $("crmCalendarColor").value = event.color || "";
   renderCalendarGrid();
   renderCalendarAgenda();
 }
@@ -223,6 +268,7 @@ captureCalendarFormToFile = function captureCalendarFormToFileWithGoogleNotes() 
             date: $("crmCalendarDate").value || event.date,
             time: $("crmCalendarTime").value || event.time,
             notes: $("crmCalendarNotes").value.trim(),
+            color: $("crmCalendarColor")?.value || "",
           }
         : event
     ));
@@ -233,3 +279,26 @@ captureCalendarFormToFile = function captureCalendarFormToFileWithGoogleNotes() 
 };
 
 if (typeof renderCalendar === "function") renderCalendar();
+
+if ($("crmShowCalendarAgenda")) {
+  $("crmShowCalendarAgenda").addEventListener("click", () => {
+    renderCalendarAgenda();
+    openCalendarPanel("crmCalendarAgendaPanel");
+  });
+}
+
+if ($("crmShowCalendarAdd")) {
+  $("crmShowCalendarAdd").addEventListener("click", () => {
+    d2SelectedCalendarEventKey = "";
+    if ($("crmCalendarDate")) $("crmCalendarDate").value = crmSelectedCalendarDate || todayIso(0);
+    if ($("crmCalendarTime")) $("crmCalendarTime").value = "";
+    if ($("crmCalendarNotes")) $("crmCalendarNotes").value = "";
+    if ($("crmCalendarColor")) $("crmCalendarColor").value = "";
+    renderCalendarFileOptions();
+    openCalendarPanel("crmCalendarEventPanel");
+  });
+}
+
+document.querySelectorAll("[data-calendar-close]").forEach((button) => {
+  button.addEventListener("click", closeCalendarPanels);
+});

@@ -47,6 +47,43 @@ const CRM_STATUS_DETAILS = {
 
 const CRM_PROJECT_TYPES = ["Closet", "Pantry", "Cabinetry", "Refinishing", "Built-In", "Other"];
 
+const CRM_FILE_CATEGORY_RULES = {
+  new: "new",
+  contact: "contact",
+  estimate: "estimate",
+  negotiation: "negotiation",
+  active: "active",
+  archive: "archive",
+};
+
+function hasEstimateWorkflowDetail(file) {
+  return ["Inspection Pending", "Inspection Date Set", "Estimate Attached", "Estimate Pending", "Estimate Sent"].includes(file.statusDetail)
+    || ["Pending", "Sent", "Approved"].includes(file.estimateStatus);
+}
+
+function crmFileCategory(file = {}) {
+  const status = file.fileStatus || "New Lead";
+  if (["Job Lost / Closed", "Closed / Paid"].includes(status)) return CRM_FILE_CATEGORY_RULES.archive;
+  if (status === "In Negotiation") return CRM_FILE_CATEGORY_RULES.negotiation;
+  if (["Job Won", "In Progress", "Work Completed"].includes(status)) return CRM_FILE_CATEGORY_RULES.active;
+  if (["Scheduled", "In Progress", "Completed"].includes(file.projectStage)) return CRM_FILE_CATEGORY_RULES.active;
+  if (hasEstimateWorkflowDetail(file) || status === "Inspection Completed") return CRM_FILE_CATEGORY_RULES.estimate;
+  if (["Contact Established", "Contact Attempted"].includes(status)) return CRM_FILE_CATEGORY_RULES.contact;
+  if (status === "New Lead") return CRM_FILE_CATEGORY_RULES.new;
+  return CRM_FILE_CATEGORY_RULES.new;
+}
+
+function repairCrmFileCategory(file) {
+  const category = crmFileCategory(file);
+  file.workflowCategory = category;
+  return file;
+}
+
+function repairCrmFileCategories(files = crmFiles) {
+  return files.map((file) => repairCrmFileCategory(file));
+}
+
+
 function normalizeProjectType(value) {
   const cleaned = String(value || "").trim().toLowerCase();
   const match = CRM_PROJECT_TYPES.find((type) => type.toLowerCase() === cleaned);
@@ -349,22 +386,22 @@ function loadCrmFiles() {
       if (Array.isArray(files) && files.length) {
         if (applyRestore && restoredFiles.length) {
           crmRestoreAppliedThisLoad = true;
-          return mergeDashboardFiles(restoredFiles, files);
+          return repairCrmFileCategories(mergeDashboardFiles(restoredFiles, files).map((file) => normalizeCrmFile({ ...file })));
         }
-        return files.map((file) => ({ ...file }));
+        return repairCrmFileCategories(files.map((file) => normalizeCrmFile({ ...file })));
       }
       const backup = localStorage.getItem(CRM_STORAGE_BACKUP_KEY);
       const backupFiles = backup ? JSON.parse(backup) : [];
       if (Array.isArray(backupFiles) && backupFiles.length) {
         if (applyRestore && restoredFiles.length) {
           crmRestoreAppliedThisLoad = true;
-          return mergeDashboardFiles(restoredFiles, backupFiles);
+          return repairCrmFileCategories(mergeDashboardFiles(restoredFiles, backupFiles).map((file) => normalizeCrmFile({ ...file })));
         }
-        return backupFiles.map((file) => ({ ...file }));
+        return repairCrmFileCategories(backupFiles.map((file) => normalizeCrmFile({ ...file })));
       }
       if (restoredFiles.length) {
         crmRestoreAppliedThisLoad = true;
-        return restoredFiles;
+        return repairCrmFileCategories(restoredFiles.map((file) => normalizeCrmFile({ ...file })));
       }
       return Array.isArray(files) && files.length ? files : defaultFiles();
     }
@@ -373,7 +410,7 @@ function loadCrmFiles() {
   }
   if (restoredFiles.length) {
     crmRestoreAppliedThisLoad = true;
-    return restoredFiles;
+    return repairCrmFileCategories(restoredFiles.map((file) => normalizeCrmFile({ ...file })));
   }
   return defaultFiles();
 }
@@ -477,6 +514,7 @@ function saveCrmFiles() {
     if (Array.isArray(crmFiles) && crmFiles.length) {
       localStorage.setItem(CRM_STORAGE_BACKUP_KEY, JSON.stringify(crmFiles));
     }
+    crmFiles = repairCrmFileCategories(crmFiles);
     localStorage.setItem(CRM_STORAGE_KEY, JSON.stringify(crmFiles));
   } catch (error) {
     // Google Drive will become the real storage layer.
@@ -489,7 +527,7 @@ function refreshCrmFilesFromStorage() {
     const files = saved ? JSON.parse(saved) : [];
     if (!Array.isArray(files) || !files.length) return false;
     const currentActiveId = activeFileId;
-    crmFiles = files.map((file) => normalizeCrmFile(file));
+    crmFiles = repairCrmFileCategories(files.map((file) => normalizeCrmFile(file)));
     if (currentActiveId && crmFiles.some((file) => file.id === currentActiveId)) {
       activeFileId = currentActiveId;
     } else {
@@ -707,7 +745,7 @@ async function loadDashboardFromGoogle() {
     const revenueRows = Array.isArray(dashboard.revenueRows) ? dashboard.revenueRows : [];
     const priceRows = Array.isArray(dashboard.priceRows) ? dashboard.priceRows : [];
     const deletedPriceIds = Array.isArray(dashboard.deletedPriceIds) ? dashboard.deletedPriceIds : [];
-    crmFiles = files.map((file) => normalizeCrmFile({ ...file }));
+    crmFiles = repairCrmFileCategories(files.map((file) => normalizeCrmFile({ ...file })));
     crmRevenueRows = dedupeRevenueRows(revenueRows.map((row) => ({ ...row })));
     crmPriceRows = priceRows.map((row) => normalizedPriceRow(row));
     crmDeletedPriceIds = deletedPriceIds;
@@ -785,54 +823,42 @@ function inferEstimateStatus(status = "", detail = "") {
   return "Not Started";
 }
 
+
 function isOpenCrmFile(file) {
-  return !["Job Lost / Closed", "Closed / Paid"].includes(file.fileStatus);
+  return crmFileCategory(file) !== CRM_FILE_CATEGORY_RULES.archive;
 }
 
 function isClosedCrmFile(file) {
-  return ["Job Lost / Closed", "Closed / Paid"].includes(file.fileStatus);
-}
-
-function hasEstimateWorkflowDetail(file) {
-  return ["Estimate Attached", "Estimate Pending", "Estimate Sent"].includes(file.statusDetail)
-    || ["Pending", "Sent", "Approved"].includes(file.estimateStatus);
+  return crmFileCategory(file) === CRM_FILE_CATEGORY_RULES.archive;
 }
 
 function isPendingEstimateFile(file) {
-  if (isClosedCrmFile(file) || file.fileStatus === "In Negotiation" || isActiveCrmFile(file)) return false;
-  return hasEstimateWorkflowDetail(file)
-    || file.fileStatus === "Inspection Completed"
-    || (file.fileStatus === "Contact Established" && file.statusDetail === "Inspection Pending");
+  return crmFileCategory(file) === CRM_FILE_CATEGORY_RULES.estimate;
 }
 
 function isActiveCrmFile(file) {
-  if (!isOpenCrmFile(file)) return false;
-  if (["New Lead", "Contact Established", "Contact Attempted", "Inspection Completed", "In Negotiation"].includes(file.fileStatus)) return false;
-  return ["Job Won", "In Progress", "Work Completed"].includes(file.fileStatus)
-    || ["Scheduled", "In Progress", "Completed"].includes(file.projectStage);
+  return crmFileCategory(file) === CRM_FILE_CATEGORY_RULES.active;
+}
+
+function filesInCategory(category) {
+  return crmFiles.filter((file) => crmFileCategory(file) === category);
 }
 
 function visibleFiles() {
   const filter = $("crmFileFilter").value;
-  const openFiles = crmFiles.filter(isOpenCrmFile);
   if (filter === "all") return crmFiles;
-  if (filter === "new") return openFiles.filter((file) => file.fileStatus === "New Lead" && !hasEstimateWorkflowDetail(file));
-  if (filter === "contact") return openFiles.filter((file) => ["Contact Established", "Contact Attempted"].includes(file.fileStatus) && !isPendingEstimateFile(file));
-  if (filter === "estimate") return openFiles.filter(isPendingEstimateFile);
-  if (filter === "negotiation") return openFiles.filter((file) => file.fileStatus === "In Negotiation");
-  if (filter === "active") return openFiles.filter(isActiveCrmFile);
-  if (filter === "archive") return crmFiles.filter(isClosedCrmFile);
-  return openFiles;
+  if (CRM_FILE_CATEGORY_RULES[filter]) return filesInCategory(filter);
+  return crmFiles.filter(isOpenCrmFile);
 }
 
 function renderCounts() {
-  const openFiles = crmFiles.filter(isOpenCrmFile);
-  $("newLeadCount").textContent = openFiles.filter((file) => file.fileStatus === "New Lead" && !hasEstimateWorkflowDetail(file)).length;
-  $("pendingContactCount").textContent = openFiles.filter((file) => ["Contact Established", "Contact Attempted"].includes(file.fileStatus) && !isPendingEstimateFile(file)).length;
-  $("pendingEstimateCount").textContent = openFiles.filter(isPendingEstimateFile).length;
-  $("negotiationCount").textContent = openFiles.filter((file) => file.fileStatus === "In Negotiation").length;
-  $("activeJobCount").textContent = openFiles.filter(isActiveCrmFile).length;
-  $("archivedCount").textContent = crmFiles.filter(isClosedCrmFile).length;
+  repairCrmFileCategories();
+  $("newLeadCount").textContent = filesInCategory("new").length;
+  $("pendingContactCount").textContent = filesInCategory("contact").length;
+  $("pendingEstimateCount").textContent = filesInCategory("estimate").length;
+  $("negotiationCount").textContent = filesInCategory("negotiation").length;
+  $("activeJobCount").textContent = filesInCategory("active").length;
+  $("archivedCount").textContent = filesInCategory("archive").length;
 }
 
 function renderFileList() {
@@ -1639,12 +1665,7 @@ function applyInitialFileRoute() {
 }
 
 function filterForCrmFile(file) {
-  if (!isOpenCrmFile(file)) return "archive";
-  if (file.fileStatus === "New Lead") return "new";
-  if (isPendingEstimateFile(file)) return "estimate";
-  if (["Contact Established", "Contact Attempted"].includes(file.fileStatus)) return "contact";
-  if (file.fileStatus === "In Negotiation") return "negotiation";
-  return "active";
+  return crmFileCategory(file);
 }
 
 function activateCrmFilter(filter) {
@@ -3595,6 +3616,7 @@ function normalizeExternalCalendarEvent(event = {}) {
     startIso: event.startIso || `${startDate}T${event.time || "09:00"}:00`,
     endIso: event.endIso || "",
     notes: event.notes || event.description || "",
+    color: event.color || "",
     eventId: event.eventId || "",
   };
 }
@@ -3623,6 +3645,7 @@ function calendarEventFromFile(file, type) {
     time: timeValue || "09:00",
     startIso: start.toISOString(),
     endIso: end.toISOString(),
+    color: file.calendarColors?.[type] || "",
     notes: [
       `D2 file: ${file.fileNumber || ""}`,
       `Customer: ${file.clientName || ""}`,
@@ -3944,6 +3967,14 @@ function captureCalendarFormToFile() {
   }
   file[config.dateField] = dateValue;
   if (config.timeField) file[config.timeField] = $("crmCalendarTime").value;
+  if ($("crmCalendarColor")) {
+    file.calendarColors = file.calendarColors || {};
+    if ($("crmCalendarColor").value) {
+      file.calendarColors[type] = $("crmCalendarColor").value;
+    } else {
+      delete file.calendarColors[type];
+    }
+  }
   const note = $("crmCalendarNotes").value.trim();
   if (note) addSystemNote(file, `${config.label} calendar note: ${note}`);
   saveCrmFiles();
