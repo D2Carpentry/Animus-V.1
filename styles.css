@@ -127,9 +127,32 @@ h2 {
 }
 
 .toolbar-strip {
+  position: relative;
   display: flex;
   justify-content: flex-end;
   margin-bottom: 18px;
+}
+
+.estimate-actions-menu-button {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: 48px;
+  min-width: 48px;
+  height: 48px;
+  padding: 0;
+  border-radius: 12px;
+  background: var(--pine);
+  color: #ffffff;
+}
+
+.estimate-actions-menu-button span {
+  width: 22px;
+  height: 3px;
+  border-radius: 999px;
+  background: currentColor;
 }
 
 .view-select-wrap {
@@ -1585,6 +1608,56 @@ body[data-copy-mode="team"] .estimate-sheet td:first-child {
 
   .dashboard-top-link {
     justify-self: start;
+  }
+
+  .toolbar-strip {
+    justify-content: flex-end;
+    min-height: 48px;
+  }
+
+  .estimate-actions-menu-button {
+    display: inline-flex;
+  }
+
+  .toolbar-strip .top-actions {
+    position: absolute;
+    top: 56px;
+    right: 0;
+    z-index: 70;
+    display: none;
+    width: min(88vw, 320px);
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    background: #ffffff;
+    box-shadow: 0 22px 54px rgba(22, 38, 58, 0.22);
+  }
+
+  .toolbar-strip.menu-open .top-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 9px;
+  }
+
+  .toolbar-strip .top-actions .icon-button,
+  .toolbar-strip .view-select-wrap,
+  .toolbar-strip .share-menu,
+  .toolbar-strip .share-menu > .icon-button {
+    width: 100%;
+  }
+
+  .toolbar-strip .view-select-wrap select {
+    width: 100%;
+  }
+
+  .toolbar-strip .share-options {
+    right: 0;
+    left: auto;
+    width: 100%;
+  }
+
+  .bottom-actions {
+    display: none;
   }
 
   .company-meta-card {

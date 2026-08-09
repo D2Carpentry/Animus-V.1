@@ -2292,6 +2292,23 @@ function closeShareMenus() {
   });
 }
 
+function closeEstimateActionMenu() {
+  const toolbar = document.querySelector(".toolbar-strip");
+  const button = $("estimateActionsMenuButton");
+  if (!toolbar || !button) return;
+  toolbar.classList.remove("menu-open");
+  button.setAttribute("aria-expanded", "false");
+}
+
+function toggleEstimateActionMenu(event) {
+  event.stopPropagation();
+  const toolbar = document.querySelector(".toolbar-strip");
+  const button = $("estimateActionsMenuButton");
+  if (!toolbar || !button) return;
+  const isOpen = toolbar.classList.toggle("menu-open");
+  button.setAttribute("aria-expanded", String(isOpen));
+}
+
 function toggleShareMenu(button) {
   const menu = button.parentElement?.querySelector(".share-options");
   if (!menu) return;
@@ -3069,14 +3086,26 @@ $("projectType").addEventListener("change", () => {
   refreshAutoEstimateNumber();
   syncProjectMode();
 });
-$("newEstimate").addEventListener("click", () => runButtonAction(startNewEstimate));
-$("saveEstimate").addEventListener("click", () => runButtonAction(downloadEditableEstimate));
-$("openEditableEstimate").addEventListener("click", () => runButtonAction(openEditableEstimatePicker));
+$("newEstimate").addEventListener("click", () => {
+  closeEstimateActionMenu();
+  runButtonAction(startNewEstimate);
+});
+$("saveEstimate").addEventListener("click", () => {
+  closeEstimateActionMenu();
+  runButtonAction(downloadEditableEstimate);
+});
+$("openEditableEstimate").addEventListener("click", () => {
+  closeEstimateActionMenu();
+  runButtonAction(openEditableEstimatePicker);
+});
 $("editableEstimateUpload").addEventListener("change", (event) => {
   openEditableEstimateFile(event.target.files[0]);
   event.target.value = "";
 });
-$("submitEstimate").addEventListener("click", () => submitEstimateToGoogle().catch(() => {}));
+$("submitEstimate").addEventListener("click", () => {
+  closeEstimateActionMenu();
+  submitEstimateToGoogle().catch(() => {});
+});
 if ($("printEstimate")) {
   $("printEstimate").addEventListener("click", () => runButtonAction(() => printEstimateCopy({ userRequested: true })));
 }
@@ -3097,7 +3126,10 @@ document.querySelectorAll("[data-document-view]").forEach((button) => {
   });
 });
 document.querySelectorAll("#documentViewSelect, [data-document-view-select]").forEach((select) => {
-  select.addEventListener("change", () => setDocumentView(select.value));
+  select.addEventListener("change", () => {
+    setDocumentView(select.value);
+    closeEstimateActionMenu();
+  });
 });
 document.querySelectorAll("#shareEstimate, [data-share-toggle]").forEach((button) => {
   button.addEventListener("click", (event) => {
@@ -3108,6 +3140,7 @@ document.querySelectorAll("#shareEstimate, [data-share-toggle]").forEach((button
 document.querySelectorAll("[data-share-action]").forEach((button) => {
   button.addEventListener("click", () => {
     closeShareMenus();
+    closeEstimateActionMenu();
     if (button.dataset.shareAction === "pdf") runButtonAction(() => printEstimateCopy({ userRequested: true }));
     if (button.dataset.shareAction === "email") runButtonAction(emailEstimateCopy);
   });
@@ -3117,7 +3150,9 @@ document.querySelectorAll("[data-collapse-target]").forEach((button) => {
 });
 document.addEventListener("click", (event) => {
   if (!event.target.closest(".share-menu")) closeShareMenus();
+  if (!event.target.closest(".toolbar-strip")) closeEstimateActionMenu();
 });
+$("estimateActionsMenuButton")?.addEventListener("click", toggleEstimateActionMenu);
 document.querySelectorAll("[data-action-button]").forEach((button) => {
   button.addEventListener("click", () => {
     const action = button.dataset.actionButton;
@@ -3127,6 +3162,7 @@ document.querySelectorAll("[data-action-button]").forEach((button) => {
     if (action === "submit") runButtonAction(submitEstimateToGoogle);
     if (action === "invoice") runButtonAction(showPaymentDocument);
     if (action === "print") runButtonAction(() => printEstimateCopy({ userRequested: true }));
+    closeEstimateActionMenu();
   });
 });
 setCopyMode("customer");

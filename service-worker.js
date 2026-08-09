@@ -1,4 +1,4 @@
-const CACHE_NAME = "d2-estimate-studio-v114-animus-mobile-menu";
+const CACHE_NAME = "d2-estimate-studio-v116-mobile-estimator-menu";
 const APP_FILES = [
   "./",
   "./index.html",

@@ -9,7 +9,7 @@
     <meta name="apple-mobile-web-app-title" content="Estimates">
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=20260809-estimator-polish">
+    <link rel="stylesheet" href="styles.css?v=20260809-estimator-action-menu">
   </head>
   <body>
     <main class="app-shell">
@@ -24,7 +24,12 @@
         <a class="icon-button dashboard-top-link" href="crm.html" target="_blank" rel="noopener" title="Open Dashboard" aria-label="Open Dashboard">Dashboard</a>
       </header>
       <section class="toolbar-strip" aria-label="Estimate actions">
-        <div class="top-actions">
+        <button type="button" class="estimate-actions-menu-button" id="estimateActionsMenuButton" aria-label="Open estimate actions" aria-expanded="false" aria-controls="estimateActionsMenu">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+        <div class="top-actions" id="estimateActionsMenu">
           <button type="button" class="icon-button" id="submitEstimate" title="Create Dashboard lead from this estimate" aria-label="Create Dashboard lead from this estimate">Create Lead</button>
           <button type="button" class="icon-button" id="newEstimate" title="New estimate" aria-label="New estimate">+ New</button>
           <button type="button" class="icon-button" id="openEditableEstimate" title="Open editable estimate file" aria-label="Open editable estimate file">Open File</button>
@@ -624,6 +629,6 @@
     <script src="vendor/jspdf.umd.min.js"></script>
     <script src="vendor/html2canvas.min.js"></script>
     <script src="materials-database.js?v=20260804-price-update-2"></script>
-    <script src="app.js?v=20260809-estimator-polish"></script>
+    <script src="app.js?v=20260809-estimator-action-menu"></script>
   </body>
 </html>
