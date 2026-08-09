@@ -3,6 +3,7 @@ const MOBILE_REVENUE_KEY = "d2CrmRevenueRows";
 const MOBILE_PRICE_KEY = "d2PriceDatabase";
 const MOBILE_DELETED_PRICE_KEY = "d2PriceDeletedIds";
 const MOBILE_GOOGLE_SCRIPT_KEY = "d2GoogleScriptUrl";
+const MOBILE_RESTORE_VERSION_KEY = "d2MobileDashboardRestoreVersion";
 const MOBILE_DEFAULT_GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzZkie1W4LplkKwFoMq19suIHWsamKYNUwCt9xjnihTdy_dN271ou3lscTgq09bAGIG2w/exec";
 
 const mobileCurrency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
@@ -95,7 +96,7 @@ function normalizeFile(file = {}) {
     fileStatus: file.fileStatus || "New Lead",
     statusDetail: file.statusDetail || mobileStatusDetails[file.fileStatus || "New Lead"]?.[0] || "",
     projectType: file.projectType || "Other",
-    estimateTotal: Number(file.estimateTotal) || 0,
+    estimateTotal: Number(file.estimateTotal ?? file.estimateAmount) || 0,
     materialTotal: Number(file.materialTotal) || 0,
     initialDeposit: file.initialDeposit || "",
     midpointDeposit: file.midpointDeposit || "",
@@ -113,30 +114,97 @@ function normalizeFile(file = {}) {
   };
 }
 
+function restoredMobileDashboard() {
+  return window.D2_DASHBOARD_RESTORE || {};
+}
+
+function restoredMobileVersion() {
+  return String(restoredMobileDashboard().restoredAt || "");
+}
+
+function shouldApplyMobileRestore() {
+  const version = restoredMobileVersion();
+  if (!version) return false;
+  try {
+    return localStorage.getItem(MOBILE_RESTORE_VERSION_KEY) !== version;
+  } catch (error) {
+    return true;
+  }
+}
+
+function markMobileRestoreApplied() {
+  const version = restoredMobileVersion();
+  if (!version) return;
+  try {
+    localStorage.setItem(MOBILE_RESTORE_VERSION_KEY, version);
+  } catch (error) {
+    // Some mobile privacy modes block localStorage writes.
+  }
+}
+
+function mergeMobileRows(primary = [], secondary = []) {
+  const merged = [];
+  const seen = new Set();
+  [...primary, ...secondary].forEach((row) => {
+    const key = String(row.fileNumber || row.id || row.clientName || row.clientJob || row.name || "").trim().toLowerCase();
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    merged.push({ ...row });
+  });
+  return merged;
+}
+
 function activeFile() {
   return mobileFiles.find((file) => file.id === mobileActiveFileId) || mobileFiles[0] || null;
 }
 
 function loadLocalData() {
+  const restore = restoredMobileDashboard();
+  const applyRestore = shouldApplyMobileRestore();
+  const restoredFiles = Array.isArray(restore.files) ? restore.files.map((file) => ({ ...file })) : [];
+  const restoredRevenue = Array.isArray(restore.revenue) ? restore.revenue.map((row) => ({ ...row })) : [];
+  const restoredPrices = Array.isArray(restore.prices) ? restore.prices.map((row) => ({ ...row })) : [];
   try {
-    mobileFiles = JSON.parse(localStorage.getItem(MOBILE_STORAGE_KEY) || "[]").map(normalizeFile);
+    const savedFiles = JSON.parse(localStorage.getItem(MOBILE_STORAGE_KEY) || "[]");
+    const fileSource = applyRestore && restoredFiles.length
+      ? mergeMobileRows(restoredFiles, Array.isArray(savedFiles) ? savedFiles : [])
+      : Array.isArray(savedFiles) && savedFiles.length
+        ? savedFiles
+        : restoredFiles;
+    mobileFiles = fileSource.map(normalizeFile);
   } catch (error) {
-    mobileFiles = [];
+    mobileFiles = restoredFiles.map(normalizeFile);
   }
   try {
-    mobileRevenueRows = JSON.parse(localStorage.getItem(MOBILE_REVENUE_KEY) || "[]");
+    const savedRevenue = JSON.parse(localStorage.getItem(MOBILE_REVENUE_KEY) || "[]");
+    const revenueSource = applyRestore && restoredRevenue.length
+      ? mergeMobileRows(restoredRevenue, Array.isArray(savedRevenue) ? savedRevenue : [])
+      : Array.isArray(savedRevenue) && savedRevenue.length
+        ? savedRevenue
+        : restoredRevenue;
+    mobileRevenueRows = revenueSource;
   } catch (error) {
-    mobileRevenueRows = [];
+    mobileRevenueRows = restoredRevenue;
   }
   try {
-    mobilePriceRows = JSON.parse(localStorage.getItem(MOBILE_PRICE_KEY) || "[]");
+    const savedPrices = JSON.parse(localStorage.getItem(MOBILE_PRICE_KEY) || "[]");
+    const priceSource = applyRestore && restoredPrices.length
+      ? mergeMobileRows(restoredPrices, Array.isArray(savedPrices) ? savedPrices : [])
+      : Array.isArray(savedPrices) && savedPrices.length
+        ? savedPrices
+        : restoredPrices;
+    mobilePriceRows = priceSource;
   } catch (error) {
-    mobilePriceRows = [];
+    mobilePriceRows = restoredPrices;
   }
   try {
     mobileDeletedPriceIds = JSON.parse(localStorage.getItem(MOBILE_DELETED_PRICE_KEY) || "[]");
   } catch (error) {
     mobileDeletedPriceIds = [];
+  }
+  if (applyRestore && restoredFiles.length) {
+    saveLocalData();
+    markMobileRestoreApplied();
   }
   if (!mobileActiveFileId && mobileFiles[0]) mobileActiveFileId = mobileFiles[0].id;
 }
