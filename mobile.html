@@ -6,7 +6,7 @@
     <title>ANIMUS Mobile</title>
     <meta name="theme-color" content="#0d4a91">
     <link rel="icon" href="icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="mobile.css?v=20260809-mobile-v1">
+    <link rel="stylesheet" href="mobile.css?v=20260809-mobile-v2">
   </head>
   <body>
     <main class="mobile-shell">
@@ -18,22 +18,41 @@
             <h1>ANIMUS</h1>
           </div>
         </div>
-        <button type="button" class="mobile-save" id="mobileSaveCloud" aria-label="Save">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path class="save-icon-body" d="M4 3h13.2L20 5.8V21H4z"></path>
-            <path class="save-icon-cut" d="M7 4.8h8.4v5.6H7z"></path>
-            <path class="save-icon-cut" d="M7.2 14.2h9.6V21H7.2z"></path>
-            <path class="save-icon-mark" d="M13.5 5.7h1.3v3.7h-1.3z"></path>
-          </svg>
+        <button type="button" class="mobile-menu-button" id="mobileMenuButton" aria-label="Open menu" aria-expanded="false">
+          <span></span>
+          <span></span>
+          <span></span>
         </button>
       </header>
+
+      <div class="mobile-menu-backdrop" id="mobileMenuBackdrop" hidden></div>
+      <aside class="mobile-menu-panel" id="mobileMenuPanel" hidden>
+        <div class="mobile-menu-head">
+          <div>
+            <p class="eyebrow">ANIMUS</p>
+            <h2>Menu</h2>
+          </div>
+          <button type="button" id="mobileMenuClose" aria-label="Close menu">×</button>
+        </div>
+        <div class="mobile-menu-list">
+          <button type="button" id="mobileNewFile">+ New File</button>
+          <button type="button" data-mobile-tab="files">Command Center</button>
+          <button type="button" data-mobile-tab="calendar">Calendar</button>
+          <button type="button" data-mobile-tab="estimate">Estimator</button>
+          <button type="button" data-mobile-tab="revenue">Revenue</button>
+          <button type="button" data-mobile-tab="more">More</button>
+          <button type="button" id="mobileSaveCloud">Save</button>
+          <button type="button" id="mobileLoadCloud">Load Cloud</button>
+          <button type="button" id="mobileOpenDesktop">Desktop Command Center</button>
+          <button type="button" id="mobileOpenPriceDb">Price Database</button>
+        </div>
+      </aside>
 
       <section class="mobile-hero">
         <div>
           <p class="eyebrow">Command Center</p>
           <h2 id="mobileViewTitle">Files</h2>
         </div>
-        <button type="button" id="mobileLoadCloud">Load Cloud</button>
       </section>
 
       <section class="mobile-view active" id="mobileFilesView">
@@ -47,7 +66,6 @@
             <option value="active">Active Jobs</option>
             <option value="archive">Closed Files</option>
           </select>
-          <button type="button" id="mobileNewFile">+ New</button>
         </div>
         <div class="mobile-search">
           <input id="mobileSearch" type="search" placeholder="Search name, phone, or file #">
@@ -57,64 +75,83 @@
 
       <section class="mobile-view" id="mobileDetailView">
         <button type="button" class="mobile-back" data-mobile-tab="files">Back to Files</button>
-        <article class="mobile-card mobile-file-editor">
-          <p class="eyebrow" id="mobileDetailNumber">File</p>
-          <input class="mobile-title-input" id="mobileClientName" placeholder="Client name">
-          <div class="mobile-grid">
-            <label>Phone<input id="mobileClientPhone" type="tel"></label>
-            <label>Email<input id="mobileClientEmail" type="email"></label>
-            <label class="full">Address<input id="mobileProjectAddress"></label>
-            <label>Status<select id="mobileFileStatus"></select></label>
-            <label>Detail<select id="mobileStatusDetail"></select></label>
-            <label>Project Type<select id="mobileProjectType"></select></label>
-            <label>Source<input id="mobileLeadSource"></label>
+        <article class="mobile-card mobile-file-editor mobile-collapsible is-open">
+          <button type="button" class="mobile-section-toggle" data-mobile-toggle-section>
+            <span>
+              <span class="eyebrow" id="mobileDetailNumber">File</span>
+              <strong>Customer</strong>
+            </span>
+            <span class="mobile-section-arrow">›</span>
+          </button>
+          <div class="mobile-section-body">
+            <input class="mobile-title-input" id="mobileClientName" placeholder="Client name">
+            <div class="mobile-grid">
+              <label>Phone<input id="mobileClientPhone" type="tel"></label>
+              <label>Email<input id="mobileClientEmail" type="email"></label>
+              <label class="full">Address<input id="mobileProjectAddress"></label>
+              <label>Status<select id="mobileFileStatus"></select></label>
+              <label>Detail<select id="mobileStatusDetail"></select></label>
+              <label>Project Type<select id="mobileProjectType"></select></label>
+              <label>Source<input id="mobileLeadSource"></label>
+            </div>
           </div>
         </article>
 
-        <article class="mobile-card">
-          <div class="mobile-card-head">
-            <div>
-              <p class="eyebrow">Financials</p>
-              <h3 id="mobileMoneyTitle">$0.00</h3>
+        <article class="mobile-card mobile-collapsible">
+          <button type="button" class="mobile-section-toggle" data-mobile-toggle-section>
+            <span>
+              <span class="eyebrow">Financials</span>
+              <strong id="mobileMoneyTitle">$0.00</strong>
+            </span>
+            <span class="mobile-section-right">
+              <span id="mobileBalanceBadge">$0.00 due</span>
+              <span class="mobile-section-arrow">›</span>
+            </span>
+          </button>
+          <div class="mobile-section-body">
+            <div class="mobile-grid">
+              <label>Estimate<input id="mobileEstimateTotal" type="number" min="0" step="0.01"></label>
+              <label>Materials<input id="mobileMaterialTotal" type="number" min="0" step="0.01"></label>
+              <label>Initial Deposit<input id="mobileInitialDeposit" type="number" min="0" step="0.01"></label>
+              <label>Midpoint<input id="mobileMidpointDeposit" type="number" min="0" step="0.01"></label>
+              <label>Final Payment<input id="mobileFinalPaymentAmount" type="number" min="0" step="0.01"></label>
+              <label>Paid in Full<select id="mobilePaidInFull"><option>No</option><option>Yes</option></select></label>
             </div>
-            <span id="mobileBalanceBadge">$0.00 due</span>
-          </div>
-          <div class="mobile-grid">
-            <label>Estimate<input id="mobileEstimateTotal" type="number" min="0" step="0.01"></label>
-            <label>Materials<input id="mobileMaterialTotal" type="number" min="0" step="0.01"></label>
-            <label>Initial Deposit<input id="mobileInitialDeposit" type="number" min="0" step="0.01"></label>
-            <label>Midpoint<input id="mobileMidpointDeposit" type="number" min="0" step="0.01"></label>
-            <label>Final Payment<input id="mobileFinalPaymentAmount" type="number" min="0" step="0.01"></label>
-            <label>Paid in Full<select id="mobilePaidInFull"><option>No</option><option>Yes</option></select></label>
           </div>
         </article>
 
-        <article class="mobile-card">
-          <div class="mobile-card-head">
-            <div>
-              <p class="eyebrow">Schedule</p>
-              <h3>Dates</h3>
+        <article class="mobile-card mobile-collapsible">
+          <button type="button" class="mobile-section-toggle" data-mobile-toggle-section>
+            <span>
+              <span class="eyebrow">Schedule</span>
+              <strong>Dates</strong>
+            </span>
+            <span class="mobile-section-arrow">›</span>
+          </button>
+          <div class="mobile-section-body">
+            <div class="mobile-grid">
+              <label>Inspection<input id="mobileInspectionDate" type="date"></label>
+              <label>Inspection Time<input id="mobileInspectionTime" type="time"></label>
+              <label>Start Date<input id="mobileStartDate" type="date"></label>
+              <label>Follow-Up<input id="mobileFollowUpDate" type="date"></label>
+              <label class="full">Completion<input id="mobileAnticipatedCompletionDate" type="date"></label>
             </div>
-          </div>
-          <div class="mobile-grid">
-            <label>Inspection<input id="mobileInspectionDate" type="date"></label>
-            <label>Inspection Time<input id="mobileInspectionTime" type="time"></label>
-            <label>Start Date<input id="mobileStartDate" type="date"></label>
-            <label>Follow-Up<input id="mobileFollowUpDate" type="date"></label>
-            <label class="full">Completion<input id="mobileAnticipatedCompletionDate" type="date"></label>
           </div>
         </article>
 
-        <article class="mobile-card">
-          <div class="mobile-card-head">
-            <div>
-              <p class="eyebrow">Notes</p>
-              <h3>File Notes</h3>
-            </div>
-            <button type="button" id="mobileAddNote">Add</button>
+        <article class="mobile-card mobile-collapsible">
+          <button type="button" class="mobile-section-toggle" data-mobile-toggle-section>
+            <span>
+              <span class="eyebrow">Notes</span>
+              <strong>File Notes</strong>
+            </span>
+            <span class="mobile-section-arrow">›</span>
+          </button>
+          <div class="mobile-section-body">
+            <button type="button" id="mobileAddNote">Add Note</button>
+            <textarea id="mobileNewNote" rows="3" placeholder="Add a note"></textarea>
+            <div class="mobile-notes" id="mobileNotes"></div>
           </div>
-          <textarea id="mobileNewNote" rows="3" placeholder="Add a note"></textarea>
-          <div class="mobile-notes" id="mobileNotes"></div>
         </article>
 
         <div class="mobile-action-row">
@@ -154,22 +191,12 @@
       <section class="mobile-view" id="mobileMoreView">
         <article class="mobile-card">
           <p class="eyebrow">Tools</p>
-          <button type="button" id="mobileOpenDesktop">Open Desktop Command Center</button>
-          <button type="button" id="mobileOpenPriceDb">Price Database</button>
-          <p class="mobile-helper">This phone version is separate from the desktop layout, but it uses the same saved ANIMUS data.</p>
+          <p class="mobile-helper">Use the menu button in the top corner for files, calendar, estimator, revenue, cloud save, desktop view, and the price database.</p>
         </article>
       </section>
     </main>
 
-    <nav class="mobile-tabbar" aria-label="Mobile navigation">
-      <button type="button" class="active" data-mobile-tab="files">Files</button>
-      <button type="button" data-mobile-tab="calendar">Calendar</button>
-      <button type="button" data-mobile-tab="estimate">Estimate</button>
-      <button type="button" data-mobile-tab="revenue">Revenue</button>
-      <button type="button" data-mobile-tab="more">More</button>
-    </nav>
-
     <script src="materials-database.js?v=20260804-price-update-2"></script>
-    <script src="mobile.js?v=20260809-mobile-v1"></script>
+    <script src="mobile.js?v=20260809-mobile-v2"></script>
   </body>
 </html>

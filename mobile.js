@@ -235,13 +235,33 @@ function setTab(tab) {
   mobileCurrentTab = tab;
   document.querySelectorAll(".mobile-view").forEach((view) => view.classList.remove("active"));
   document.querySelectorAll("[data-mobile-tab]").forEach((button) => button.classList.toggle("active", button.dataset.mobileTab === tab));
-  const titleMap = { files: "Files", detail: "File Details", calendar: "Calendar", estimate: "Estimate", revenue: "Revenue", more: "More" };
+  const titleMap = { files: "Command Center", detail: "File Details", calendar: "Calendar", estimate: "Estimator", revenue: "Revenue", more: "More" };
   $("mobileViewTitle").textContent = titleMap[tab] || "ANIMUS";
   const view = $(`mobile${tab[0].toUpperCase()}${tab.slice(1)}View`);
   if (view) view.classList.add("active");
   if (tab === "calendar") renderCalendar();
   if (tab === "revenue") renderRevenue();
   if (tab === "estimate") loadMobileEstimator();
+}
+
+function openMobileMenu() {
+  $("mobileMenuBackdrop").hidden = false;
+  $("mobileMenuPanel").hidden = false;
+  $("mobileMenuButton").setAttribute("aria-expanded", "true");
+}
+
+function closeMobileMenu() {
+  $("mobileMenuBackdrop").hidden = true;
+  $("mobileMenuPanel").hidden = true;
+  $("mobileMenuButton").setAttribute("aria-expanded", "false");
+}
+
+function setupMobileCollapsibles() {
+  document.querySelectorAll("[data-mobile-toggle-section]").forEach((button) => {
+    button.addEventListener("click", () => {
+      button.closest(".mobile-collapsible")?.classList.toggle("is-open");
+    });
+  });
 }
 
 function filteredFiles() {
@@ -491,14 +511,27 @@ function renderAll() {
 }
 
 document.querySelectorAll("[data-mobile-tab]").forEach((button) => {
-  button.addEventListener("click", () => setTab(button.dataset.mobileTab));
+  button.addEventListener("click", () => {
+    setTab(button.dataset.mobileTab);
+    closeMobileMenu();
+  });
 });
 
+$("mobileMenuButton").addEventListener("click", openMobileMenu);
+$("mobileMenuClose").addEventListener("click", closeMobileMenu);
+$("mobileMenuBackdrop").addEventListener("click", closeMobileMenu);
 $("mobileFileFilter").addEventListener("change", renderFiles);
 $("mobileSearch").addEventListener("input", renderFiles);
-$("mobileNewFile").addEventListener("click", newFile);
-$("mobileSaveCloud").addEventListener("click", () => saveCloud().catch(() => window.alert("Cloud save could not complete.")));
-$("mobileLoadCloud").addEventListener("click", () => loadCloud().catch(() => window.alert("Cloud load could not complete.")));
+$("mobileNewFile").addEventListener("click", () => {
+  newFile();
+  closeMobileMenu();
+});
+$("mobileSaveCloud").addEventListener("click", () => {
+  saveCloud().then(closeMobileMenu).catch(() => window.alert("Cloud save could not complete."));
+});
+$("mobileLoadCloud").addEventListener("click", () => {
+  loadCloud().then(closeMobileMenu).catch(() => window.alert("Cloud load could not complete."));
+});
 $("mobileAddNote").addEventListener("click", addNote);
 $("mobileFileStatus").addEventListener("change", () => {
   const file = activeFile();
@@ -525,6 +558,8 @@ $("mobileOpenDesktop").addEventListener("click", () => {
 $("mobileOpenPriceDb").addEventListener("click", () => {
   window.location.href = "crm.html?view=prices";
 });
+
+setupMobileCollapsibles();
 
 document.querySelectorAll("#mobileDetailView input, #mobileDetailView select, #mobileDetailView textarea").forEach((field) => {
   if (field.id === "mobileNewNote") return;
