@@ -1254,10 +1254,7 @@ function handleStatusWorkflow() {
   }
 
   if (status === "Job Lost / Closed") {
-    $("crmNextAction").value = "Future marketing follow-up";
-    if (!$("crmFollowUpDate").value) {
-      openDateField("crmFollowUpDate");
-    }
+    $("crmNextAction").value = "Archived for future marketing";
     addSystemNote(file, "Job lost/closed. Contact information retained for future marketing follow-up.");
     activateCrmFilter("archive");
   }
@@ -4103,8 +4100,10 @@ function switchCrmView(view) {
   const showReceipts = showExpenses;
   const showPrices = view === "prices";
   const showEstimator = view === "estimator";
+  const estimatorShell = $("crmEstimatorView")?.closest(".crm-dashboard-view");
   document.querySelectorAll(".crm-dashboard-view").forEach((section) => {
-    section.hidden = showRevenue || showCalendar || showInvoice || showExpenses || showReceipts || showPrices;
+    const keepEstimatorShell = showEstimator && estimatorShell && section === estimatorShell;
+    section.hidden = !keepEstimatorShell && (showRevenue || showCalendar || showInvoice || showExpenses || showReceipts || showPrices || showEstimator);
   });
   $("crmRevenueView").hidden = !showRevenue;
   $("crmCalendarView").hidden = !showCalendar;
