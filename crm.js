@@ -4101,6 +4101,7 @@ function switchCrmView(view) {
   const showPrices = view === "prices";
   const showEstimator = view === "estimator";
   const estimatorShell = $("crmEstimatorView")?.closest(".crm-dashboard-view");
+  document.body.classList.toggle("crm-estimator-active", showEstimator);
   document.querySelectorAll(".crm-dashboard-view").forEach((section) => {
     const keepEstimatorShell = showEstimator && estimatorShell && section === estimatorShell;
     section.hidden = !keepEstimatorShell && (showRevenue || showCalendar || showInvoice || showExpenses || showReceipts || showPrices || showEstimator);

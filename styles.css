@@ -2441,6 +2441,10 @@ body[data-copy-mode="team"] .estimate-sheet td:first-child {
   display: none !important;
 }
 
+.crm-estimator-active .crm-layout.crm-dashboard-view {
+  display: none !important;
+}
+
 .crm-expenses-layout {
   grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
 }
