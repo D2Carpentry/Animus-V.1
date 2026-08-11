@@ -5,6 +5,7 @@ const MOBILE_DELETED_PRICE_KEY = "d2PriceDeletedIds";
 const MOBILE_EXTERNAL_CALENDAR_KEY = "d2ExternalCalendarEvents";
 const MOBILE_GOOGLE_SCRIPT_KEY = "d2GoogleScriptUrl";
 const MOBILE_RESTORE_VERSION_KEY = "d2MobileDashboardRestoreVersion";
+const MOBILE_CLOUD_SYNC_KEY = "d2MobileCloudSyncedAt";
 const MOBILE_DEFAULT_GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzZkie1W4LplkKwFoMq19suIHWsamKYNUwCt9xjnihTdy_dN271ou3lscTgq09bAGIG2w/exec";
 
 const mobileCurrency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
@@ -41,6 +42,9 @@ let mobileActiveFileId = "";
 let mobileCurrentTab = "files";
 let mobileCalendarCursor = new Date();
 let mobileSelectedDate = dateKey(new Date());
+let mobileCloudAutosaveTimer = null;
+let mobileCloudHydrated = false;
+let mobileCloudSaveInFlight = false;
 
 const $ = (id) => document.getElementById(id);
 
@@ -243,6 +247,7 @@ function saveLocalData() {
   localStorage.setItem(MOBILE_PRICE_KEY, JSON.stringify(mobilePriceRows));
   localStorage.setItem(MOBILE_DELETED_PRICE_KEY, JSON.stringify(mobileDeletedPriceIds));
   localStorage.setItem(MOBILE_EXTERNAL_CALENDAR_KEY, JSON.stringify(mobileExternalCalendarEvents));
+  scheduleMobileCloudSave();
 }
 
 function googleScriptUrl() {
@@ -340,7 +345,9 @@ function fetchGoogleCalendarEvents(startDate, endDate) {
 async function saveCloud() {
   saveLocalData();
   $("mobileSaveCloud").classList.add("saving");
-  await postToGoogle(syncPayload());
+  const payload = syncPayload();
+  await postToGoogle(payload);
+  markMobileCloudSyncedAt(payload.syncedAt);
   $("mobileSaveCloud").classList.remove("saving");
   $("mobileSaveCloud").classList.add("saved");
   window.setTimeout(() => $("mobileSaveCloud").classList.remove("saved"), 900);
@@ -352,14 +359,76 @@ async function loadCloud() {
     window.alert("No cloud dashboard was found yet.");
     return;
   }
+  applyMobileDashboardSnapshot(dashboard);
+  renderAll();
+  window.alert("ANIMUS Mobile loaded the latest cloud data.");
+}
+
+function markMobileCloudSyncedAt(value) {
+  try {
+    localStorage.setItem(MOBILE_CLOUD_SYNC_KEY, value || new Date().toISOString());
+  } catch (error) {
+    // Some mobile browsers block localStorage writes.
+  }
+}
+
+function mobileCloudSyncedAt() {
+  try {
+    return localStorage.getItem(MOBILE_CLOUD_SYNC_KEY) || "";
+  } catch (error) {
+    return "";
+  }
+}
+
+function isMobileCloudDashboardNewer(dashboard) {
+  if (!dashboard) return false;
+  const cloudTime = Date.parse(dashboard.syncedAt || "");
+  const localTime = Date.parse(mobileCloudSyncedAt() || "");
+  if (!Number.isFinite(cloudTime)) return true;
+  if (!Number.isFinite(localTime)) return true;
+  return cloudTime > localTime;
+}
+
+function applyMobileDashboardSnapshot(dashboard) {
   mobileFiles = Array.isArray(dashboard.dashboardFiles) ? dashboard.dashboardFiles.map(normalizeFile) : [];
   mobileRevenueRows = Array.isArray(dashboard.revenueRows) ? dashboard.revenueRows : [];
   mobilePriceRows = Array.isArray(dashboard.priceRows) ? dashboard.priceRows : [];
   mobileDeletedPriceIds = Array.isArray(dashboard.deletedPriceIds) ? dashboard.deletedPriceIds : [];
   mobileActiveFileId = mobileFiles[0]?.id || "";
-  saveLocalData();
-  renderAll();
-  window.alert("ANIMUS Mobile loaded the latest cloud data.");
+  markMobileCloudSyncedAt(dashboard.syncedAt);
+  localStorage.setItem(MOBILE_STORAGE_KEY, JSON.stringify(mobileFiles));
+  localStorage.setItem(MOBILE_REVENUE_KEY, JSON.stringify(mobileRevenueRows));
+  localStorage.setItem(MOBILE_PRICE_KEY, JSON.stringify(mobilePriceRows));
+  localStorage.setItem(MOBILE_DELETED_PRICE_KEY, JSON.stringify(mobileDeletedPriceIds));
+}
+
+async function hydrateMobileFromCloud() {
+  try {
+    const dashboard = await fetchCloudDashboard();
+    if (dashboard && isMobileCloudDashboardNewer(dashboard)) {
+      applyMobileDashboardSnapshot(dashboard);
+      renderAll();
+    }
+  } catch (error) {
+    // Keep the local mobile copy visible when the cloud cannot be reached.
+  } finally {
+    mobileCloudHydrated = true;
+  }
+}
+
+function scheduleMobileCloudSave() {
+  if (!mobileCloudHydrated || mobileCloudSaveInFlight) return;
+  window.clearTimeout(mobileCloudAutosaveTimer);
+  mobileCloudAutosaveTimer = window.setTimeout(async () => {
+    mobileCloudSaveInFlight = true;
+    try {
+      const payload = syncPayload();
+      await postToGoogle(payload);
+      markMobileCloudSyncedAt(payload.syncedAt);
+    } finally {
+      mobileCloudSaveInFlight = false;
+    }
+  }, 2500);
 }
 
 function setTab(tab) {
@@ -794,3 +863,4 @@ document.querySelectorAll("#mobileDetailView input, #mobileDetailView select, #m
 loadLocalData();
 renderAll();
 setTab("files");
+hydrateMobileFromCloud();
