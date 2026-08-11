@@ -17,6 +17,7 @@ const CRM_RESTORE_VERSION_KEY = "d2CrmRestoreVersion";
 const DEFAULT_GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzZkie1W4LplkKwFoMq19suIHWsamKYNUwCt9xjnihTdy_dN271ou3lscTgq09bAGIG2w/exec";
 const OLD_GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxFBQzWViCApvF-c95kAyT0oSNImMgzhf30gP10H2WJT_S5XkejFctq5bT7IjCALMi5Qg/exec";
 const GOOGLE_SCRIPT_URL_STORAGE_KEY = "d2GoogleScriptUrl";
+const CRM_CLOUD_SYNC_KEY = "d2CrmCloudSyncedAt";
 const NOTE_EDIT_WINDOW_MS = 12 * 60 * 60 * 1000;
 
 const CRM_STATUS_DESCRIPTIONS = {
@@ -156,6 +157,9 @@ let receiptDraft = loadReceiptDraft();
 let pendingEstimateUploadFileId = "";
 let openEstimateAfterUpload = false;
 let estimateChoiceTarget = "";
+let crmCloudAutosaveTimer = null;
+let crmCloudHydrated = false;
+let crmCloudSaveInFlight = false;
 
 function getGoogleScriptUrl() {
   const savedUrl = localStorage.getItem(GOOGLE_SCRIPT_URL_STORAGE_KEY) || "";
@@ -519,6 +523,7 @@ function saveCrmFiles() {
   } catch (error) {
     // Google Drive will become the real storage layer.
   }
+  scheduleDashboardCloudSave();
 }
 
 function refreshCrmFilesFromStorage() {
@@ -549,6 +554,7 @@ function saveRevenueRows() {
   } catch (error) {
     // Google Drive will become the real storage layer.
   }
+  scheduleDashboardCloudSave();
 }
 
 function savePriceRows() {
@@ -560,6 +566,7 @@ function savePriceRows() {
   } catch (error) {
     // Local storage can be blocked in some browser privacy modes.
   }
+  scheduleDashboardCloudSave();
 }
 
 function saveDeletedPriceIds() {
@@ -568,6 +575,7 @@ function saveDeletedPriceIds() {
   } catch (error) {
     // Local storage can be blocked in some browser privacy modes.
   }
+  scheduleDashboardCloudSave();
 }
 
 function loadExternalCalendarEvents() {
@@ -786,12 +794,14 @@ async function saveDashboardToGoogle() {
   saveDeletedPriceIds();
   $("crmSaveDemo").title = "Saving...";
   $("crmSaveDemo").setAttribute("aria-label", "Saving");
-  const posted = await postPayloadToGoogle(buildDashboardSyncPayload());
+  const payload = buildDashboardSyncPayload();
+  const posted = await postPayloadToGoogle(payload);
   if (!posted) {
     $("crmSaveDemo").title = "Save";
     $("crmSaveDemo").setAttribute("aria-label", "Save");
     window.alert("Google Drive save is not connected yet. After we deploy the Google save link, paste it here once.");
   } else {
+    markCloudSyncedAt(payload.syncedAt);
     $("crmSaveDemo").title = "Saved";
     $("crmSaveDemo").setAttribute("aria-label", "Saved");
     window.setTimeout(() => {
@@ -817,21 +827,91 @@ async function loadDashboardFromGoogle() {
     const revenueRows = Array.isArray(dashboard.revenueRows) ? dashboard.revenueRows : [];
     const priceRows = Array.isArray(dashboard.priceRows) ? dashboard.priceRows : [];
     const deletedPriceIds = Array.isArray(dashboard.deletedPriceIds) ? dashboard.deletedPriceIds : [];
-    crmFiles = repairCrmFileCategories(files.map((file) => normalizeCrmFile({ ...file })));
-    crmRevenueRows = dedupeRevenueRows(revenueRows.map((row) => ({ ...row })));
-    crmPriceRows = priceRows.map((row) => normalizedPriceRow(row));
-    crmDeletedPriceIds = deletedPriceIds;
-    activeFileId = crmFiles[0] ? crmFiles[0].id : null;
-    activeRevenueId = crmRevenueRows[0] ? crmRevenueRows[0].id : null;
-    saveCrmFiles();
-    saveRevenueRows();
-    savePriceRows();
-    saveDeletedPriceIds();
+    applyDashboardSnapshot({
+      ...dashboard,
+      dashboardFiles: files,
+      revenueRows,
+      priceRows,
+      deletedPriceIds,
+    });
     renderCrm();
     window.alert("Command Center restored from D2 Google Drive.");
   } finally {
     if (button) button.textContent = "Restore from Cloud";
   }
+}
+
+function markCloudSyncedAt(value) {
+  const timestamp = value || new Date().toISOString();
+  try {
+    localStorage.setItem(CRM_CLOUD_SYNC_KEY, timestamp);
+  } catch (error) {
+    // Some browsers block storage, but Google Drive remains the master copy.
+  }
+}
+
+function localCloudSyncedAt() {
+  try {
+    return localStorage.getItem(CRM_CLOUD_SYNC_KEY) || "";
+  } catch (error) {
+    return "";
+  }
+}
+
+function isCloudDashboardNewer(dashboard) {
+  if (!dashboard) return false;
+  const cloudTime = Date.parse(dashboard.syncedAt || "");
+  const localTime = Date.parse(localCloudSyncedAt() || "");
+  if (!Number.isFinite(cloudTime)) return !crmFiles.length;
+  if (!Number.isFinite(localTime)) return !crmFiles.length;
+  return cloudTime > localTime;
+}
+
+function applyDashboardSnapshot(dashboard) {
+  const files = Array.isArray(dashboard.dashboardFiles) ? dashboard.dashboardFiles : [];
+  const revenueRows = Array.isArray(dashboard.revenueRows) ? dashboard.revenueRows : [];
+  const priceRows = Array.isArray(dashboard.priceRows) ? dashboard.priceRows : [];
+  const deletedPriceIds = Array.isArray(dashboard.deletedPriceIds) ? dashboard.deletedPriceIds : [];
+  crmFiles = repairCrmFileCategories(files.map((file) => normalizeCrmFile({ ...file })));
+  crmRevenueRows = dedupeRevenueRows(revenueRows.map((row) => ({ ...row })));
+  crmPriceRows = priceRows.map((row) => normalizedPriceRow(row));
+  crmDeletedPriceIds = deletedPriceIds;
+  activeFileId = crmFiles[0] ? crmFiles[0].id : null;
+  activeRevenueId = crmRevenueRows[0] ? crmRevenueRows[0].id : null;
+  saveCrmFiles();
+  saveRevenueRows();
+  savePriceRows();
+  saveDeletedPriceIds();
+  markCloudSyncedAt(dashboard.syncedAt);
+}
+
+async function hydrateDashboardFromCloud() {
+  try {
+    const dashboard = await fetchDashboardFromGoogle();
+    if (dashboard && isCloudDashboardNewer(dashboard)) {
+      applyDashboardSnapshot(dashboard);
+      renderCrm();
+    }
+  } catch (error) {
+    // Keep the local backup on screen when the cloud cannot be reached.
+  } finally {
+    crmCloudHydrated = true;
+  }
+}
+
+function scheduleDashboardCloudSave() {
+  if (!crmCloudHydrated || crmCloudSaveInFlight) return;
+  window.clearTimeout(crmCloudAutosaveTimer);
+  crmCloudAutosaveTimer = window.setTimeout(async () => {
+    crmCloudSaveInFlight = true;
+    try {
+      const payload = buildDashboardSyncPayload();
+      const posted = await postPayloadToGoogle(payload);
+      if (posted) markCloudSyncedAt(payload.syncedAt);
+    } finally {
+      crmCloudSaveInFlight = false;
+    }
+  }, 2500);
 }
 
 function activeFile() {
@@ -4314,3 +4394,4 @@ persistRestoredDashboardIfNeeded();
 switchCrmView(initialDashboardView());
 applyInitialFileRoute();
 renderCrm();
+hydrateDashboardFromCloud();
