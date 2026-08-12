@@ -17,6 +17,7 @@ const CRM_RESTORE_VERSION_KEY = "d2CrmRestoreVersion";
 const DEFAULT_GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzZkie1W4LplkKwFoMq19suIHWsamKYNUwCt9xjnihTdy_dN271ou3lscTgq09bAGIG2w/exec";
 const OLD_GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxFBQzWViCApvF-c95kAyT0oSNImMgzhf30gP10H2WJT_S5XkejFctq5bT7IjCALMi5Qg/exec";
 const GOOGLE_SCRIPT_URL_STORAGE_KEY = "d2GoogleScriptUrl";
+const CLOUDFLARE_DASHBOARD_API = "/api/dashboard";
 const NOTE_EDIT_WINDOW_MS = 12 * 60 * 60 * 1000;
 
 const CRM_STATUS_DESCRIPTIONS = {
@@ -667,6 +668,32 @@ function postPayloadToGoogle(payload) {
   return Promise.resolve(true);
 }
 
+async function postPayloadToCloudflare(payload) {
+  const response = await fetch(CLOUDFLARE_DASHBOARD_API, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    cache: "no-store",
+    body: JSON.stringify(payload),
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || result.ok === false) {
+    throw new Error(result.error || `Cloudflare save failed with status ${response.status}.`);
+  }
+  return result;
+}
+
+async function fetchDashboardFromCloudflare() {
+  const response = await fetch(`${CLOUDFLARE_DASHBOARD_API}?t=${Date.now()}`, {
+    method: "GET",
+    cache: "no-store",
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || result.ok === false) {
+    throw new Error(result.error || `Cloudflare load failed with status ${response.status}.`);
+  }
+  return result.dashboard || null;
+}
+
 function postCalendarEventToGoogle(event) {
   return postPayloadToGoogle({
     action: "calendarEvent",
@@ -830,31 +857,37 @@ async function saveDashboardToGoogle() {
   saveButton.textContent = "Saving...";
   showDashboardSaveStatus("Saving current Command Center...");
   const payload = buildDashboardSyncPayload();
-  const posted = await postPayloadToGoogle(payload);
-  if (!posted) {
-    saveButton.disabled = false;
-    saveButton.textContent = "Save";
-    showDashboardSaveStatus("Save is not connected yet.", true);
-  } else {
+  try {
+    const saved = await postPayloadToCloudflare(payload);
     saveButton.disabled = false;
     saveButton.textContent = "Saved";
     renderCrm();
-    showDashboardSaveStatus(`Saved ${payload.dashboardFiles.length} files. ${dashboardCloudCountSummary(payload.dashboardFiles)}.`);
+    const savedFiles = Array.isArray(saved.dashboard?.dashboardFiles) ? saved.dashboard.dashboardFiles : payload.dashboardFiles;
+    showDashboardSaveStatus(`Saved ${savedFiles.length} files to Cloudflare. ${dashboardCloudCountSummary(savedFiles)}.`);
     window.setTimeout(() => {
       saveButton.textContent = "Save";
     }, 1400);
+  } catch (error) {
+    saveButton.disabled = false;
+    saveButton.textContent = "Save";
+    showDashboardSaveStatus(error.message || "Cloudflare save failed.", true);
   }
 }
 
 async function loadDashboardFromGoogle() {
-  const confirmed = window.confirm("Restore the latest Command Center backup from D2 Google Drive? This will replace the data currently shown in this browser.");
+  const confirmed = window.confirm("Restore the latest Command Center backup from Cloudflare? This will replace the data currently shown in this browser.");
   if (!confirmed) return;
   const button = $("crmLoadCloud");
   if (button) button.textContent = "Loading...";
   try {
-    const dashboard = await fetchDashboardFromGoogle();
+    let dashboard = null;
+    try {
+      dashboard = await fetchDashboardFromCloudflare();
+    } catch (error) {
+      dashboard = await fetchDashboardFromGoogle();
+    }
     if (!dashboard) {
-      window.alert("No cloud Command Center backup was found yet. Use Save first after the new D2 script is deployed.");
+      window.alert("No cloud Command Center backup was found yet. Use Save first after the Cloudflare connection is live.");
       return;
     }
     const files = Array.isArray(dashboard.dashboardFiles) ? dashboard.dashboardFiles : [];
@@ -872,7 +905,7 @@ async function loadDashboardFromGoogle() {
     savePriceRows();
     saveDeletedPriceIds();
     renderCrm();
-    window.alert("Command Center restored from D2 Google Drive.");
+    window.alert("Command Center restored from Cloudflare.");
   } finally {
     if (button) button.textContent = "Restore from Cloud";
   }
@@ -4239,7 +4272,7 @@ $("crmSaveDemo").addEventListener("click", () => {
   saveDashboardToGoogle();
 });
 $("crmLoadCloud").addEventListener("click", () => {
-  loadDashboardFromGoogle().catch(() => window.alert("Command Center could not be restored from D2 Google Drive. Confirm the new Google Apps Script is deployed."));
+  loadDashboardFromGoogle().catch(() => window.alert("Command Center could not be restored from Cloudflare. Confirm the Cloudflare R2 binding is connected."));
 });
 $("crmCalendarFilter").addEventListener("change", (event) => {
   crmCalendarFilter = event.target.value;
