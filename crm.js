@@ -610,10 +610,6 @@ function buildDashboardSyncPayload() {
   };
 }
 
-function waitForCloudSave(milliseconds) {
-  return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
-}
-
 function dashboardCloudCounts(files = []) {
   const counts = {
     new: 0,
@@ -642,29 +638,17 @@ function dashboardCloudCountSummary(files = []) {
   ].join(" | ");
 }
 
-function showDashboardSavePopup(title, message) {
-  const existing = document.getElementById("dashboardSavePopup");
-  if (existing) existing.remove();
-
-  const backdrop = document.createElement("div");
-  backdrop.id = "dashboardSavePopup";
-  backdrop.className = "crm-save-popup-backdrop";
-  backdrop.innerHTML = `
-    <section class="crm-save-popup" role="dialog" aria-modal="true" aria-labelledby="dashboardSavePopupTitle">
-      <div class="crm-save-check" aria-hidden="true">
-        <svg viewBox="0 0 52 52">
-          <circle class="crm-save-check-circle" cx="26" cy="26" r="23"></circle>
-          <path class="crm-save-check-mark" d="M15 27.5l7 7L38 18.5"></path>
-        </svg>
-      </div>
-      <h2 id="dashboardSavePopupTitle">${title}</h2>
-      <p>${message}</p>
-      <button type="button" class="icon-button primary-action" id="dashboardSavePopupClose">OK</button>
-    </section>
-  `;
-  document.body.appendChild(backdrop);
-  const closeButton = document.getElementById("dashboardSavePopupClose");
-  closeButton.addEventListener("click", () => backdrop.remove());
+function showDashboardSaveStatus(message, isError = false) {
+  const status = $("crmSaveStatus");
+  if (!status) return;
+  status.textContent = message;
+  status.classList.toggle("error", isError);
+  status.classList.add("visible");
+  window.clearTimeout(showDashboardSaveStatus.timeoutId);
+  showDashboardSaveStatus.timeoutId = window.setTimeout(() => {
+    status.classList.remove("visible", "error");
+    status.textContent = "";
+  }, 6500);
 }
 
 function postPayloadToGoogle(payload) {
@@ -843,27 +827,21 @@ async function saveDashboardToGoogle() {
   saveDeletedPriceIds();
   const saveButton = $("crmSaveDemo");
   saveButton.disabled = true;
-  saveButton.title = "Saving...";
-  saveButton.setAttribute("aria-label", "Saving");
+  saveButton.textContent = "Saving...";
+  showDashboardSaveStatus("Saving current Command Center...");
   const payload = buildDashboardSyncPayload();
   const posted = await postPayloadToGoogle(payload);
   if (!posted) {
     saveButton.disabled = false;
-    saveButton.title = "Save";
-    saveButton.setAttribute("aria-label", "Save");
-    window.alert("Google Drive save is not connected yet. After we deploy the Google save link, paste it here once.");
+    saveButton.textContent = "Save";
+    showDashboardSaveStatus("Save is not connected yet.", true);
   } else {
-    saveButton.title = "Saved";
-    saveButton.setAttribute("aria-label", "Saved");
     saveButton.disabled = false;
+    saveButton.textContent = "Saved";
     renderCrm();
-    showDashboardSavePopup(
-      "Command Center Save Sent",
-      `This page sent ${payload.dashboardFiles.length} files to the cloud. ${dashboardCloudCountSummary(payload.dashboardFiles)}.`
-    );
+    showDashboardSaveStatus(`Saved ${payload.dashboardFiles.length} files. ${dashboardCloudCountSummary(payload.dashboardFiles)}.`);
     window.setTimeout(() => {
-      saveButton.title = "Save";
-      saveButton.setAttribute("aria-label", "Save");
+      saveButton.textContent = "Save";
     }, 1400);
   }
 }

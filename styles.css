@@ -284,36 +284,44 @@ body.embedded-estimator .dashboard-top-link {
   color: #a83232;
 }
 
-.header-save-button,
-.reset-page-button {
-  min-width: 42px;
-  width: 42px;
-  height: 42px;
-  padding: 0;
-  border-radius: 999px;
-  font-size: 1.15rem;
-  line-height: 1;
-}
-
 .header-save-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  min-width: 86px;
+  height: 42px;
+  border-color: var(--blue);
+  background: var(--blue);
+  color: #ffffff;
+  font-weight: 900;
 }
 
-.header-save-button svg {
-  width: 38px;
-  height: 38px;
-  fill: currentColor;
-  stroke: none;
+.header-save-button:disabled {
+  cursor: wait;
+  opacity: 0.78;
 }
 
-.header-save-button .save-icon-cut {
-  fill: #ffffff;
+.crm-save-status {
+  display: inline-flex;
+  align-items: center;
+  max-width: 360px;
+  min-height: 28px;
+  color: var(--blue);
+  font-size: 0.82rem;
+  font-weight: 900;
+  line-height: 1.25;
+  opacity: 0;
+  transform: translateY(2px);
+  transition: opacity 160ms ease, transform 160ms ease;
 }
 
-.header-save-button .save-icon-mark {
-  fill: currentColor;
+.crm-save-status.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.crm-save-status.error {
+  color: #a83232;
 }
 
 .crm-estimator-embed {
@@ -2126,91 +2134,6 @@ body[data-copy-mode="team"] .estimate-sheet td:first-child {
   place-items: center;
   padding: 18px;
   background: rgba(17, 24, 39, 0.42);
-}
-
-.crm-save-popup-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 120;
-  display: grid;
-  place-items: center;
-  padding: 18px;
-  background: rgba(17, 24, 39, 0.35);
-}
-
-.crm-save-popup {
-  width: min(520px, 100%);
-  border: 1px solid rgba(13, 74, 145, 0.18);
-  border-radius: 8px;
-  background: #ffffff;
-  box-shadow: 0 24px 70px rgba(17, 24, 39, 0.24);
-  padding: 24px;
-  text-align: center;
-}
-
-.crm-save-check {
-  display: grid;
-  place-items: center;
-  width: 74px;
-  height: 74px;
-  margin: 0 auto 14px;
-  border-radius: 50%;
-  background: rgba(13, 74, 145, 0.08);
-}
-
-.crm-save-check svg {
-  width: 56px;
-  height: 56px;
-  fill: none;
-}
-
-.crm-save-check-circle {
-  stroke: var(--blue);
-  stroke-width: 4;
-  stroke-dasharray: 145;
-  stroke-dashoffset: 145;
-  animation: save-check-circle 520ms ease-out forwards;
-}
-
-.crm-save-check-mark {
-  stroke: var(--blue);
-  stroke-width: 5;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-dasharray: 34;
-  stroke-dashoffset: 34;
-  animation: save-check-mark 360ms ease-out 420ms forwards;
-}
-
-.crm-save-popup h2 {
-  margin: 0 0 10px;
-  color: var(--blue);
-  font-size: clamp(1.45rem, 4vw, 2rem);
-}
-
-.crm-save-popup p {
-  margin: 0 0 18px;
-  color: var(--ink);
-  font-weight: 800;
-  line-height: 1.45;
-}
-
-.crm-save-popup .icon-button {
-  justify-content: center;
-  min-width: 120px;
-  margin: 0 auto;
-}
-
-@keyframes save-check-circle {
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-
-@keyframes save-check-mark {
-  to {
-    stroke-dashoffset: 0;
-  }
 }
 
 .crm-choice-modal {

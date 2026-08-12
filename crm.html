@@ -6,7 +6,7 @@
     <title>D2 Command Center</title>
     <meta name="theme-color" content="#0d4a91">
     <link rel="icon" href="icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=20260811-save-check">
+    <link rel="stylesheet" href="styles.css?v=20260811-simple-save">
     <link rel="stylesheet" href="calendar-upgrade.css?v=20260808-calendar-popups">
   </head>
   <body class="crm-body">
@@ -22,14 +22,8 @@
         <div class="crm-header-search">
           <input id="crmFileSearch" type="search" placeholder="Search name, phone, or file #">
           <button type="button" id="crmSearchFile">Search</button>
-          <button class="icon-button header-save-button" type="button" id="crmSaveDemo" title="Save" aria-label="Save">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path class="save-icon-body" d="M4 3h13.2L20 5.8V21H4z"></path>
-              <path class="save-icon-cut" d="M7 4.8h8.4v5.6H7z"></path>
-              <path class="save-icon-cut" d="M7.2 14.2h9.6V21H7.2z"></path>
-              <path class="save-icon-mark" d="M13.5 5.7h1.3v3.7h-1.3z"></path>
-            </svg>
-          </button>
+          <button class="icon-button header-save-button" type="button" id="crmSaveDemo">Save</button>
+          <span class="crm-save-status" id="crmSaveStatus" aria-live="polite"></span>
         </div>
       </header>
 
@@ -829,7 +823,7 @@
         caches.keys().then((keys) => keys.forEach((key) => caches.delete(key)));
       }
     </script>
-    <script src="crm.js?v=20260811-save-check-fix"></script>
+    <script src="crm.js?v=20260811-simple-save"></script>
     <script src="calendar-upgrade.js?v=20260808-calendar-popups"></script>
   </body>
 </html>
