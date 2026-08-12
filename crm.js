@@ -610,6 +610,38 @@ function buildDashboardSyncPayload() {
   };
 }
 
+function waitForCloudSave(milliseconds) {
+  return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
+}
+
+function dashboardCloudCounts(files = []) {
+  const counts = {
+    new: 0,
+    contact: 0,
+    estimate: 0,
+    negotiation: 0,
+    active: 0,
+    archive: 0,
+  };
+  files.forEach((file) => {
+    const category = file.category || categoryForStatus(file);
+    if (Object.prototype.hasOwnProperty.call(counts, category)) counts[category] += 1;
+  });
+  return counts;
+}
+
+function dashboardCloudCountSummary(files = []) {
+  const counts = dashboardCloudCounts(files);
+  return [
+    `New Leads ${counts.new}`,
+    `Pending Contact ${counts.contact}`,
+    `Pending Estimates ${counts.estimate}`,
+    `In Negotiation ${counts.negotiation}`,
+    `Active Jobs ${counts.active}`,
+    `Closed Files ${counts.archive}`,
+  ].join(" | ");
+}
+
 function postPayloadToGoogle(payload) {
   const googleScriptUrl = getGoogleScriptUrl() || requestGoogleScriptUrl();
   if (!googleScriptUrl) return Promise.resolve(false);
@@ -784,19 +816,41 @@ async function saveDashboardToGoogle() {
   saveRevenueRows();
   savePriceRows();
   saveDeletedPriceIds();
-  $("crmSaveDemo").title = "Saving...";
-  $("crmSaveDemo").setAttribute("aria-label", "Saving");
-  const posted = await postPayloadToGoogle(buildDashboardSyncPayload());
+  const saveButton = $("crmSaveDemo");
+  saveButton.disabled = true;
+  saveButton.title = "Saving...";
+  saveButton.setAttribute("aria-label", "Saving");
+  const payload = buildDashboardSyncPayload();
+  const posted = await postPayloadToGoogle(payload);
   if (!posted) {
-    $("crmSaveDemo").title = "Save";
-    $("crmSaveDemo").setAttribute("aria-label", "Save");
+    saveButton.disabled = false;
+    saveButton.title = "Save";
+    saveButton.setAttribute("aria-label", "Save");
     window.alert("Google Drive save is not connected yet. After we deploy the Google save link, paste it here once.");
   } else {
-    $("crmSaveDemo").title = "Saved";
-    $("crmSaveDemo").setAttribute("aria-label", "Saved");
+    let verifiedDashboard = null;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      await waitForCloudSave(attempt === 0 ? 1800 : 2200);
+      try {
+        verifiedDashboard = await fetchDashboardFromGoogle();
+      } catch (error) {
+        verifiedDashboard = null;
+      }
+      const verifiedFiles = Array.isArray(verifiedDashboard?.dashboardFiles) ? verifiedDashboard.dashboardFiles : [];
+      if (verifiedFiles.length === payload.dashboardFiles.length) break;
+    }
+    const verifiedFiles = Array.isArray(verifiedDashboard?.dashboardFiles) ? verifiedDashboard.dashboardFiles : [];
+    saveButton.title = "Saved";
+    saveButton.setAttribute("aria-label", "Saved");
+    if (verifiedFiles.length) {
+      window.alert(`Command Center saved to cloud.\n\nCloud now shows:\n${dashboardCloudCountSummary(verifiedFiles)}`);
+    } else {
+      window.alert("Command Center save was sent, but I could not read the cloud copy back yet. Wait a moment, then press Save one more time.");
+    }
     window.setTimeout(() => {
-      $("crmSaveDemo").title = "Save";
-      $("crmSaveDemo").setAttribute("aria-label", "Save");
+      saveButton.disabled = false;
+      saveButton.title = "Save";
+      saveButton.setAttribute("aria-label", "Save");
     }, 1400);
   }
   renderCrm();
