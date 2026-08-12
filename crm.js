@@ -642,6 +642,31 @@ function dashboardCloudCountSummary(files = []) {
   ].join(" | ");
 }
 
+function showDashboardSavePopup(title, message) {
+  const existing = document.getElementById("dashboardSavePopup");
+  if (existing) existing.remove();
+
+  const backdrop = document.createElement("div");
+  backdrop.id = "dashboardSavePopup";
+  backdrop.className = "crm-save-popup-backdrop";
+  backdrop.innerHTML = `
+    <section class="crm-save-popup" role="dialog" aria-modal="true" aria-labelledby="dashboardSavePopupTitle">
+      <div class="crm-save-check" aria-hidden="true">
+        <svg viewBox="0 0 52 52">
+          <circle class="crm-save-check-circle" cx="26" cy="26" r="23"></circle>
+          <path class="crm-save-check-mark" d="M15 27.5l7 7L38 18.5"></path>
+        </svg>
+      </div>
+      <h2 id="dashboardSavePopupTitle">${title}</h2>
+      <p>${message}</p>
+      <button type="button" class="icon-button primary-action" id="dashboardSavePopupClose">OK</button>
+    </section>
+  `;
+  document.body.appendChild(backdrop);
+  const closeButton = document.getElementById("dashboardSavePopupClose");
+  closeButton.addEventListener("click", () => backdrop.remove());
+}
+
 function postPayloadToGoogle(payload) {
   const googleScriptUrl = getGoogleScriptUrl() || requestGoogleScriptUrl();
   if (!googleScriptUrl) return Promise.resolve(false);
@@ -828,32 +853,19 @@ async function saveDashboardToGoogle() {
     saveButton.setAttribute("aria-label", "Save");
     window.alert("Google Drive save is not connected yet. After we deploy the Google save link, paste it here once.");
   } else {
-    let verifiedDashboard = null;
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      await waitForCloudSave(attempt === 0 ? 1800 : 2200);
-      try {
-        verifiedDashboard = await fetchDashboardFromGoogle();
-      } catch (error) {
-        verifiedDashboard = null;
-      }
-      const verifiedFiles = Array.isArray(verifiedDashboard?.dashboardFiles) ? verifiedDashboard.dashboardFiles : [];
-      if (verifiedFiles.length === payload.dashboardFiles.length) break;
-    }
-    const verifiedFiles = Array.isArray(verifiedDashboard?.dashboardFiles) ? verifiedDashboard.dashboardFiles : [];
     saveButton.title = "Saved";
     saveButton.setAttribute("aria-label", "Saved");
-    if (verifiedFiles.length) {
-      window.alert(`Command Center saved to cloud.\n\nCloud now shows:\n${dashboardCloudCountSummary(verifiedFiles)}`);
-    } else {
-      window.alert("Command Center save was sent, but I could not read the cloud copy back yet. Wait a moment, then press Save one more time.");
-    }
+    saveButton.disabled = false;
+    renderCrm();
+    showDashboardSavePopup(
+      "Command Center Save Sent",
+      `This page sent ${payload.dashboardFiles.length} files to the cloud. ${dashboardCloudCountSummary(payload.dashboardFiles)}.`
+    );
     window.setTimeout(() => {
-      saveButton.disabled = false;
       saveButton.title = "Save";
       saveButton.setAttribute("aria-label", "Save");
     }, 1400);
   }
-  renderCrm();
 }
 
 async function loadDashboardFromGoogle() {

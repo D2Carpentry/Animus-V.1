@@ -2128,6 +2128,91 @@ body[data-copy-mode="team"] .estimate-sheet td:first-child {
   background: rgba(17, 24, 39, 0.42);
 }
 
+.crm-save-popup-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(17, 24, 39, 0.35);
+}
+
+.crm-save-popup {
+  width: min(520px, 100%);
+  border: 1px solid rgba(13, 74, 145, 0.18);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 24px 70px rgba(17, 24, 39, 0.24);
+  padding: 24px;
+  text-align: center;
+}
+
+.crm-save-check {
+  display: grid;
+  place-items: center;
+  width: 74px;
+  height: 74px;
+  margin: 0 auto 14px;
+  border-radius: 50%;
+  background: rgba(13, 74, 145, 0.08);
+}
+
+.crm-save-check svg {
+  width: 56px;
+  height: 56px;
+  fill: none;
+}
+
+.crm-save-check-circle {
+  stroke: var(--blue);
+  stroke-width: 4;
+  stroke-dasharray: 145;
+  stroke-dashoffset: 145;
+  animation: save-check-circle 520ms ease-out forwards;
+}
+
+.crm-save-check-mark {
+  stroke: var(--blue);
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 34;
+  stroke-dashoffset: 34;
+  animation: save-check-mark 360ms ease-out 420ms forwards;
+}
+
+.crm-save-popup h2 {
+  margin: 0 0 10px;
+  color: var(--blue);
+  font-size: clamp(1.45rem, 4vw, 2rem);
+}
+
+.crm-save-popup p {
+  margin: 0 0 18px;
+  color: var(--ink);
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.crm-save-popup .icon-button {
+  justify-content: center;
+  min-width: 120px;
+  margin: 0 auto;
+}
+
+@keyframes save-check-circle {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes save-check-mark {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
 .crm-choice-modal {
   position: relative;
   width: min(560px, 100%);
