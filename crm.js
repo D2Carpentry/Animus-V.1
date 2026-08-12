@@ -624,7 +624,7 @@ function dashboardCloudCounts(files = []) {
     archive: 0,
   };
   files.forEach((file) => {
-    const category = file.category || categoryForStatus(file);
+    const category = file.category || crmFileCategory(file);
     if (Object.prototype.hasOwnProperty.call(counts, category)) counts[category] += 1;
   });
   return counts;
