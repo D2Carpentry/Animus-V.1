@@ -6,6 +6,7 @@ const MOBILE_EXTERNAL_CALENDAR_KEY = "d2ExternalCalendarEvents";
 const MOBILE_GOOGLE_SCRIPT_KEY = "d2GoogleScriptUrl";
 const MOBILE_RESTORE_VERSION_KEY = "d2MobileDashboardRestoreVersion";
 const MOBILE_DEFAULT_GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzZkie1W4LplkKwFoMq19suIHWsamKYNUwCt9xjnihTdy_dN271ou3lscTgq09bAGIG2w/exec";
+const MOBILE_CLOUDFLARE_DASHBOARD_API = "https://animus-v-1.pages.dev/api/dashboard";
 
 const mobileCurrency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 const mobileStatusDetails = {
@@ -269,37 +270,15 @@ function postToGoogle(payload) {
   return Promise.resolve(true);
 }
 
-function fetchCloudDashboard() {
-  return new Promise((resolve, reject) => {
-    const callbackName = `animusMobileCloud${Date.now()}${Math.random().toString(16).slice(2)}`;
-    const script = document.createElement("script");
-    const timer = window.setTimeout(() => {
-      cleanup();
-      reject(new Error("Cloud load timed out."));
-    }, 20000);
-    function cleanup() {
-      window.clearTimeout(timer);
-      delete window[callbackName];
-      script.remove();
-    }
-    window[callbackName] = (response) => {
-      cleanup();
-      if (!response || response.ok === false) {
-        reject(new Error(response?.error || "Cloud load failed."));
-        return;
-      }
-      resolve(response.dashboard || null);
-    };
-    const url = new URL(googleScriptUrl());
-    url.searchParams.set("action", "dashboardData");
-    url.searchParams.set("callback", callbackName);
-    script.onerror = () => {
-      cleanup();
-      reject(new Error("Cloud load could not connect."));
-    };
-    script.src = url.toString();
-    document.body.appendChild(script);
+async function fetchCloudDashboard() {
+  const response = await fetch(`${MOBILE_CLOUDFLARE_DASHBOARD_API}?t=${Date.now()}`, {
+    cache: "no-store",
   });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || result.ok === false) {
+    throw new Error(result.error || `Cloud load failed with status ${response.status}.`);
+  }
+  return result.dashboard || null;
 }
 
 function fetchGoogleCalendarEvents(startDate, endDate) {
@@ -340,10 +319,20 @@ function fetchGoogleCalendarEvents(startDate, endDate) {
 async function saveCloud() {
   saveLocalData();
   $("mobileSaveCloud").classList.add("saving");
-  await postToGoogle(syncPayload());
+  const response = await fetch(MOBILE_CLOUDFLARE_DASHBOARD_API, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    cache: "no-store",
+    body: JSON.stringify(syncPayload()),
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || result.ok === false) {
+    throw new Error(result.error || `Cloud save failed with status ${response.status}.`);
+  }
   $("mobileSaveCloud").classList.remove("saving");
   $("mobileSaveCloud").classList.add("saved");
   window.setTimeout(() => $("mobileSaveCloud").classList.remove("saved"), 900);
+  return result;
 }
 
 async function loadCloud() {
@@ -360,6 +349,23 @@ async function loadCloud() {
   saveLocalData();
   renderAll();
   window.alert("ANIMUS Mobile loaded the latest cloud data.");
+}
+
+async function loadCloudOnStartup() {
+  try {
+    const dashboard = await fetchCloudDashboard();
+    if (!dashboard) return false;
+    mobileFiles = Array.isArray(dashboard.dashboardFiles) ? dashboard.dashboardFiles.map(normalizeFile) : [];
+    mobileRevenueRows = Array.isArray(dashboard.revenueRows) ? dashboard.revenueRows : [];
+    mobilePriceRows = Array.isArray(dashboard.priceRows) ? dashboard.priceRows : [];
+    mobileDeletedPriceIds = Array.isArray(dashboard.deletedPriceIds) ? dashboard.deletedPriceIds : [];
+    mobileActiveFileId = mobileFiles[0]?.id || "";
+    saveLocalData();
+    renderAll();
+    return true;
+  } catch (error) {
+    return false;
+  }
 }
 
 function setTab(tab) {
@@ -794,3 +800,6 @@ document.querySelectorAll("#mobileDetailView input, #mobileDetailView select, #m
 loadLocalData();
 renderAll();
 setTab("files");
+loadCloudOnStartup().then((loaded) => {
+  if (loaded) setTab(mobileCurrentTab || "files");
+});
