@@ -17,7 +17,7 @@ const CRM_RESTORE_VERSION_KEY = "d2CrmRestoreVersion";
 const DEFAULT_GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzZkie1W4LplkKwFoMq19suIHWsamKYNUwCt9xjnihTdy_dN271ou3lscTgq09bAGIG2w/exec";
 const OLD_GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxFBQzWViCApvF-c95kAyT0oSNImMgzhf30gP10H2WJT_S5XkejFctq5bT7IjCALMi5Qg/exec";
 const GOOGLE_SCRIPT_URL_STORAGE_KEY = "d2GoogleScriptUrl";
-const CLOUDFLARE_DASHBOARD_API = "/api/dashboard";
+const CLOUDFLARE_DASHBOARD_API = "https://animus-v-1.pages.dev/api/dashboard";
 const NOTE_EDIT_WINDOW_MS = 12 * 60 * 60 * 1000;
 
 const CRM_STATUS_DESCRIPTIONS = {
