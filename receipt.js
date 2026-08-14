@@ -53,9 +53,22 @@ function cleanJsonText(text = "") {
     .trim();
 }
 
+function normalizeCategory(value = "") {
+  const categories = ["Supplies", "Materials", "Hardware", "Paint / Finish", "Equipment", "Labor", "Fuel", "Other"];
+  const match = categories.find((category) => category.toLowerCase() === String(value || "").toLowerCase());
+  return match || categoryFromText(value) || "Supplies";
+}
+
+function responseOutputText(data = {}) {
+  if (data.output_text) return data.output_text;
+  const content = data.output?.flatMap((item) => item.content || []) || [];
+  const text = content.find((part) => part.type === "output_text")?.text;
+  return text || "{}";
+}
+
 async function readReceiptWithOpenAi(env, imageDataUrl, fileName) {
-  const model = env.OPENAI_MODEL || "gpt-4o-mini";
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+  const model = env.OPENAI_MODEL || "gpt-5";
+  const response = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${env.OPENAI_API_KEY}`,
@@ -63,26 +76,66 @@ async function readReceiptWithOpenAi(env, imageDataUrl, fileName) {
     },
     body: JSON.stringify({
       model,
-      response_format: { type: "json_object" },
-      messages: [
-        {
-          role: "system",
-          content: "You read construction business receipts. Return only valid JSON with vendor, date as YYYY-MM-DD when visible, total, tax, paymentType, category, notes, lineItems, and confidence. Categories must be one of Supplies, Materials, Hardware, Paint / Finish, Equipment, Labor, Fuel, Other. Use blank strings when unsure.",
-        },
+      input: [
         {
           role: "user",
           content: [
             {
-              type: "text",
-              text: `Read this receipt for D2 Carpentry expenses. File name: ${fileName || "receipt image"}.`,
+              type: "input_text",
+              text: [
+                "Read this construction business receipt for D2 Carpentry.",
+                "Extract only what is visible. Do not guess customer names or project names.",
+                "For total, use the final paid/charged receipt total, not subtotal.",
+                "For date, use YYYY-MM-DD when visible; otherwise leave it blank.",
+                "For category, choose one of: Supplies, Materials, Hardware, Paint / Finish, Equipment, Labor, Fuel, Other.",
+                "For notes, summarize key purchased items and anything useful for bookkeeping.",
+                `File name: ${fileName || "receipt image"}.`,
+              ].join("\n"),
             },
             {
-              type: "image_url",
-              image_url: { url: imageDataUrl },
+              type: "input_image",
+              image_url: imageDataUrl,
+              detail: "high",
             },
           ],
         },
       ],
+      text: {
+        format: {
+          type: "json_schema",
+          name: "animus_receipt_expense",
+          strict: true,
+          schema: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              vendor: { type: "string" },
+              date: { type: "string" },
+              total: { type: "string" },
+              tax: { type: "string" },
+              paymentType: { type: "string" },
+              category: { type: "string" },
+              notes: { type: "string" },
+              confidence: { type: "string" },
+              lineItems: {
+                type: "array",
+                items: {
+                  type: "object",
+                  additionalProperties: false,
+                  properties: {
+                    name: { type: "string" },
+                    quantity: { type: "string" },
+                    total: { type: "string" },
+                    category: { type: "string" },
+                  },
+                  required: ["name", "quantity", "total", "category"],
+                },
+              },
+            },
+            required: ["vendor", "date", "total", "tax", "paymentType", "category", "notes", "confidence", "lineItems"],
+          },
+        },
+      },
     }),
   });
 
@@ -91,17 +144,23 @@ async function readReceiptWithOpenAi(env, imageDataUrl, fileName) {
     throw new Error(data.error?.message || `OpenAI receipt read failed with status ${response.status}.`);
   }
 
-  const content = data.choices?.[0]?.message?.content || "{}";
-  const receipt = JSON.parse(cleanJsonText(content));
+  const receipt = JSON.parse(cleanJsonText(responseOutputText(data)));
   return {
     vendor: receipt.vendor || "",
     date: receipt.date || new Date().toISOString().slice(0, 10),
     total: parseMoney(receipt.total || receipt.amount),
     tax: receipt.tax === "" || receipt.tax === undefined ? "" : parseMoney(receipt.tax),
     paymentType: receipt.paymentType || receipt.payment || "",
-    category: receipt.category || categoryFromText(`${receipt.vendor || ""} ${receipt.notes || ""}`),
+    category: normalizeCategory(receipt.category || `${receipt.vendor || ""} ${receipt.notes || ""}`),
     notes: receipt.notes || "",
-    lineItems: Array.isArray(receipt.lineItems) ? receipt.lineItems : [],
+    lineItems: Array.isArray(receipt.lineItems)
+      ? receipt.lineItems.map((item) => ({
+        name: item.name || "",
+        quantity: item.quantity || "",
+        total: item.total || "",
+        category: normalizeCategory(item.category || receipt.category),
+      }))
+      : [],
     confidence: receipt.confidence || "needs-review",
   };
 }
