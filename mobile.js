@@ -164,6 +164,7 @@ function normalizeFile(file = {}) {
     anticipatedCompletionDate: file.anticipatedCompletionDate || "",
     editableEstimate: file.editableEstimate || null,
     expenseLines: Array.isArray(file.expenseLines) ? file.expenseLines : [],
+    receiptHistory: Array.isArray(file.receiptHistory) ? file.receiptHistory : [],
     notes: Array.isArray(file.notes) ? file.notes : [],
     timeline: Array.isArray(file.timeline) ? file.timeline : [],
     ...file,
@@ -1030,6 +1031,67 @@ function mobileExpenseLinesFromDraft(groupId = makeId("receiptGroup")) {
   });
 }
 
+function mobileReceiptHistoryEntryFromLines(groupId, lines = [], existing = {}) {
+  const groupLines = Array.isArray(lines) ? lines.map((line) => ({ ...line })) : [];
+  const first = groupLines.find((line) => line.receiptDataUrl) || groupLines[0] || {};
+  const total = groupLines.reduce((sum, line) => sum + mobileExpenseFinalAmount(line), 0);
+  return {
+    ...existing,
+    id: groupId,
+    savedAt: existing.savedAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    label: first.vendor || first.receiptFileName || first.note || existing.label || "Saved expense",
+    date: first.date || existing.date || dateKey(new Date()),
+    vendor: first.vendor || existing.vendor || "",
+    category: first.category || existing.category || "",
+    paymentType: first.paymentType || existing.paymentType || "",
+    total,
+    lineCount: groupLines.length,
+    lines: groupLines,
+  };
+}
+
+function upsertMobileReceiptHistoryGroup(file, groupId, lines = []) {
+  if (!file || !groupId) return;
+  file.receiptHistory = Array.isArray(file.receiptHistory) ? file.receiptHistory : [];
+  const index = file.receiptHistory.findIndex((entry) => entry.id === groupId);
+  const existing = index >= 0 ? file.receiptHistory[index] : {};
+  const nextEntry = mobileReceiptHistoryEntryFromLines(groupId, lines, existing);
+  if (index >= 0) file.receiptHistory[index] = nextEntry;
+  else file.receiptHistory.unshift(nextEntry);
+}
+
+function syncMobileReceiptHistoryFromExpenseLines(file) {
+  if (!file) return;
+  file.receiptHistory = Array.isArray(file.receiptHistory) ? file.receiptHistory : [];
+  const groups = new Map();
+  (Array.isArray(file.expenseLines) ? file.expenseLines : []).forEach((line) => {
+    const groupId = line.receiptGroupId || line.id;
+    if (!groupId) return;
+    if (!groups.has(groupId)) groups.set(groupId, []);
+    groups.get(groupId).push(line);
+  });
+  groups.forEach((lines, groupId) => upsertMobileReceiptHistoryGroup(file, groupId, lines));
+}
+
+function refreshMobileReceiptHistoryGroup(file, groupId) {
+  if (!file || !groupId) return;
+  const lines = (Array.isArray(file.expenseLines) ? file.expenseLines : []).filter((line) => (line.receiptGroupId || line.id) === groupId);
+  if (lines.length) {
+    upsertMobileReceiptHistoryGroup(file, groupId, lines);
+  } else if (Array.isArray(file.receiptHistory)) {
+    file.receiptHistory = file.receiptHistory.filter((entry) => entry.id !== groupId);
+  }
+}
+
+function mobileReceiptHistoryGroups(file) {
+  if (!file) return [];
+  syncMobileReceiptHistoryFromExpenseLines(file);
+  return (Array.isArray(file.receiptHistory) ? file.receiptHistory : [])
+    .filter((entry) => entry && entry.id)
+    .sort((a, b) => String(b.updatedAt || b.savedAt || "").localeCompare(String(a.updatedAt || a.savedAt || "")));
+}
+
 function renderMobileExpenses() {
   const file = activeFile();
   const title = $("mobileExpensesFileTitle");
@@ -1106,32 +1168,24 @@ function renderMobileReceiptReview() {
 }
 
 function renderMobileSavedExpenses(file = activeFile()) {
-  const expenses = Array.isArray(file?.expenseLines) ? file.expenseLines : [];
+  const receiptGroups = mobileReceiptHistoryGroups(file);
   const count = $("mobileSavedExpenseCount");
-  if (count) count.textContent = String(expenses.length);
+  if (count) count.textContent = String(receiptGroups.length);
   const list = $("mobileSavedExpenseList");
   if (!list) return;
-  if (!expenses.length) {
+  if (!receiptGroups.length) {
     list.innerHTML = `<p class="mobile-helper">No saved receipts or expenses yet.</p>`;
     return;
   }
-  const groups = new Map();
-  expenses.forEach((line) => {
-    const key = line.receiptGroupId || line.id;
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(line);
-  });
-  list.innerHTML = Array.from(groups.entries()).map(([groupId, groupLines]) => {
-    const first = groupLines.find((line) => line.receiptDataUrl) || groupLines[0] || {};
-    const total = groupLines.reduce((sum, line) => sum + mobileExpenseFinalAmount(line), 0);
+  list.innerHTML = receiptGroups.map((entry) => {
     return `
       <article class="mobile-expense-item">
-        <button type="button" data-mobile-expense-open="${escapeHtml(groupId)}">
-          <span>${escapeHtml(first.vendor || first.receiptFileName || first.note || "Saved expense")}</span>
-          <strong>${mobileCurrency.format(total)}</strong>
-          <small>${escapeHtml(formatDate(first.date) || "No date")} · ${groupLines.length} line${groupLines.length === 1 ? "" : "s"}</small>
+        <button type="button" data-mobile-expense-open="${escapeHtml(entry.id)}">
+          <span>${escapeHtml(entry.label || "Saved expense")}</span>
+          <strong>${mobileCurrency.format(Number(entry.total) || 0)}</strong>
+          <small>${escapeHtml(formatDate(entry.date) || "No date")} · ${Number(entry.lineCount) || 0} line${Number(entry.lineCount) === 1 ? "" : "s"}</small>
         </button>
-        <button type="button" class="mobile-small-button danger" data-mobile-expense-delete="${escapeHtml(groupId)}">Delete</button>
+        <button type="button" class="mobile-small-button danger" data-mobile-expense-delete="${escapeHtml(entry.id)}">Delete</button>
       </article>
     `;
   }).join("");
@@ -1206,6 +1260,7 @@ async function saveMobileReceiptExpense() {
     file.expenseLines = file.expenseLines.filter((line) => (line.receiptGroupId || line.id) !== mobileReceiptDraft.editingReceiptGroupId);
   }
   file.expenseLines.push(...lines);
+  upsertMobileReceiptHistoryGroup(file, groupId, lines);
   file.notes = Array.isArray(file.notes) ? file.notes : [];
   file.notes.push({
     at: new Date().toISOString(),
@@ -1225,9 +1280,11 @@ async function saveMobileReceiptExpense() {
 
 function openMobileSavedExpense(groupId) {
   const file = activeFile();
+  const historyEntry = (file?.receiptHistory || []).find((entry) => entry.id === groupId);
   const groupLines = (file?.expenseLines || []).filter((line) => (line.receiptGroupId || line.id) === groupId);
-  if (!groupLines.length) return;
-  const first = groupLines.find((line) => line.receiptDataUrl) || groupLines[0];
+  const sourceLines = groupLines.length ? groupLines : (Array.isArray(historyEntry?.lines) ? historyEntry.lines : []);
+  if (!sourceLines.length) return;
+  const first = sourceLines.find((line) => line.receiptDataUrl) || sourceLines[0];
   mobileReceiptDraft = {
     ...blankMobileReceiptDraft(),
     editingReceiptGroupId: groupId,
@@ -1238,11 +1295,11 @@ function openMobileSavedExpense(groupId) {
     vendor: first.vendor || "",
     date: first.date || dateKey(new Date()),
     category: normalizeMobileExpenseCategory(first.category || "Supplies"),
-    amount: groupLines.reduce((sum, line) => sum + mobileExpenseFinalAmount(line), 0).toFixed(2),
+    amount: sourceLines.reduce((sum, line) => sum + mobileExpenseFinalAmount(line), 0).toFixed(2),
     paymentType: first.paymentType && ["Cash", "Credit", "Other"].includes(first.paymentType) ? first.paymentType : "",
     cardName: first.paymentType && !["Cash", "Credit", "Other"].includes(first.paymentType) ? first.paymentType : "Chase Business",
-    notes: groupLines.map((line) => line.note || "").filter(Boolean).join("\n"),
-    lines: groupLines.map((line) => blankMobileReceiptLine({
+    notes: sourceLines.map((line) => line.note || "").filter(Boolean).join("\n"),
+    lines: sourceLines.map((line) => blankMobileReceiptLine({
       description: line.note || "",
       category: line.category || "Supplies",
       price: mobileExpenseBaseAmount(line) || "",
@@ -1260,6 +1317,7 @@ function deleteMobileExpenseGroup(groupId) {
   const ok = window.confirm("Delete this saved expense from the file?");
   if (!ok) return;
   file.expenseLines = (file.expenseLines || []).filter((line) => (line.receiptGroupId || line.id) !== groupId);
+  refreshMobileReceiptHistoryGroup(file, groupId);
   syncMobileFileExpensesToRevenue(file);
   saveLocalData();
   renderAll();
@@ -1283,7 +1341,7 @@ async function addMobileManualExpense() {
   const addTax = Boolean($("mobileManualExpenseTax").checked);
   const tax = addTax ? baseAmount * MOBILE_DEFAULT_EXPENSE_TAX_RATE : 0;
   file.expenseLines = Array.isArray(file.expenseLines) ? file.expenseLines : [];
-  file.expenseLines.push({
+  const manualLine = {
     id: makeId("expense"),
     receiptGroupId: makeId("manualExpense"),
     date: $("mobileManualExpenseDate").value || dateKey(new Date()),
@@ -1299,7 +1357,9 @@ async function addMobileManualExpense() {
     receiptFileName: "",
     receiptDataUrl: "",
     receiptSource: "Mobile manual entry",
-  });
+  };
+  file.expenseLines.push(manualLine);
+  upsertMobileReceiptHistoryGroup(file, manualLine.receiptGroupId, [manualLine]);
   syncMobileFileExpensesToRevenue(file);
   $("mobileManualExpenseVendor").value = "";
   $("mobileManualExpenseAmount").value = "";

@@ -840,6 +840,7 @@ function captureVisibleFileExpenseEdits() {
     line.taxRate = line.taxRate || DEFAULT_EXPENSE_TAX_RATE;
     line.tax = line.addTax ? expenseLineTaxAmount(line) : 0;
     line.amount = receiptExpenseLineAmount(line);
+    refreshReceiptHistoryGroup(file, line.receiptGroupId || line.id);
   });
   syncFileExpensesToRevenue(file);
   saveCrmFiles();
@@ -1013,6 +1014,7 @@ function normalizeCrmFile(file) {
   if (!Array.isArray(file.notes)) file.notes = [];
   if (!Array.isArray(file.timeline)) file.timeline = [];
   if (!Array.isArray(file.expenseLines)) file.expenseLines = [];
+  if (!Array.isArray(file.receiptHistory)) file.receiptHistory = [];
   file.projectStage = file.projectStage || inferProjectStage(file.fileStatus);
   file.projectType = normalizeProjectType(file.projectType);
   file.estimateStatus = file.estimateStatus || inferEstimateStatus(file.fileStatus, file.statusDetail);
@@ -3382,41 +3384,94 @@ function renderFileReceiptDraft() {
   setFileReceiptStatus(fileReceiptDraft.status || "Review the receipt before saving.", fileReceiptDraft.aiAvailable ? "good" : "warn");
 }
 
+function receiptHistoryEntryFromLines(groupId, lines = [], existing = {}) {
+  const groupLines = Array.isArray(lines) ? lines.map((line) => ({ ...line })) : [];
+  const firstLine = groupLines.find((line) => line.receiptDataUrl) || groupLines[0] || {};
+  const total = groupLines.reduce((sum, line) => sum + receiptExpenseLineAmount(line), 0);
+  return {
+    ...existing,
+    id: groupId,
+    savedAt: existing.savedAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    label: firstLine.receiptFileName || firstLine.vendor || firstLine.note || existing.label || "Saved receipt",
+    date: firstLine.date || existing.date || todayIso(0),
+    vendor: firstLine.vendor || existing.vendor || "",
+    category: firstLine.category || existing.category || "",
+    paymentType: firstLine.paymentType || existing.paymentType || "",
+    total,
+    lineCount: groupLines.length,
+    lines: groupLines,
+  };
+}
+
+function upsertReceiptHistoryGroup(file, groupId, lines = []) {
+  if (!file || !groupId) return;
+  file.receiptHistory = Array.isArray(file.receiptHistory) ? file.receiptHistory : [];
+  const index = file.receiptHistory.findIndex((entry) => entry.id === groupId);
+  const existing = index >= 0 ? file.receiptHistory[index] : {};
+  const nextEntry = receiptHistoryEntryFromLines(groupId, lines, existing);
+  if (index >= 0) file.receiptHistory[index] = nextEntry;
+  else file.receiptHistory.unshift(nextEntry);
+}
+
+function refreshReceiptHistoryGroup(file, groupId) {
+  if (!file || !groupId) return;
+  const lines = (Array.isArray(file.expenseLines) ? file.expenseLines : []).filter((line) => (line.receiptGroupId || line.id) === groupId);
+  if (lines.length) {
+    upsertReceiptHistoryGroup(file, groupId, lines);
+  } else if (Array.isArray(file.receiptHistory)) {
+    file.receiptHistory = file.receiptHistory.filter((entry) => entry.id !== groupId);
+  }
+}
+
+function syncReceiptHistoryFromExpenseLines(file) {
+  if (!file) return;
+  file.receiptHistory = Array.isArray(file.receiptHistory) ? file.receiptHistory : [];
+  const groupedReceipts = new Map();
+  (Array.isArray(file.expenseLines) ? file.expenseLines : []).forEach((line) => {
+    const groupId = line.receiptGroupId || line.id;
+    if (!groupId) return;
+    if (!groupedReceipts.has(groupId)) groupedReceipts.set(groupId, []);
+    groupedReceipts.get(groupId).push(line);
+  });
+  groupedReceipts.forEach((lines, groupId) => upsertReceiptHistoryGroup(file, groupId, lines));
+}
+
+function receiptHistoryGroupsForFile(file) {
+  if (!file) return [];
+  syncReceiptHistoryFromExpenseLines(file);
+  return (Array.isArray(file.receiptHistory) ? file.receiptHistory : [])
+    .filter((entry) => entry && entry.id)
+    .sort((a, b) => String(b.updatedAt || b.savedAt || "").localeCompare(String(a.updatedAt || a.savedAt || "")));
+}
+
 function renderReceiptHistory(file) {
   const list = $("crmReceiptHistoryList");
   if (!list) return;
-  const expenses = Array.isArray(file?.expenseLines) ? file.expenseLines : [];
   if (!file) {
     list.innerHTML = `<p class="crm-empty-state">Select a file to see saved receipts and expenses.</p>`;
     return;
   }
-  if (!expenses.length) {
+  const receiptGroups = receiptHistoryGroupsForFile(file);
+  if (!receiptGroups.length) {
     list.innerHTML = `<p class="crm-empty-state">No saved receipts or expenses yet.</p>`;
     return;
   }
-  const groupedReceipts = new Map();
-  expenses.forEach((line) => {
-    const groupId = line.receiptGroupId || line.id;
-    if (!groupedReceipts.has(groupId)) groupedReceipts.set(groupId, []);
-    groupedReceipts.get(groupId).push(line);
-  });
-  list.innerHTML = [...groupedReceipts.entries()].map(([groupId, groupLines]) => {
-    const firstLine = groupLines.find((line) => line.receiptDataUrl) || groupLines[0] || {};
-    const label = firstLine.receiptFileName || firstLine.vendor || firstLine.note || "Saved receipt";
+  list.innerHTML = receiptGroups.map((entry) => {
+    const groupId = entry.id;
     const meta = [
-      firstLine.date || todayIso(0),
-      firstLine.vendor || "",
-      groupLines.length > 1 ? `${groupLines.length} lines` : (firstLine.category || ""),
-      firstLine.paymentType || "",
+      entry.date || todayIso(0),
+      entry.vendor || "",
+      Number(entry.lineCount) > 1 ? `${entry.lineCount} lines` : (entry.category || ""),
+      entry.paymentType || "",
     ].filter(Boolean).join(" · ");
-    const groupTotal = groupLines.reduce((sum, line) => sum + receiptExpenseLineAmount(line), 0);
     return `
       <button type="button" class="crm-receipt-history-item" data-file-receipt-group-open="${escapeHtml(groupId)}">
         <span>
-          <strong>${escapeHtml(label)}</strong>
+          <strong>${escapeHtml(entry.label || "Saved receipt")}</strong>
           <small>${escapeHtml(meta || "Saved expense")}</small>
         </span>
-        <b>${crmCurrency.format(groupTotal)}</b>
+        <b>${crmCurrency.format(Number(entry.total) || 0)}</b>
       </button>
     `;
   }).join("");
@@ -3560,8 +3615,10 @@ function openSavedExpenseInReceiptEditor(lineId) {
 
 function openSavedExpenseGroupInReceiptEditor(groupId) {
   const file = normalizeCrmFile(activeFile());
+  const historyEntry = (file?.receiptHistory || []).find((entry) => entry.id === groupId);
   const groupLines = (file?.expenseLines || []).filter((entry) => (entry.receiptGroupId || entry.id) === groupId);
-  const line = groupLines.find((entry) => entry.receiptDataUrl) || groupLines[0];
+  const sourceLines = groupLines.length ? groupLines : (Array.isArray(historyEntry?.lines) ? historyEntry.lines : []);
+  const line = sourceLines.find((entry) => entry.receiptDataUrl) || sourceLines[0];
   if (!line) return;
   const paymentParts = String(line.paymentType || "").split(" - ");
   fileReceiptDraft = {
@@ -3578,7 +3635,7 @@ function openSavedExpenseGroupInReceiptEditor(groupId) {
     paymentType: paymentParts[0] || "",
     paymentCard: paymentParts[1] || "",
     notes: line.note || "",
-    lines: groupLines.map((entry) => blankFileReceiptLine({
+    lines: sourceLines.map((entry) => blankFileReceiptLine({
       id: makeCrmId("receiptExpense"),
       description: entry.note || "",
       category: ["Supplies", "Materials", "Fuel", "Equipment", "Hardware", "Paint / Finish", "Labor", "Other"].includes(entry.category) ? entry.category : "Other",
@@ -3603,6 +3660,7 @@ function addFileExpenseLine() {
   }
   file.expenseLines.push({
     id: makeCrmId("expense"),
+    receiptGroupId: makeCrmId("manualExpense"),
     date: todayIso(0),
     category: "Supplies",
     vendor: "",
@@ -3616,6 +3674,7 @@ function addFileExpenseLine() {
     receiptFileName: "",
     receiptDataUrl: "",
   });
+  upsertReceiptHistoryGroup(file, file.expenseLines[file.expenseLines.length - 1].receiptGroupId, [file.expenseLines[file.expenseLines.length - 1]]);
   addSystemNote(file, "Expense line added.");
   syncFileExpensesToRevenue(file);
   saveCrmFiles();
@@ -3639,6 +3698,7 @@ function updateFileExpenseField(field) {
   line.taxRate = line.taxRate || DEFAULT_EXPENSE_TAX_RATE;
   line.tax = line.addTax ? expenseLineTaxAmount(line) : 0;
   line.amount = receiptExpenseLineAmount(line);
+  refreshReceiptHistoryGroup(file, line.receiptGroupId || line.id);
   syncFileExpensesToRevenue(file);
   saveCrmFiles();
   renderFileExpenses();
@@ -3665,6 +3725,7 @@ function saveExpenseNoteModal() {
   const line = file?.expenseLines?.find((entry) => entry.id === editingExpenseNoteLineId);
   if (!line) return closeExpenseNoteModal();
   line.note = $("crmExpenseNoteText").value.trim();
+  refreshReceiptHistoryGroup(file, line.receiptGroupId || line.id);
   syncFileExpensesToRevenue(file);
   saveCrmFiles();
   closeExpenseNoteModal();
@@ -3674,7 +3735,10 @@ function saveExpenseNoteModal() {
 function deleteFileExpenseLine(lineId) {
   const file = normalizeCrmFile(activeFile());
   if (!file) return;
+  const line = file.expenseLines.find((entry) => entry.id === lineId);
+  const groupId = line?.receiptGroupId || line?.id || lineId;
   file.expenseLines = file.expenseLines.filter((line) => line.id !== lineId);
+  refreshReceiptHistoryGroup(file, groupId);
   addSystemNote(file, "Expense line deleted.");
   syncFileExpensesToRevenue(file);
   saveCrmFiles();
@@ -3795,8 +3859,10 @@ function saveBulkReceiptsToFile() {
   }
   const savedLines = [];
   bulkReceiptDrafts.forEach((draft) => {
-    const receiptLines = expenseLinesFromReceiptDraft(draft, makeCrmId("receiptGroup"));
+    const groupId = makeCrmId("receiptGroup");
+    const receiptLines = expenseLinesFromReceiptDraft(draft, groupId);
     savedLines.push(...receiptLines);
+    upsertReceiptHistoryGroup(file, groupId, receiptLines);
   });
   if (!savedLines.length) {
     window.alert("No receipt details were ready to save.");
@@ -3857,6 +3923,7 @@ function saveScannedReceiptToFile() {
   } else {
     file.expenseLines.push(...receiptLines);
   }
+  upsertReceiptHistoryGroup(file, receiptGroupId, receiptLines);
   addSystemNote(file, `Receipt expense ${isEditingSavedReceipt ? "updated" : "saved"}${vendor ? ` from ${vendor}` : ""} for ${crmCurrency.format(receiptTotal)}.`);
   syncFileExpensesToRevenue(file);
   saveCrmFiles();
