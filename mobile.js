@@ -287,6 +287,7 @@ function loadLocalData() {
     saveLocalData();
     markMobileRestoreApplied();
   }
+  hydrateMobileExpensesFromRevenue();
   if (!mobileActiveFileId && mobileFiles[0]) mobileActiveFileId = mobileFiles[0].id;
 }
 
@@ -397,6 +398,7 @@ async function loadCloud() {
   mobileRevenueRows = Array.isArray(dashboard.revenueRows) ? dashboard.revenueRows : [];
   mobilePriceRows = Array.isArray(dashboard.priceRows) ? dashboard.priceRows : [];
   mobileDeletedPriceIds = Array.isArray(dashboard.deletedPriceIds) ? dashboard.deletedPriceIds : [];
+  hydrateMobileExpensesFromRevenue();
   mobileActiveFileId = mobileFiles[0]?.id || "";
   saveLocalData();
   renderAll();
@@ -411,6 +413,7 @@ async function loadCloudOnStartup() {
     mobileRevenueRows = Array.isArray(dashboard.revenueRows) ? dashboard.revenueRows : [];
     mobilePriceRows = Array.isArray(dashboard.priceRows) ? dashboard.priceRows : [];
     mobileDeletedPriceIds = Array.isArray(dashboard.deletedPriceIds) ? dashboard.deletedPriceIds : [];
+    hydrateMobileExpensesFromRevenue();
     mobileActiveFileId = mobileFiles[0]?.id || "";
     saveLocalData();
     renderAll();
@@ -772,10 +775,15 @@ function findMobileRevenueRowForFile(file) {
   if (!file) return null;
   const fileNumber = String(file.fileNumber || "").trim().toLowerCase();
   const clientName = String(file.clientName || "").trim().toLowerCase();
+  const cleanClientName = clientName.replace(/[^a-z0-9]/g, "");
   return mobileRevenueRows.find((row) => {
     const rowFileNumber = String(row.fileNumber || "").trim().toLowerCase();
     const rowClient = String(row.clientJob || row.clientName || row.name || "").trim().toLowerCase();
-    return (fileNumber && rowFileNumber === fileNumber) || (fileNumber && rowClient.includes(fileNumber)) || (clientName && rowClient.includes(clientName));
+    const cleanRowClient = rowClient.replace(/[^a-z0-9]/g, "");
+    return (fileNumber && rowFileNumber === fileNumber)
+      || (fileNumber && rowClient.includes(fileNumber))
+      || (clientName && rowClient.includes(clientName))
+      || (cleanClientName && cleanRowClient.includes(cleanClientName));
   }) || null;
 }
 
@@ -785,6 +793,41 @@ function syncMobileFileExpensesToRevenue(file = activeFile()) {
   row.expenses = mobileFileExpenseTotal(file);
   row.profit = (Number(row.gross) || 0) - (Number(row.expenses) || 0) - (Number(row.labor) || 0);
   row.expenseLines = Array.isArray(file.expenseLines) ? file.expenseLines.map((line) => ({ ...line })) : [];
+}
+
+function hydrateMobileExpensesFromRevenue(fileToHydrate = null) {
+  const files = fileToHydrate ? [fileToHydrate] : mobileFiles;
+  files.forEach((file) => {
+    if (!file) return;
+    file.expenseLines = Array.isArray(file.expenseLines) ? file.expenseLines : [];
+    if (file.expenseLines.length) return;
+    const row = findMobileRevenueRowForFile(file);
+    if (!row) return;
+    if (Array.isArray(row.expenseLines) && row.expenseLines.length) {
+      file.expenseLines = row.expenseLines.map((line) => ({ ...line }));
+      return;
+    }
+    const expenseTotal = Number(row.expenses) || 0;
+    const receiptNotes = String(row.receiptNotes || "").trim();
+    if (!expenseTotal && !receiptNotes) return;
+    file.expenseLines = [{
+      id: `revenue-expense-${row.id || file.id || makeId("expense")}`,
+      receiptGroupId: `revenue-expense-${row.id || file.id || "summary"}`,
+      date: row.date || "",
+      category: "Supplies",
+      vendor: "",
+      note: receiptNotes || "Revenue expense total",
+      baseAmount: expenseTotal,
+      amount: expenseTotal,
+      tax: 0,
+      addTax: false,
+      taxRate: MOBILE_DEFAULT_EXPENSE_TAX_RATE,
+      paymentType: "",
+      receiptFileName: "",
+      receiptDataUrl: "",
+      receiptSource: "Revenue backup",
+    }];
+  });
 }
 
 function readMobileFileAsDataUrl(file) {
@@ -954,6 +997,7 @@ function renderMobileExpenses() {
     $("mobileSavedExpenseList").innerHTML = `<p class="mobile-helper">No file selected.</p>`;
     return;
   }
+  hydrateMobileExpensesFromRevenue(file);
   title.textContent = file.clientName || "Unnamed Client";
   $("mobileExpensesFileMeta").textContent = `${file.fileNumber || "New File"} · ${file.projectType || "Other"}`;
   $("mobileExpensesFileTotal").textContent = mobileCurrency.format(mobileFileExpenseTotal(file));
