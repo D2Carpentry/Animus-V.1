@@ -3624,7 +3624,7 @@ function renderBulkReceiptReview() {
   });
 }
 
-function renderFileExpenses() {
+function renderFileExpensesFresh() {
   const file = normalizeCrmFile(activeFile());
   const title = $("crmExpensesFileTitle");
   const heading = $("crmExpensesHeading");
@@ -4650,6 +4650,8 @@ function renderFileExpenses() {
     button.addEventListener("click", () => deleteFileExpenseLine(button.dataset.fileExpenseDelete));
   });
 }
+
+renderFileExpenses = renderFileExpensesFresh;
 
 function openSavedExpenseGroupInReceiptEditor(groupId) {
   const file = normalizeCrmFile(activeFile());

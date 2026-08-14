@@ -430,8 +430,4 @@ function installD2ExpenseRepair() {
   if (!$("crmExpensesView")?.hidden) freshRenderFileExpenses();
 }
 
-if (document.readyState === "loading") {
-  window.addEventListener("load", installD2ExpenseRepair, { once: true });
-} else {
-  installD2ExpenseRepair();
-}
+window.D2_EXPENSE_REPAIR_READY = "main-dashboard-file";
