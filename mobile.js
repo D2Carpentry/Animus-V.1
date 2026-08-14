@@ -7,6 +7,8 @@ const MOBILE_GOOGLE_SCRIPT_KEY = "d2GoogleScriptUrl";
 const MOBILE_RESTORE_VERSION_KEY = "d2MobileDashboardRestoreVersion";
 const MOBILE_DEFAULT_GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzZkie1W4LplkKwFoMq19suIHWsamKYNUwCt9xjnihTdy_dN271ou3lscTgq09bAGIG2w/exec";
 const MOBILE_CLOUDFLARE_DASHBOARD_API = "https://animus-v-1.pages.dev/api/dashboard";
+const MOBILE_CLOUDFLARE_RECEIPT_API = "https://animus-v-1.pages.dev/api/receipt";
+const MOBILE_DEFAULT_EXPENSE_TAX_RATE = 0.065;
 
 const mobileCurrency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 const mobileStatusDetails = {
@@ -23,6 +25,7 @@ const mobileStatusDetails = {
 };
 const mobileStatuses = Object.keys(mobileStatusDetails);
 const mobileProjectTypes = ["Closet", "Pantry", "Cabinetry", "Refinishing", "Built-In", "Other"];
+const mobileExpenseCategories = ["Supplies", "Materials", "Hardware", "Paint / Finish", "Equipment", "Labor", "Fuel", "Other"];
 const mobileFilters = {
   all: "All Files",
   new: "New Leads",
@@ -42,6 +45,7 @@ let mobileActiveFileId = "";
 let mobileCurrentTab = "files";
 let mobileCalendarCursor = new Date();
 let mobileSelectedDate = dateKey(new Date());
+let mobileReceiptDraft = blankMobileReceiptDraft();
 
 const $ = (id) => document.getElementById(id);
 
@@ -75,6 +79,53 @@ function formatDate(value) {
   if (!value) return "";
   const date = new Date(`${value}T12:00:00`);
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+function blankMobileReceiptLine(line = {}) {
+  return {
+    id: line.id || makeId("receiptLine"),
+    use: line.use !== false,
+    description: line.description || line.name || line.product || "",
+    category: normalizeMobileExpenseCategory(line.category || "Supplies"),
+    price: line.price === undefined ? (line.total || line.amount || "") : line.price,
+    addTax: line.addTax !== false,
+  };
+}
+
+function blankMobileReceiptDraft() {
+  return {
+    editingReceiptGroupId: "",
+    imageDataUrl: "",
+    fileName: "",
+    imageTitle: "",
+    vendor: "",
+    date: dateKey(new Date()),
+    category: "Supplies",
+    amount: "",
+    paymentType: "",
+    cardName: "Chase Business",
+    notes: "",
+    lines: [],
+    aiAvailable: false,
+    status: "",
+  };
+}
+
+function normalizeMobileExpenseCategory(value = "") {
+  const match = mobileExpenseCategories.find((category) => category.toLowerCase() === String(value || "").toLowerCase());
+  if (match) return match;
+  const text = String(value || "").toLowerCase();
+  if (/(paint|primer|stain|renner|sherwin|roller|brush|finish|urethane|sealer)/.test(text)) return "Paint / Finish";
+  if (/(screw|hinge|slide|hardware|pull|handle|bracket|nail|tapcon)/.test(text)) return "Hardware";
+  if (/(plywood|birch|mdf|lumber|stud|wood|board|trim|poplar|maple)/.test(text)) return "Materials";
+  if (/(blade|saw|tool|drill|sander|router|ladder|equipment)/.test(text)) return "Equipment";
+  if (/(gas|fuel|shell|mobil|chevron|wawa|racetrac)/.test(text)) return "Fuel";
+  if (/(labor|helper|installer|subcontractor)/.test(text)) return "Labor";
+  return "Supplies";
+}
+
+function expenseCategoryOptions(selected = "Supplies") {
+  return mobileExpenseCategories.map((category) => `<option${category === selected ? " selected" : ""}>${escapeHtml(category)}</option>`).join("");
 }
 
 function categoryForFile(file = {}) {
@@ -111,6 +162,7 @@ function normalizeFile(file = {}) {
     followUpDate: file.followUpDate || "",
     anticipatedCompletionDate: file.anticipatedCompletionDate || "",
     editableEstimate: file.editableEstimate || null,
+    expenseLines: Array.isArray(file.expenseLines) ? file.expenseLines : [],
     notes: Array.isArray(file.notes) ? file.notes : [],
     timeline: Array.isArray(file.timeline) ? file.timeline : [],
     ...file,
@@ -373,12 +425,13 @@ function setTab(tab) {
   mobileCurrentTab = tab;
   document.querySelectorAll(".mobile-view").forEach((view) => view.classList.remove("active"));
   document.querySelectorAll("[data-mobile-tab]").forEach((button) => button.classList.toggle("active", button.dataset.mobileTab === tab));
-  const titleMap = { files: "Command Center", detail: "File Details", calendar: "Calendar", estimate: "Estimator", revenue: "Revenue", more: "More" };
+  const titleMap = { files: "Command Center", detail: "File Details", calendar: "Calendar", estimate: "Estimator", revenue: "Revenue", expenses: "Expenses", more: "More" };
   $("mobileViewTitle").textContent = titleMap[tab] || "ANIMUS";
   const view = $(`mobile${tab[0].toUpperCase()}${tab.slice(1)}View`);
   if (view) view.classList.add("active");
   if (tab === "calendar") renderCalendar();
   if (tab === "revenue") renderRevenue();
+  if (tab === "expenses") renderMobileExpenses();
   if (tab === "estimate") loadMobileEstimator();
 }
 
@@ -696,6 +749,457 @@ function renderRevenue() {
   `).join("") : `<article class="mobile-card"><p class="mobile-helper">No revenue rows yet.</p></article>`;
 }
 
+function mobileExpenseBaseAmount(line = {}) {
+  if (line.baseAmount !== undefined && line.baseAmount !== "") return parseMoney(line.baseAmount);
+  if (line.price !== undefined && line.price !== "") return parseMoney(line.price);
+  return parseMoney(line.amount);
+}
+
+function mobileExpenseTaxAmount(line = {}) {
+  return line.addTax ? mobileExpenseBaseAmount(line) * (Number(line.taxRate) || MOBILE_DEFAULT_EXPENSE_TAX_RATE) : 0;
+}
+
+function mobileExpenseFinalAmount(line = {}) {
+  if (line.addTax) return mobileExpenseBaseAmount(line) + mobileExpenseTaxAmount(line);
+  return Number(line.amount) || mobileExpenseBaseAmount(line);
+}
+
+function mobileFileExpenseTotal(file = activeFile()) {
+  return (Array.isArray(file?.expenseLines) ? file.expenseLines : []).reduce((sum, line) => sum + mobileExpenseFinalAmount(line), 0);
+}
+
+function findMobileRevenueRowForFile(file) {
+  if (!file) return null;
+  const fileNumber = String(file.fileNumber || "").trim().toLowerCase();
+  const clientName = String(file.clientName || "").trim().toLowerCase();
+  return mobileRevenueRows.find((row) => {
+    const rowFileNumber = String(row.fileNumber || "").trim().toLowerCase();
+    const rowClient = String(row.clientJob || row.clientName || row.name || "").trim().toLowerCase();
+    return (fileNumber && rowFileNumber === fileNumber) || (fileNumber && rowClient.includes(fileNumber)) || (clientName && rowClient.includes(clientName));
+  }) || null;
+}
+
+function syncMobileFileExpensesToRevenue(file = activeFile()) {
+  const row = findMobileRevenueRowForFile(file);
+  if (!row) return;
+  row.expenses = mobileFileExpenseTotal(file);
+  row.profit = (Number(row.gross) || 0) - (Number(row.expenses) || 0) - (Number(row.labor) || 0);
+  row.expenseLines = Array.isArray(file.expenseLines) ? file.expenseLines.map((line) => ({ ...line })) : [];
+}
+
+function readMobileFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function readMobileReceiptWithAi(imageDataUrl, file) {
+  const response = await fetch(MOBILE_CLOUDFLARE_RECEIPT_API, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    cache: "no-store",
+    body: JSON.stringify({
+      imageDataUrl,
+      fileName: file?.name || "",
+    }),
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || result.ok === false) {
+    throw new Error(result.error || `Receipt read failed with status ${response.status}.`);
+  }
+  return result;
+}
+
+function normalizeMobilePayment(value = "") {
+  const clean = String(value || "").toLowerCase();
+  if (/(credit|card|debit|visa|mastercard|amex|chase|bank)/.test(clean)) return "Credit";
+  if (/cash/.test(clean)) return "Cash";
+  return value || "";
+}
+
+function mobileReceiptResultToDraft(result = {}, fallback = {}) {
+  const receipt = result.receipt || result || {};
+  const lineItems = Array.isArray(receipt.lineItems) ? receipt.lineItems : [];
+  const lines = lineItems
+    .map((item) => blankMobileReceiptLine({
+      description: item.name || item.description || "",
+      category: item.category || receipt.category || fallback.category || "Supplies",
+      price: item.total || item.amount || item.price || "",
+      addTax: true,
+    }))
+    .filter((line) => line.description || parseMoney(line.price));
+  const notes = [receipt.notes || "", lineItems.map((item) => item.name || item.description || "").filter(Boolean).join(", ")].filter(Boolean).join("\n").trim();
+  return {
+    ...blankMobileReceiptDraft(),
+    imageDataUrl: fallback.imageDataUrl || "",
+    fileName: fallback.fileName || "",
+    imageTitle: fallback.fileName || "",
+    vendor: receipt.vendor || fallback.vendor || "",
+    date: receipt.date || fallback.date || dateKey(new Date()),
+    category: normalizeMobileExpenseCategory(receipt.category || fallback.category || notes),
+    amount: receipt.total || receipt.amount || fallback.amount || "",
+    paymentType: normalizeMobilePayment(receipt.paymentType || receipt.payment || fallback.paymentType || ""),
+    notes: notes || fallback.notes || "",
+    lines: lines.length ? lines : [blankMobileReceiptLine({
+      description: receipt.notes || receipt.vendor || fallback.fileName || "Receipt expense",
+      category: receipt.category || fallback.category || "Supplies",
+      price: receipt.total || receipt.amount || "",
+      addTax: true,
+    })],
+    aiAvailable: Boolean(result.aiAvailable),
+    status: result.aiAvailable
+      ? "Receipt read with AI. Review the lines, then save."
+      : (result.message || result.error || "Receipt attached. Review the fields, then save."),
+  };
+}
+
+function captureMobileReceiptDraft() {
+  if (!$("mobileReceiptDate")) return;
+  mobileReceiptDraft.date = $("mobileReceiptDate").value || dateKey(new Date());
+  mobileReceiptDraft.vendor = $("mobileReceiptVendor").value.trim();
+  mobileReceiptDraft.category = $("mobileReceiptCategory").value || "Supplies";
+  mobileReceiptDraft.amount = $("mobileReceiptTotal").value;
+  mobileReceiptDraft.paymentType = $("mobileReceiptPaidBy").value;
+  mobileReceiptDraft.cardName = $("mobileReceiptCard").value;
+  mobileReceiptDraft.imageTitle = $("mobileReceiptImageTitle").value.trim();
+  mobileReceiptDraft.notes = $("mobileReceiptNotes").value.trim();
+  mobileReceiptDraft.lines = Array.from(document.querySelectorAll("[data-mobile-receipt-line]")).map((row) => {
+    const id = row.dataset.mobileReceiptLine;
+    return blankMobileReceiptLine({
+      id,
+      use: Boolean(row.querySelector("[data-mobile-receipt-field='use']")?.checked),
+      description: row.querySelector("[data-mobile-receipt-field='description']")?.value.trim() || "",
+      category: row.querySelector("[data-mobile-receipt-field='category']")?.value || "Supplies",
+      price: row.querySelector("[data-mobile-receipt-field='price']")?.value || "",
+      addTax: Boolean(row.querySelector("[data-mobile-receipt-field='addTax']")?.checked),
+    });
+  });
+}
+
+function mobileReceiptLineTotal(line = {}) {
+  const price = parseMoney(line.price);
+  return line.addTax ? price + (price * MOBILE_DEFAULT_EXPENSE_TAX_RATE) : price;
+}
+
+function mobileReceiptDraftTotal() {
+  const lineTotal = mobileReceiptDraft.lines.reduce((sum, line) => line.use === false ? sum : sum + mobileReceiptLineTotal(line), 0);
+  return lineTotal || parseMoney(mobileReceiptDraft.amount);
+}
+
+function mobileReceiptPaymentLabel() {
+  if (mobileReceiptDraft.paymentType === "Credit") return mobileReceiptDraft.cardName || "Credit";
+  return mobileReceiptDraft.paymentType || "";
+}
+
+function mobileExpenseLinesFromDraft(groupId = makeId("receiptGroup")) {
+  const selectedLines = mobileReceiptDraft.lines.filter((line) => line.use !== false && (line.description || parseMoney(line.price)));
+  const source = mobileReceiptDraft.aiAvailable ? "AI receipt reader" : "Mobile receipt review";
+  if (!selectedLines.length && (parseMoney(mobileReceiptDraft.amount) || mobileReceiptDraft.vendor || mobileReceiptDraft.notes)) {
+    const baseAmount = parseMoney(mobileReceiptDraft.amount);
+    return [{
+      id: makeId("expense"),
+      receiptGroupId: groupId,
+      date: mobileReceiptDraft.date || dateKey(new Date()),
+      category: normalizeMobileExpenseCategory(mobileReceiptDraft.category),
+      vendor: mobileReceiptDraft.vendor || "",
+      note: mobileReceiptDraft.notes || mobileReceiptDraft.imageTitle || mobileReceiptDraft.fileName || "Receipt expense",
+      baseAmount,
+      amount: baseAmount,
+      tax: 0,
+      addTax: false,
+      taxRate: MOBILE_DEFAULT_EXPENSE_TAX_RATE,
+      paymentType: mobileReceiptPaymentLabel(),
+      receiptFileName: mobileReceiptDraft.imageTitle || mobileReceiptDraft.fileName || "",
+      receiptDataUrl: mobileReceiptDraft.imageDataUrl || "",
+      receiptSource: source,
+    }];
+  }
+  return selectedLines.map((line, index) => {
+    const baseAmount = parseMoney(line.price);
+    const tax = line.addTax ? baseAmount * MOBILE_DEFAULT_EXPENSE_TAX_RATE : 0;
+    return {
+      id: makeId("expense"),
+      receiptGroupId: groupId,
+      date: mobileReceiptDraft.date || dateKey(new Date()),
+      category: normalizeMobileExpenseCategory(line.category || mobileReceiptDraft.category),
+      vendor: mobileReceiptDraft.vendor || "",
+      note: line.description || mobileReceiptDraft.notes || "Receipt expense",
+      baseAmount,
+      amount: baseAmount + tax,
+      tax,
+      addTax: Boolean(line.addTax),
+      taxRate: MOBILE_DEFAULT_EXPENSE_TAX_RATE,
+      paymentType: mobileReceiptPaymentLabel(),
+      receiptFileName: mobileReceiptDraft.imageTitle || mobileReceiptDraft.fileName || "",
+      receiptDataUrl: index === 0 ? (mobileReceiptDraft.imageDataUrl || "") : "",
+      receiptSource: source,
+    };
+  });
+}
+
+function renderMobileExpenses() {
+  const file = activeFile();
+  const title = $("mobileExpensesFileTitle");
+  if (!title) return;
+  populateSelect($("mobileReceiptCategory"), mobileExpenseCategories, mobileReceiptDraft.category || "Supplies");
+  populateSelect($("mobileManualExpenseCategory"), mobileExpenseCategories, "Supplies");
+  $("mobileManualExpenseDate").value = $("mobileManualExpenseDate").value || dateKey(new Date());
+  if (!file) {
+    title.textContent = "Select a file";
+    $("mobileExpensesFileMeta").textContent = "Use the file list first, then add receipts here.";
+    $("mobileExpensesFileTotal").textContent = mobileCurrency.format(0);
+    $("mobileSavedExpenseList").innerHTML = `<p class="mobile-helper">No file selected.</p>`;
+    return;
+  }
+  title.textContent = file.clientName || "Unnamed Client";
+  $("mobileExpensesFileMeta").textContent = `${file.fileNumber || "New File"} · ${file.projectType || "Other"}`;
+  $("mobileExpensesFileTotal").textContent = mobileCurrency.format(mobileFileExpenseTotal(file));
+  renderMobileReceiptReview();
+  renderMobileSavedExpenses(file);
+}
+
+function renderMobileReceiptReview() {
+  const card = $("mobileReceiptReviewCard");
+  if (!card) return;
+  card.hidden = !mobileReceiptDraft.imageDataUrl && !mobileReceiptDraft.lines.length && !mobileReceiptDraft.editingReceiptGroupId;
+  $("mobileReceiptDate").value = mobileReceiptDraft.date || dateKey(new Date());
+  $("mobileReceiptVendor").value = mobileReceiptDraft.vendor || "";
+  populateSelect($("mobileReceiptCategory"), mobileExpenseCategories, mobileReceiptDraft.category || "Supplies");
+  $("mobileReceiptTotal").value = mobileReceiptDraft.amount || "";
+  $("mobileReceiptPaidBy").value = mobileReceiptDraft.paymentType || "";
+  $("mobileReceiptCard").value = mobileReceiptDraft.cardName || "Chase Business";
+  $("mobileReceiptCardWrap").hidden = $("mobileReceiptPaidBy").value !== "Credit";
+  $("mobileReceiptImageTitle").value = mobileReceiptDraft.imageTitle || mobileReceiptDraft.fileName || "";
+  $("mobileReceiptNotes").value = mobileReceiptDraft.notes || "";
+  $("mobileReceiptPreview").innerHTML = mobileReceiptDraft.imageDataUrl
+    ? `<img src="${mobileReceiptDraft.imageDataUrl}" alt="${escapeHtml(mobileReceiptDraft.imageTitle || mobileReceiptDraft.fileName || "Receipt")}">`
+    : `<p class="mobile-helper">No receipt image attached.</p>`;
+  const lines = mobileReceiptDraft.lines.length ? mobileReceiptDraft.lines : [blankMobileReceiptLine()];
+  $("mobileReceiptLines").innerHTML = lines.map((line) => `
+    <article class="mobile-receipt-line-card" data-mobile-receipt-line="${escapeHtml(line.id)}">
+      <div class="mobile-line-top">
+        <label class="mobile-check-row"><input type="checkbox" data-mobile-receipt-field="use" ${line.use !== false ? "checked" : ""}> Use</label>
+        <strong>${mobileCurrency.format(line.use === false ? 0 : mobileReceiptLineTotal(line))}</strong>
+      </div>
+      <label>Item / Notes<textarea data-mobile-receipt-field="description" rows="3">${escapeHtml(line.description || "")}</textarea></label>
+      <div class="mobile-grid mobile-expense-form-grid">
+        <label>Category<select data-mobile-receipt-field="category">${expenseCategoryOptions(line.category || "Supplies")}</select></label>
+        <label>Price<input data-mobile-receipt-field="price" type="text" inputmode="decimal" value="${escapeHtml(line.price || "")}" placeholder="0.00"></label>
+        <label class="mobile-check-row full"><input data-mobile-receipt-field="addTax" type="checkbox" ${line.addTax ? "checked" : ""}> Add sales tax</label>
+      </div>
+      <button type="button" class="mobile-small-button" data-mobile-receipt-line-delete="${escapeHtml(line.id)}">Delete Line</button>
+    </article>
+  `).join("");
+  $("mobileReceiptReviewTotal").textContent = mobileCurrency.format(mobileReceiptDraftTotal());
+  $("mobileReceiptStatus").textContent = mobileReceiptDraft.status || "";
+  document.querySelectorAll("[data-mobile-receipt-field]").forEach((field) => {
+    field.addEventListener("input", () => {
+      captureMobileReceiptDraft();
+      $("mobileReceiptReviewTotal").textContent = mobileCurrency.format(mobileReceiptDraftTotal());
+    });
+    field.addEventListener("change", () => {
+      captureMobileReceiptDraft();
+      renderMobileReceiptReview();
+    });
+  });
+  document.querySelectorAll("[data-mobile-receipt-line-delete]").forEach((button) => {
+    button.addEventListener("click", () => {
+      captureMobileReceiptDraft();
+      mobileReceiptDraft.lines = mobileReceiptDraft.lines.filter((line) => line.id !== button.dataset.mobileReceiptLineDelete);
+      renderMobileReceiptReview();
+    });
+  });
+}
+
+function renderMobileSavedExpenses(file = activeFile()) {
+  const expenses = Array.isArray(file?.expenseLines) ? file.expenseLines : [];
+  const count = $("mobileSavedExpenseCount");
+  if (count) count.textContent = String(expenses.length);
+  const list = $("mobileSavedExpenseList");
+  if (!list) return;
+  if (!expenses.length) {
+    list.innerHTML = `<p class="mobile-helper">No saved receipts or expenses yet.</p>`;
+    return;
+  }
+  const groups = new Map();
+  expenses.forEach((line) => {
+    const key = line.receiptGroupId || line.id;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(line);
+  });
+  list.innerHTML = Array.from(groups.entries()).map(([groupId, groupLines]) => {
+    const first = groupLines.find((line) => line.receiptDataUrl) || groupLines[0] || {};
+    const total = groupLines.reduce((sum, line) => sum + mobileExpenseFinalAmount(line), 0);
+    return `
+      <article class="mobile-expense-item">
+        <button type="button" data-mobile-expense-open="${escapeHtml(groupId)}">
+          <span>${escapeHtml(first.vendor || first.receiptFileName || first.note || "Saved expense")}</span>
+          <strong>${mobileCurrency.format(total)}</strong>
+          <small>${escapeHtml(formatDate(first.date) || "No date")} · ${groupLines.length} line${groupLines.length === 1 ? "" : "s"}</small>
+        </button>
+        <button type="button" class="mobile-small-button danger" data-mobile-expense-delete="${escapeHtml(groupId)}">Delete</button>
+      </article>
+    `;
+  }).join("");
+  document.querySelectorAll("[data-mobile-expense-open]").forEach((button) => {
+    button.addEventListener("click", () => openMobileSavedExpense(button.dataset.mobileExpenseOpen));
+  });
+  document.querySelectorAll("[data-mobile-expense-delete]").forEach((button) => {
+    button.addEventListener("click", () => deleteMobileExpenseGroup(button.dataset.mobileExpenseDelete));
+  });
+}
+
+async function handleMobileReceiptFile(file) {
+  const active = activeFile();
+  if (!active) {
+    window.alert("Select a customer file before adding a receipt.");
+    return;
+  }
+  if (!file) return;
+  const imageDataUrl = await readMobileFileAsDataUrl(file);
+  mobileReceiptDraft = {
+    ...blankMobileReceiptDraft(),
+    imageDataUrl,
+    fileName: file.name || "Receipt photo",
+    imageTitle: file.name || "Receipt photo",
+    status: "Reading receipt with AI...",
+  };
+  renderMobileExpenses();
+  try {
+    const result = await readMobileReceiptWithAi(imageDataUrl, file);
+    mobileReceiptDraft = mobileReceiptResultToDraft(result, {
+      imageDataUrl,
+      fileName: file.name || "Receipt photo",
+      date: dateKey(new Date()),
+    });
+  } catch (error) {
+    mobileReceiptDraft = {
+      ...mobileReceiptDraft,
+      lines: [blankMobileReceiptLine({ description: file.name || "Receipt expense", addTax: true })],
+      status: error.message || "Receipt attached. Review manually, then save.",
+    };
+  }
+  renderMobileExpenses();
+}
+
+function saveMobileReceiptExpense() {
+  const file = activeFile();
+  if (!file) {
+    window.alert("Select a customer file before saving a receipt.");
+    return;
+  }
+  captureMobileReceiptDraft();
+  const groupId = mobileReceiptDraft.editingReceiptGroupId || makeId("receiptGroup");
+  const lines = mobileExpenseLinesFromDraft(groupId);
+  if (!lines.length) {
+    $("mobileReceiptStatus").textContent = "Add at least one receipt line before saving.";
+    return;
+  }
+  file.expenseLines = Array.isArray(file.expenseLines) ? file.expenseLines : [];
+  if (mobileReceiptDraft.editingReceiptGroupId) {
+    file.expenseLines = file.expenseLines.filter((line) => (line.receiptGroupId || line.id) !== mobileReceiptDraft.editingReceiptGroupId);
+  }
+  file.expenseLines.push(...lines);
+  file.notes = Array.isArray(file.notes) ? file.notes : [];
+  file.notes.push({
+    at: new Date().toISOString(),
+    text: `Mobile receipt ${mobileReceiptDraft.editingReceiptGroupId ? "updated" : "saved"}${mobileReceiptDraft.vendor ? ` from ${mobileReceiptDraft.vendor}` : ""} for ${mobileCurrency.format(mobileReceiptDraftTotal())}.`,
+  });
+  syncMobileFileExpensesToRevenue(file);
+  mobileReceiptDraft = blankMobileReceiptDraft();
+  saveLocalData();
+  renderAll();
+  setTab("expenses");
+}
+
+function openMobileSavedExpense(groupId) {
+  const file = activeFile();
+  const groupLines = (file?.expenseLines || []).filter((line) => (line.receiptGroupId || line.id) === groupId);
+  if (!groupLines.length) return;
+  const first = groupLines.find((line) => line.receiptDataUrl) || groupLines[0];
+  mobileReceiptDraft = {
+    ...blankMobileReceiptDraft(),
+    editingReceiptGroupId: groupId,
+    imageDataUrl: first.receiptDataUrl || "",
+    fileName: first.receiptFileName || "",
+    imageTitle: first.receiptFileName || "",
+    vendor: first.vendor || "",
+    date: first.date || dateKey(new Date()),
+    category: normalizeMobileExpenseCategory(first.category || "Supplies"),
+    amount: groupLines.reduce((sum, line) => sum + mobileExpenseFinalAmount(line), 0).toFixed(2),
+    paymentType: first.paymentType && ["Cash", "Credit", "Other"].includes(first.paymentType) ? first.paymentType : "",
+    cardName: first.paymentType && !["Cash", "Credit", "Other"].includes(first.paymentType) ? first.paymentType : "Chase Business",
+    notes: groupLines.map((line) => line.note || "").filter(Boolean).join("\n"),
+    lines: groupLines.map((line) => blankMobileReceiptLine({
+      description: line.note || "",
+      category: line.category || "Supplies",
+      price: mobileExpenseBaseAmount(line) || "",
+      addTax: Boolean(line.addTax),
+    })),
+    status: "Editing a saved receipt. Save Receipt will update it.",
+  };
+  renderMobileExpenses();
+  $("mobileReceiptReviewCard")?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function deleteMobileExpenseGroup(groupId) {
+  const file = activeFile();
+  if (!file) return;
+  const ok = window.confirm("Delete this saved expense from the file?");
+  if (!ok) return;
+  file.expenseLines = (file.expenseLines || []).filter((line) => (line.receiptGroupId || line.id) !== groupId);
+  syncMobileFileExpensesToRevenue(file);
+  saveLocalData();
+  renderAll();
+  setTab("expenses");
+}
+
+function addMobileManualExpense() {
+  const file = activeFile();
+  if (!file) {
+    window.alert("Select a customer file before adding an expense.");
+    return;
+  }
+  const baseAmount = parseMoney($("mobileManualExpenseAmount").value);
+  const vendor = $("mobileManualExpenseVendor").value.trim();
+  const note = $("mobileManualExpenseNotes").value.trim();
+  if (!baseAmount && !vendor && !note) {
+    window.alert("Add an amount, vendor, or note first.");
+    return;
+  }
+  const addTax = Boolean($("mobileManualExpenseTax").checked);
+  const tax = addTax ? baseAmount * MOBILE_DEFAULT_EXPENSE_TAX_RATE : 0;
+  file.expenseLines = Array.isArray(file.expenseLines) ? file.expenseLines : [];
+  file.expenseLines.push({
+    id: makeId("expense"),
+    receiptGroupId: makeId("manualExpense"),
+    date: $("mobileManualExpenseDate").value || dateKey(new Date()),
+    category: normalizeMobileExpenseCategory($("mobileManualExpenseCategory").value || "Supplies"),
+    vendor,
+    note: note || vendor || "Manual expense",
+    baseAmount,
+    amount: baseAmount + tax,
+    tax,
+    addTax,
+    taxRate: MOBILE_DEFAULT_EXPENSE_TAX_RATE,
+    paymentType: "",
+    receiptFileName: "",
+    receiptDataUrl: "",
+    receiptSource: "Mobile manual entry",
+  });
+  syncMobileFileExpensesToRevenue(file);
+  $("mobileManualExpenseVendor").value = "";
+  $("mobileManualExpenseAmount").value = "";
+  $("mobileManualExpenseNotes").value = "";
+  $("mobileManualExpenseTax").checked = true;
+  saveLocalData();
+  renderAll();
+  setTab("expenses");
+}
+
 function loadMobileEstimator() {
   const frame = $("mobileEstimatorFrame");
   if (!frame.getAttribute("src")) {
@@ -726,6 +1230,7 @@ function renderAll() {
   renderDetail();
   renderCalendar();
   renderRevenue();
+  renderMobileExpenses();
 }
 
 document.querySelectorAll("[data-mobile-tab]").forEach((button) => {
@@ -761,7 +1266,7 @@ $("mobileFileStatus").addEventListener("change", () => {
   renderFiles();
 });
 $("mobileOpenEstimate").addEventListener("click", openEstimateForFile);
-$("mobileOpenExpenses").addEventListener("click", () => setTab("revenue"));
+$("mobileOpenExpenses").addEventListener("click", () => setTab("expenses"));
 $("mobilePrevMonth").addEventListener("click", () => {
   mobileCalendarCursor = new Date(mobileCalendarCursor.getFullYear(), mobileCalendarCursor.getMonth() - 1, 1);
   renderCalendar();
@@ -785,6 +1290,31 @@ $("mobileOpenDesktop").addEventListener("click", () => {
 $("mobileOpenPriceDb").addEventListener("click", () => {
   window.location.href = "crm.html?view=prices";
 });
+$("mobileTakeReceiptPhoto").addEventListener("click", () => $("mobileReceiptCameraInput").click());
+$("mobileUploadReceiptPhoto").addEventListener("click", () => $("mobileReceiptUploadInput").click());
+$("mobileReceiptCameraInput").addEventListener("change", (event) => {
+  handleMobileReceiptFile(event.target.files?.[0]).catch(() => window.alert("The receipt photo could not be read."));
+  event.target.value = "";
+});
+$("mobileReceiptUploadInput").addEventListener("change", (event) => {
+  handleMobileReceiptFile(event.target.files?.[0]).catch(() => window.alert("The receipt image could not be read."));
+  event.target.value = "";
+});
+$("mobileReceiptPaidBy").addEventListener("change", () => {
+  captureMobileReceiptDraft();
+  renderMobileReceiptReview();
+});
+$("mobileClearReceiptDraft").addEventListener("click", () => {
+  mobileReceiptDraft = blankMobileReceiptDraft();
+  renderMobileExpenses();
+});
+$("mobileAddReceiptLine").addEventListener("click", () => {
+  captureMobileReceiptDraft();
+  mobileReceiptDraft.lines.push(blankMobileReceiptLine({ addTax: true }));
+  renderMobileReceiptReview();
+});
+$("mobileSaveReceiptExpense").addEventListener("click", saveMobileReceiptExpense);
+$("mobileAddManualExpense").addEventListener("click", addMobileManualExpense);
 
 setupMobileCollapsibles();
 

@@ -6,7 +6,7 @@
     <title>ANIMUS Mobile</title>
     <meta name="theme-color" content="#0d4a91">
     <link rel="icon" href="icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="mobile.css?v=20260809-mobile-v2">
+    <link rel="stylesheet" href="mobile.css?v=20260814-mobile-expenses">
   </head>
   <body>
     <main class="mobile-shell">
@@ -40,6 +40,7 @@
           <button type="button" data-mobile-tab="calendar">Calendar</button>
           <button type="button" data-mobile-tab="estimate">Estimator</button>
           <button type="button" data-mobile-tab="revenue">Revenue</button>
+          <button type="button" data-mobile-tab="expenses">Expenses</button>
           <button type="button" data-mobile-tab="more">More</button>
           <button type="button" id="mobileSaveCloud">Save</button>
           <button type="button" id="mobileLoadCloud">Load Cloud</button>
@@ -193,6 +194,96 @@
         <div class="mobile-revenue-list" id="mobileRevenueList"></div>
       </section>
 
+      <section class="mobile-view" id="mobileExpensesView">
+        <article class="mobile-card mobile-expense-file-card">
+          <p class="eyebrow">File Expenses</p>
+          <h3 id="mobileExpensesFileTitle">Select a file</h3>
+          <p id="mobileExpensesFileMeta" class="mobile-helper">Use the file list first, then add receipts here.</p>
+          <div class="mobile-expense-total">
+            <span>Total Expenses</span>
+            <strong id="mobileExpensesFileTotal">$0.00</strong>
+          </div>
+          <div class="mobile-expense-actions">
+            <button type="button" id="mobileTakeReceiptPhoto">Take Photo</button>
+            <button type="button" id="mobileUploadReceiptPhoto">Upload Image</button>
+          </div>
+          <input id="mobileReceiptCameraInput" type="file" accept="image/*" capture="environment" hidden>
+          <input id="mobileReceiptUploadInput" type="file" accept="image/*" hidden>
+        </article>
+
+        <article class="mobile-card mobile-receipt-review-card" id="mobileReceiptReviewCard" hidden>
+          <div class="mobile-card-head">
+            <div>
+              <p class="eyebrow">Receipt Review</p>
+              <h3>Check Before Saving</h3>
+            </div>
+            <button type="button" class="mobile-small-button" id="mobileClearReceiptDraft">Clear</button>
+          </div>
+          <div class="mobile-receipt-preview" id="mobileReceiptPreview"></div>
+          <div class="mobile-grid mobile-expense-form-grid">
+            <label>Date<input id="mobileReceiptDate" type="date"></label>
+            <label>Vendor<input id="mobileReceiptVendor" placeholder="Store"></label>
+            <label>Category<select id="mobileReceiptCategory"></select></label>
+            <label>Receipt Total<input id="mobileReceiptTotal" type="text" inputmode="decimal" placeholder="0.00"></label>
+            <label>Paid By<select id="mobileReceiptPaidBy">
+              <option value="">Select</option>
+              <option>Cash</option>
+              <option>Credit</option>
+              <option>Other</option>
+            </select></label>
+            <label id="mobileReceiptCardWrap" hidden>Card<select id="mobileReceiptCard">
+              <option>Chase Business</option>
+              <option>Bank of America</option>
+              <option>Chase Personal</option>
+            </select></label>
+            <label class="full">Image Title<input id="mobileReceiptImageTitle" placeholder="Receipt image name"></label>
+            <label class="full">Notes<textarea id="mobileReceiptNotes" rows="3" placeholder="Manual notes"></textarea></label>
+          </div>
+          <div class="mobile-receipt-lines-head">
+            <p class="eyebrow">Receipt Details</p>
+            <strong id="mobileReceiptReviewTotal">$0.00</strong>
+          </div>
+          <div class="mobile-receipt-lines" id="mobileReceiptLines"></div>
+          <div class="mobile-expense-actions">
+            <button type="button" id="mobileAddReceiptLine">Add Line</button>
+            <button type="button" class="primary" id="mobileSaveReceiptExpense">Save Receipt</button>
+          </div>
+          <p class="mobile-receipt-status" id="mobileReceiptStatus"></p>
+        </article>
+
+        <article class="mobile-card mobile-collapsible is-open">
+          <button type="button" class="mobile-section-toggle" data-mobile-toggle-section>
+            <span>
+              <span class="eyebrow">Manual Expense</span>
+              <strong>Add Without Receipt</strong>
+            </span>
+            <span class="mobile-section-arrow">›</span>
+          </button>
+          <div class="mobile-section-body">
+            <div class="mobile-grid mobile-expense-form-grid">
+              <label>Date<input id="mobileManualExpenseDate" type="date"></label>
+              <label>Vendor<input id="mobileManualExpenseVendor" placeholder="Store or note"></label>
+              <label>Category<select id="mobileManualExpenseCategory"></select></label>
+              <label>Amount<input id="mobileManualExpenseAmount" type="text" inputmode="decimal" placeholder="0.00"></label>
+              <label class="mobile-check-row full"><input id="mobileManualExpenseTax" type="checkbox" checked> Add sales tax</label>
+              <label class="full">Notes<textarea id="mobileManualExpenseNotes" rows="3" placeholder="Expense notes"></textarea></label>
+            </div>
+            <button type="button" class="primary" id="mobileAddManualExpense">Add Expense</button>
+          </div>
+        </article>
+
+        <article class="mobile-card">
+          <div class="mobile-card-head">
+            <div>
+              <p class="eyebrow">Saved Receipts</p>
+              <h3>Expense History</h3>
+            </div>
+            <strong id="mobileSavedExpenseCount">0</strong>
+          </div>
+          <div class="mobile-expense-list" id="mobileSavedExpenseList"></div>
+        </article>
+      </section>
+
       <section class="mobile-view" id="mobileMoreView">
         <article class="mobile-card">
           <p class="eyebrow">Tools</p>
@@ -204,6 +295,6 @@
     <script src="dashboard-restore-data.js?v=20260805-mobile-sync"></script>
     <script src="revenue-data.js?v=20260805-mobile-sync"></script>
     <script src="materials-database.js?v=20260804-price-update-2"></script>
-    <script src="mobile.js?v=20260809-mobile-calendar-sync"></script>
+    <script src="mobile.js?v=20260814-mobile-expenses"></script>
   </body>
 </html>
