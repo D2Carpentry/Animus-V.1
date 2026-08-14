@@ -2869,6 +2869,51 @@ body[data-copy-mode="team"] .estimate-sheet td:first-child {
   font-weight: 800;
 }
 
+.crm-receipt-history-list {
+  display: grid;
+  gap: 10px;
+}
+
+.crm-receipt-history-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  width: 100%;
+  border: 1px solid #dce3ee;
+  border-radius: 8px;
+  padding: 12px 14px;
+  color: var(--ink);
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.crm-receipt-history-item:hover {
+  border-color: rgba(13, 74, 145, 0.45);
+  background: #f7f9fc;
+}
+
+.crm-receipt-history-item span {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.crm-receipt-history-item strong {
+  overflow-wrap: anywhere;
+}
+
+.crm-receipt-history-item small {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.crm-receipt-history-item b {
+  color: var(--blue);
+  white-space: nowrap;
+}
+
 .crm-receipt-review-actions .primary-action {
   border-color: var(--blue);
   color: #fff;
