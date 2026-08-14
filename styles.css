@@ -2610,6 +2610,107 @@ body[data-copy-mode="team"] .estimate-sheet td:first-child {
   background: #fff;
 }
 
+.crm-file-receipt-lines {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #dce3ee;
+  border-radius: 10px;
+  background: #f7f9fc;
+}
+
+.crm-file-receipt-lines-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.crm-file-receipt-lines-heading h3 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 18px;
+}
+
+.crm-file-receipt-lines-heading strong {
+  color: var(--blue);
+  font-size: 20px;
+}
+
+.crm-file-receipt-lines-wrap {
+  overflow-x: auto;
+}
+
+.crm-file-receipt-lines-table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+}
+
+.crm-file-receipt-lines-table th,
+.crm-file-receipt-lines-table td {
+  padding: 8px;
+  border-bottom: 1px solid #e3e8f0;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.crm-file-receipt-lines-table th {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.crm-file-receipt-lines-table th:nth-child(1),
+.crm-file-receipt-lines-table td:nth-child(1),
+.crm-file-receipt-lines-table th:nth-child(5),
+.crm-file-receipt-lines-table td:nth-child(5) {
+  width: 54px;
+  text-align: center;
+}
+
+.crm-file-receipt-lines-table th:nth-child(4),
+.crm-file-receipt-lines-table td:nth-child(4),
+.crm-file-receipt-lines-table th:nth-child(6),
+.crm-file-receipt-lines-table td:nth-child(6) {
+  width: 110px;
+}
+
+.crm-file-receipt-lines-table th:nth-child(7),
+.crm-file-receipt-lines-table td:nth-child(7) {
+  width: 84px;
+}
+
+.crm-file-receipt-lines-table input,
+.crm-file-receipt-lines-table select {
+  min-height: 40px;
+  padding: 8px 9px;
+  font-size: 15px;
+}
+
+.crm-file-receipt-lines-table input[type="checkbox"] {
+  width: 22px;
+  height: 22px;
+  min-height: 22px;
+  padding: 0;
+}
+
+.crm-file-receipt-lines-table button,
+.crm-file-receipt-lines > button {
+  border: 1px solid #d7dce5;
+  border-radius: 8px;
+  padding: 9px 12px;
+  color: var(--blue);
+  font-weight: 900;
+  background: #fff;
+  cursor: pointer;
+}
+
+.crm-receipt-tax-cell {
+  text-align: center;
+}
+
 .crm-receipt-review-actions {
   display: flex;
   flex-wrap: wrap;
