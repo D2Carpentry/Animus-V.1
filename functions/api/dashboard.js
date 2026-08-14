@@ -28,6 +28,114 @@ function missingBucketResponse() {
   }, 500);
 }
 
+function fileMergeKey(file = {}) {
+  return String(file.id || file.fileNumber || file.clientName || "").trim().toLowerCase();
+}
+
+function rowMergeKey(row = {}) {
+  return String(row.id || row.dashboardFileId || row.fileNumber || row.clientJob || "").trim().toLowerCase();
+}
+
+function lineGroupKey(line = {}) {
+  return String(line.receiptGroupId || line.id || "").trim();
+}
+
+function mergeReceiptHistory(existing = [], incoming = []) {
+  const merged = new Map();
+  [...existing, ...incoming].forEach((entry) => {
+    if (!entry) return;
+    const key = String(entry.id || "").trim();
+    if (!key) return;
+    const prior = merged.get(key) || {};
+    const priorStamp = Date.parse(prior.updatedAt || prior.savedAt || "") || 0;
+    const nextStamp = Date.parse(entry.updatedAt || entry.savedAt || "") || 0;
+    merged.set(key, nextStamp >= priorStamp ? { ...prior, ...entry } : { ...entry, ...prior });
+  });
+  return [...merged.values()];
+}
+
+function mergeExpenseLines(existing = [], incoming = []) {
+  const groups = new Map();
+  existing.forEach((line) => {
+    const key = lineGroupKey(line);
+    if (!key) return;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push({ ...line });
+  });
+  incoming.forEach((line) => {
+    const key = lineGroupKey(line);
+    if (!key) return;
+    if (!groups.has(key)) groups.set(key, []);
+    const group = groups.get(key);
+    const existingIndex = group.findIndex((entry) => entry.id === line.id);
+    if (existingIndex >= 0) group[existingIndex] = { ...group[existingIndex], ...line };
+    else group.push({ ...line });
+  });
+  return [...groups.values()].flat();
+}
+
+function mergeFiles(existing = [], incoming = []) {
+  const merged = new Map();
+  existing.forEach((file) => {
+    const key = fileMergeKey(file);
+    if (key) merged.set(key, { ...file });
+  });
+  incoming.forEach((file) => {
+    const key = fileMergeKey(file);
+    if (!key) return;
+    const prior = merged.get(key) || {};
+    merged.set(key, {
+      ...prior,
+      ...file,
+      expenseLines: mergeExpenseLines(prior.expenseLines, file.expenseLines),
+      receiptHistory: mergeReceiptHistory(prior.receiptHistory, file.receiptHistory),
+    });
+  });
+  return [...merged.values()];
+}
+
+function mergeRevenueRows(existing = [], incoming = []) {
+  const merged = new Map();
+  existing.forEach((row) => {
+    const key = rowMergeKey(row);
+    if (key) merged.set(key, { ...row });
+  });
+  incoming.forEach((row) => {
+    const key = rowMergeKey(row);
+    if (!key) return;
+    const prior = merged.get(key) || {};
+    merged.set(key, {
+      ...prior,
+      ...row,
+      expenseLines: mergeExpenseLines(prior.expenseLines, row.expenseLines),
+    });
+  });
+  return [...merged.values()];
+}
+
+async function readExistingDashboard(env) {
+  if (!env.ANIMUS_BUCKET) return null;
+  const object = await env.ANIMUS_BUCKET.get(DASHBOARD_KEY);
+  if (!object) return null;
+  try {
+    return await object.json();
+  } catch (error) {
+    return null;
+  }
+}
+
+function mergeDashboard(existing = {}, incoming = {}) {
+  return {
+    ...existing,
+    ...incoming,
+    dashboardFiles: mergeFiles(existing.dashboardFiles, incoming.dashboardFiles),
+    revenueRows: mergeRevenueRows(existing.revenueRows, incoming.revenueRows),
+    payrollRows: Array.isArray(incoming.payrollRows) ? incoming.payrollRows : (existing.payrollRows || []),
+    priceRows: Array.isArray(incoming.priceRows) ? incoming.priceRows : (existing.priceRows || []),
+    deletedPriceIds: Array.isArray(incoming.deletedPriceIds) ? incoming.deletedPriceIds : (existing.deletedPriceIds || []),
+  };
+}
+
 async function readDashboardPayload(request) {
   const contentType = request.headers.get("content-type") || "";
 
@@ -96,8 +204,9 @@ async function handlePost(context) {
     }, 400);
   }
 
+  const existingDashboard = await readExistingDashboard(env);
   const dashboard = {
-    ...payload,
+    ...mergeDashboard(existingDashboard || {}, payload),
     action: "dashboardSync",
     syncedAt: new Date().toISOString(),
     savedTo: "Cloudflare R2",
