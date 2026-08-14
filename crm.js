@@ -2642,8 +2642,8 @@ function receiptResultToDraft(result = {}, fallback = {}) {
     notes: [receipt.notes || "", itemNotes].filter(Boolean).join("\n").trim() || fallback.notes || "",
     aiAvailable: Boolean(result.aiAvailable),
     status: result.aiAvailable
-      ? "Receipt read. Review the fields, then save the expense."
-      : "Receipt attached. AI reading is not connected yet, so review or paste receipt text before saving.",
+      ? "Receipt read with AI. Review the fields, then save the expense."
+      : (result.message || result.error || "Receipt attached. AI reading is not connected yet, so review or paste receipt text before saving."),
   };
 }
 
@@ -2860,7 +2860,7 @@ async function attachReceiptToFileExpense(uploadFile) {
     } catch (error) {
       fileReceiptDraft = {
         ...fileReceiptDraft,
-        status: "Receipt photo attached. AI reading is not connected yet, so review or paste receipt text before saving.",
+        status: error.message || "Receipt photo attached. AI reading is not connected yet, so review or paste receipt text before saving.",
         aiAvailable: false,
       };
     }
