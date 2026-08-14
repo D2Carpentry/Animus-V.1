@@ -67,7 +67,7 @@ function responseOutputText(data = {}) {
 }
 
 async function readReceiptWithOpenAi(env, imageDataUrl, fileName) {
-  const model = env.OPENAI_MODEL || "gpt-5";
+  const model = env.OPENAI_MODEL || "gpt-5-mini";
   const response = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
     headers: {
