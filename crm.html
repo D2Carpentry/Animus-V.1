@@ -6,7 +6,7 @@
     <title>D2 Command Center</title>
     <meta name="theme-color" content="#0d4a91">
     <link rel="icon" href="icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=20260813-receipt-details-layout">
+    <link rel="stylesheet" href="styles.css?v=20260814-receipt-workflow">
     <link rel="stylesheet" href="calendar-upgrade.css?v=20260808-calendar-popups">
   </head>
   <body class="crm-body">
@@ -656,25 +656,26 @@
                   <div id="crmReceiptPreview" class="crm-receipt-preview"></div>
                   <div class="field-grid two crm-file-receipt-fields">
                     <label>
-                      Vendor
-                      <input id="crmFileReceiptVendor" placeholder="Home Depot">
-                    </label>
-                    <label>
                       Date
                       <input id="crmFileReceiptDate" type="date">
+                    </label>
+                    <label>
+                      Vendor
+                      <input id="crmFileReceiptVendor" placeholder="Home Depot">
                     </label>
                     <label>
                       Category
                       <select id="crmFileReceiptCategory">
                         <option>Supplies</option>
                         <option>Materials</option>
-                        <option>Hardware</option>
-                        <option>Paint / Finish</option>
-                        <option>Equipment</option>
-                        <option>Labor</option>
                         <option>Fuel</option>
+                        <option>Equipment</option>
                         <option>Other</option>
                       </select>
+                    </label>
+                    <label id="crmFileReceiptOtherCategoryWrap" hidden>
+                      One-Time Label
+                      <input id="crmFileReceiptOtherCategory" placeholder="Custom category">
                     </label>
                     <label>
                       Receipt Total
@@ -686,7 +687,28 @@
                     </label>
                     <label>
                       Paid By
-                      <input id="crmFileReceiptPayment" placeholder="Card, cash, account">
+                      <select id="crmFileReceiptPayment">
+                        <option value="">Select</option>
+                        <option>Cash</option>
+                        <option>Credit</option>
+                      </select>
+                    </label>
+                    <label id="crmFileReceiptCardWrap" hidden>
+                      Card
+                      <select id="crmFileReceiptCard">
+                        <option value="">Select card</option>
+                        <option>Chase Business</option>
+                        <option>Bank of America</option>
+                        <option>Chase Personal</option>
+                      </select>
+                    </label>
+                    <label class="crm-file-receipt-wide">
+                      Image Title
+                      <input id="crmFileReceiptImageTitle" placeholder="Receipt image title">
+                    </label>
+                    <label class="crm-file-receipt-wide">
+                      Manual Notes
+                      <textarea id="crmFileReceiptNotes" rows="4" placeholder="Receipt notes, reason, or anything to remember"></textarea>
                     </label>
                   </div>
                 </div>
@@ -714,10 +736,6 @@
                   <button type="button" id="crmAddReceiptExpenseLine">Add Line</button>
                 </div>
                 <label>
-                  Items / Notes
-                  <textarea id="crmFileReceiptNotes" rows="4" placeholder="Receipt items, materials, or notes"></textarea>
-                </label>
-                <label>
                   Paste Receipt Text
                   <textarea id="crmFileReceiptOcrText" rows="5" placeholder="Optional: paste receipt text here if the photo cannot be read yet."></textarea>
                 </label>
@@ -731,7 +749,7 @@
               </div>
             </aside>
           </section>
-          <section class="crm-revenue-view crm-expenses-receipts-section" id="crmReceiptView">
+          <section class="crm-revenue-view crm-expenses-receipts-section" id="crmReceiptView" hidden>
           <section class="crm-command-panel crm-revenue-hero">
             <div class="crm-command-copy">
               <h2>Receipt Scanner</h2>
@@ -887,6 +905,18 @@
         </div>
       </section>
     </div>
+    <div class="crm-modal-backdrop" id="crmPartsImportModal" hidden>
+      <section class="crm-choice-modal crm-parts-import-modal" role="dialog" aria-modal="true" aria-labelledby="crmPartsImportTitle">
+        <button type="button" class="crm-modal-close" id="crmPartsImportClose" aria-label="Close">×</button>
+        <p class="eyebrow">Parts Database</p>
+        <h2 id="crmPartsImportTitle">Choose Items to Import</h2>
+        <p class="crm-helper-text" id="crmPartsImportSummary">Review the receipt lines before adding them.</p>
+        <div class="crm-parts-import-list" id="crmPartsImportList"></div>
+        <div class="crm-choice-actions">
+          <button type="button" class="icon-button primary-action" id="crmPartsImportConfirm">Import Checked Items</button>
+        </div>
+      </section>
+    </div>
     <div class="crm-modal-backdrop" id="crmExpenseNoteModal" hidden>
       <section class="crm-choice-modal crm-expense-note-modal" role="dialog" aria-modal="true" aria-labelledby="crmExpenseNoteTitle">
         <button type="button" class="crm-modal-close" id="crmExpenseNoteClose" aria-label="Close">×</button>
@@ -913,7 +943,7 @@
         caches.keys().then((keys) => keys.forEach((key) => caches.delete(key)));
       }
     </script>
-    <script src="crm.js?v=20260813-receipt-details-layout"></script>
+    <script src="crm.js?v=20260814-receipt-workflow"></script>
     <script src="calendar-upgrade.js?v=20260808-calendar-popups"></script>
   </body>
 </html>

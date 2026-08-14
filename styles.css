@@ -2703,6 +2703,10 @@ body[data-copy-mode="team"] .estimate-sheet td:first-child {
   background: #f7f9fc;
 }
 
+.crm-file-receipt-wide {
+  grid-column: 1 / -1;
+}
+
 .crm-file-receipt-lines {
   display: grid;
   gap: 10px;
@@ -2818,6 +2822,51 @@ body[data-copy-mode="team"] .estimate-sheet td:first-child {
   font-weight: 900;
   background: #fff;
   cursor: pointer;
+}
+
+.crm-parts-import-modal {
+  max-width: 760px;
+}
+
+.crm-parts-import-list {
+  display: grid;
+  gap: 10px;
+  max-height: min(56vh, 520px);
+  overflow: auto;
+  margin: 16px 0;
+}
+
+.crm-parts-import-row {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 12px;
+  border: 1px solid #dce3ee;
+  border-radius: 8px;
+  background: #f7f9fc;
+}
+
+.crm-parts-import-row input {
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+}
+
+.crm-parts-import-row span {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.crm-parts-import-row strong {
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.crm-parts-import-row small {
+  color: var(--muted);
+  font-weight: 800;
 }
 
 .crm-receipt-review-actions .primary-action {
