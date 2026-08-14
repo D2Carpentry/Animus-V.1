@@ -1,0 +1,450 @@
+#crmCalendarView {
+  background: #f4f7fb;
+  border: 1px solid #d9e1ec;
+  border-radius: 12px;
+  padding: 18px;
+}
+
+#crmCalendarView .crm-revenue-hero {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #d9e1ec;
+  border-radius: 12px;
+  color: #172033;
+  display: flex;
+  gap: 18px;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding: 16px 18px;
+}
+
+#crmCalendarView .crm-revenue-hero h2 {
+  color: #092f63;
+  font-size: clamp(2rem, 3vw, 3rem);
+  line-height: 1;
+  margin: 0;
+}
+
+#crmCalendarView .crm-calendar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+#crmCalendarView .crm-calendar-actions button,
+#crmCalendarView .crm-panel-actions button,
+#crmCalendarView .crm-calendar-event-actions button {
+  background: #ffffff;
+  border: 1px solid #cdd8e6;
+  border-radius: 10px;
+  color: #0b4f93;
+  font-weight: 800;
+  min-height: 42px;
+  padding: 10px 14px;
+  white-space: nowrap;
+}
+
+#crmCalendarView .crm-calendar-actions button:hover,
+#crmCalendarView .crm-panel-actions button:hover,
+#crmCalendarView .crm-calendar-event-actions button:hover {
+  border-color: #0b4f93;
+  box-shadow: 0 8px 20px rgba(13, 74, 145, 0.12);
+}
+
+#crmCalendarView #crmShowCalendarAdd,
+#crmCalendarView #crmShowCalendarAgenda {
+  background: #0b4f93;
+  border-color: #0b4f93;
+  color: #ffffff;
+}
+
+.crm-calendar-layout {
+  background: transparent;
+  border: 0;
+  display: block;
+  position: relative;
+}
+
+#crmCalendarView .crm-calendar-card {
+  background: #ffffff;
+  border: 1px solid #d9e1ec;
+  border-radius: 12px;
+  box-shadow: 0 18px 50px rgba(24, 43, 77, 0.08);
+  padding: 18px;
+  width: 100%;
+}
+
+#crmCalendarView .crm-calendar-card > .panel-header {
+  align-items: center;
+  border-bottom: 1px solid #e3e9f2;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  padding-bottom: 14px;
+}
+
+#crmCalendarView .crm-calendar-card .eyebrow {
+  color: #0b4f93;
+  font-weight: 900;
+}
+
+#crmCalendarView .crm-calendar-card h2 {
+  color: #172033;
+  font-size: clamp(1.8rem, 2.4vw, 2.6rem);
+  margin: 0;
+}
+
+#crmCalendarView .crm-panel-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+#crmCalendarView .crm-inline-control {
+  align-items: center;
+  background: #f7f9fc;
+  border: 1px solid #d9e1ec;
+  border-radius: 10px;
+  display: flex;
+  gap: 8px;
+  padding: 6px 8px 6px 12px;
+}
+
+#crmCalendarView .crm-inline-control span {
+  color: #657184;
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+#crmCalendarView .crm-inline-control select {
+  background: #ffffff;
+  border: 1px solid #d9e1ec;
+  border-radius: 8px;
+  color: #172033;
+  min-height: 36px;
+}
+
+.crm-calendar-grid {
+  background: #d9e1ec;
+  border: 1px solid #d9e1ec;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.crm-calendar-weekdays,
+.crm-calendar-week-days,
+.crm-calendar-week-bars {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.crm-calendar-weekday {
+  background: #f7f9fc;
+  color: #657184;
+  font-size: 0.78rem;
+  font-weight: 900;
+  padding: 12px 14px;
+  text-align: right;
+  text-transform: uppercase;
+}
+
+.crm-calendar-week-row {
+  border-top: 1px solid #d9e1ec;
+  position: relative;
+}
+
+.crm-calendar-week-days {
+  background: #d9e1ec;
+  gap: 1px;
+}
+
+.crm-calendar-week-bars {
+  bottom: 14px;
+  gap: 5px 4px;
+  left: 8px;
+  pointer-events: none;
+  position: absolute;
+  right: 8px;
+  z-index: 3;
+}
+
+.crm-calendar-day {
+  align-content: start;
+  background: #ffffff;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  color: #172033;
+  display: grid;
+  gap: 5px;
+  min-height: 158px;
+  padding: 12px 13px 82px;
+  text-align: right;
+}
+
+.crm-calendar-day:hover {
+  background: #f7fbff;
+}
+
+.crm-calendar-day.muted {
+  background: #f8fafc;
+  color: #9aa5b5;
+}
+
+.crm-calendar-day.selected {
+  outline: 2px solid #0b4f93;
+  outline-offset: -2px;
+}
+
+.crm-calendar-day.today .crm-calendar-day-number {
+  align-items: center;
+  background: #0b4f93;
+  border-radius: 999px;
+  color: #ffffff;
+  display: inline-grid;
+  height: 30px;
+  justify-self: end;
+  place-items: center;
+  width: 30px;
+}
+
+.crm-calendar-day-number {
+  font-weight: 900;
+}
+
+.crm-calendar-day-count {
+  color: #7a8596;
+  font-size: 0.72rem;
+  min-height: 1em;
+}
+
+.crm-calendar-chip.crm-calendar-bar {
+  align-items: center;
+  background: var(--calendar-event-color, #557d80);
+  border: 0;
+  border-radius: 7px;
+  box-shadow: 0 4px 10px rgba(24, 43, 77, 0.14);
+  color: #ffffff;
+  cursor: pointer;
+  display: flex;
+  font-size: 0.75rem;
+  font-weight: 900;
+  height: 24px;
+  min-width: 0;
+  overflow: hidden;
+  padding: 0 9px;
+  pointer-events: auto;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.crm-calendar-chip.crm-calendar-bar:hover,
+.crm-calendar-chip.crm-calendar-bar:focus-visible {
+  filter: brightness(1.08);
+  outline: 2px solid rgba(11, 79, 147, 0.35);
+  outline-offset: 1px;
+}
+
+.crm-calendar-chip.crm-calendar-bar.selected {
+  outline: 2px solid #172033;
+  outline-offset: 1px;
+}
+
+.crm-calendar-layout > .crm-calendar-popovers {
+  background: rgba(11, 20, 34, 0.36);
+  bottom: 0;
+  display: grid;
+  left: 0;
+  padding: 24px;
+  place-items: start end;
+  position: fixed;
+  right: 0;
+  top: 0;
+  z-index: 50;
+}
+
+.crm-calendar-layout > .crm-calendar-popovers[hidden] {
+  display: none;
+}
+
+#crmCalendarView .crm-calendar-popovers .panel {
+  background: #ffffff;
+  border: 1px solid #d9e1ec;
+  border-radius: 12px;
+  box-shadow: 0 28px 90px rgba(11, 20, 34, 0.28);
+  color: #172033;
+  margin-top: 86px;
+  max-height: calc(100vh - 128px);
+  overflow: auto;
+  padding: 18px;
+  width: min(520px, calc(100vw - 48px));
+}
+
+#crmCalendarView .crm-calendar-popovers .panel[hidden] {
+  display: none;
+}
+
+#crmCalendarView .crm-calendar-popovers .panel-header {
+  align-items: center;
+  border-bottom: 1px solid #e3e9f2;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+}
+
+#crmCalendarView .crm-calendar-popovers h2,
+#crmCalendarView .crm-calendar-popovers label {
+  color: #172033;
+}
+
+#crmCalendarView .crm-calendar-popovers input,
+#crmCalendarView .crm-calendar-popovers select,
+#crmCalendarView .crm-calendar-popovers textarea {
+  background: #ffffff;
+  border: 1px solid #cdd8e6;
+  color: #172033;
+}
+
+#crmCalendarView .crm-calendar-popup-close {
+  background: #ffffff;
+  border: 1px solid #cdd8e6;
+  border-radius: 8px;
+  color: #0b4f93;
+  min-height: 34px;
+  padding: 6px 10px;
+}
+
+.crm-calendar-agenda-panel .crm-calendar-list,
+#crmCalendarDayPanel .crm-calendar-list {
+  display: grid;
+  gap: 10px;
+  max-height: 430px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+#crmCalendarView .crm-calendar-event {
+  background: #ffffff;
+  border: 1px solid #d9e1ec;
+  border-left: 7px solid var(--calendar-event-color, #557d80);
+  border-radius: 10px;
+  color: #172033;
+  cursor: pointer;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(96px, 128px) minmax(0, 1fr);
+  padding: 12px;
+}
+
+#crmCalendarView .crm-calendar-event.selected {
+  border-color: #0b4f93;
+  border-left-color: var(--calendar-event-color, #557d80);
+  box-shadow: 0 0 0 2px rgba(11, 79, 147, 0.14);
+}
+
+#crmCalendarView .crm-calendar-event:hover,
+#crmCalendarView .crm-calendar-event:focus-visible {
+  border-color: #0b4f93;
+  border-left-color: var(--calendar-event-color, #557d80);
+  outline: none;
+}
+
+#crmCalendarView .crm-calendar-date strong {
+  color: #0b4f93;
+  display: block;
+  font-size: 0.9rem;
+}
+
+#crmCalendarView .crm-calendar-date span {
+  color: #657184;
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 900;
+  margin-top: 4px;
+  text-transform: uppercase;
+}
+
+#crmCalendarView .crm-calendar-info {
+  min-width: 0;
+}
+
+#crmCalendarView .crm-calendar-info h3 {
+  color: #172033;
+  font-size: 1rem;
+  margin: 0 0 5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#crmCalendarView .crm-calendar-info p {
+  color: #657184;
+  font-size: 0.85rem;
+  margin: 3px 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#crmCalendarView .crm-calendar-event-actions {
+  grid-column: 1 / -1;
+}
+
+.crm-calendar-selected-summary {
+  background: #f4f7fb;
+  border: 1px solid #d9e1ec;
+  border-left: 7px solid #0b4f93;
+  border-radius: 10px;
+  display: grid;
+  gap: 5px;
+  margin-bottom: 14px;
+  padding: 12px;
+}
+
+.crm-calendar-selected-summary strong {
+  color: #172033;
+  font-size: 1.08rem;
+}
+
+.crm-calendar-selected-summary span,
+.crm-calendar-selected-summary p {
+  color: #657184;
+  margin: 0;
+}
+
+@media (max-width: 900px) {
+  #crmCalendarView {
+    padding: 12px;
+  }
+
+  #crmCalendarView .crm-revenue-hero,
+  #crmCalendarView .crm-calendar-card > .panel-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  #crmCalendarView .crm-calendar-actions,
+  #crmCalendarView .crm-panel-actions {
+    justify-content: flex-start;
+  }
+
+  .crm-calendar-day {
+    min-height: 128px;
+    padding-bottom: 72px;
+  }
+
+  #crmCalendarView .crm-calendar-event {
+    grid-template-columns: 1fr;
+  }
+
+  #crmCalendarView .crm-calendar-popovers .panel {
+    margin-top: 72px;
+  }
+}

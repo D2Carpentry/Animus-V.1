@@ -1,0 +1,634 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>D2 Estimate Studio</title>
+    <meta name="theme-color" content="#0d4a91">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Estimates">
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon" href="icon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="styles.css?v=20260809-estimator-action-menu">
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div class="app-brand">
+          <img src="assets/d2-logo.png" alt="D2 Carpentry & Design logo">
+          <div>
+            <p>D2 Carpentry & Design</p>
+            <h1>Estimate Studio</h1>
+          </div>
+        </div>
+        <a class="icon-button dashboard-top-link" href="crm.html" target="_blank" rel="noopener" title="Open Dashboard" aria-label="Open Dashboard">Dashboard</a>
+      </header>
+      <section class="toolbar-strip" aria-label="Estimate actions">
+        <button type="button" class="estimate-actions-menu-button" id="estimateActionsMenuButton" aria-label="Open estimate actions" aria-expanded="false" aria-controls="estimateActionsMenu">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+        <div class="top-actions" id="estimateActionsMenu">
+          <button type="button" class="icon-button" id="submitEstimate" title="Create Dashboard lead from this estimate" aria-label="Create Dashboard lead from this estimate">Create Lead</button>
+          <button type="button" class="icon-button" id="newEstimate" title="New estimate" aria-label="New estimate">+ New</button>
+          <button type="button" class="icon-button" id="openEditableEstimate" title="Open editable estimate file" aria-label="Open editable estimate file">Open File</button>
+          <button type="button" class="icon-button" id="saveEstimate" title="Save editable estimate file" aria-label="Save editable estimate file">Save</button>
+          <label class="view-select-wrap">
+            <select id="documentViewSelect" aria-label="Choose document view">
+              <option value="">Version</option>
+              <option value="customer">Customer</option>
+              <option value="internal">Office</option>
+              <option value="team">Team</option>
+              <option value="supply">Supplies</option>
+              <option value="payment">Payment</option>
+              <option value="assignment">Assignment</option>
+            </select>
+          </label>
+          <button type="button" class="icon-button" data-action-button="invoice" title="Generate invoice" aria-label="Generate invoice">Invoice</button>
+          <div class="share-menu">
+            <button type="button" class="icon-button" id="shareEstimate" aria-expanded="false" aria-controls="shareEstimateMenu">Share</button>
+            <div class="share-options" id="shareEstimateMenu" hidden>
+              <button type="button" data-share-action="pdf">PDF</button>
+              <button type="button" data-share-action="email">Email</button>
+            </div>
+          </div>
+          <button type="button" class="icon-button invoice-only" id="toggleInvoicePaidStamp" title="Toggle paid stamp" aria-label="Toggle paid stamp" hidden>Paid Stamp</button>
+          <input id="editableEstimateUpload" type="file" accept=".d2estimate,.json,.txt,application/json,text/plain" hidden>
+        </div>
+      </section>
+
+      <section class="workspace">
+        <form class="editor" id="estimateForm">
+          <section class="panel estimate-details-panel collapsible-panel collapsed">
+            <div class="panel-header">
+              <h2>Estimate Details</h2>
+              <label class="panel-date-field">
+                Date
+                <input id="estimateDate" type="date">
+              </label>
+              <label class="panel-estimate-number-field">
+                Estimate #
+                <input id="visibleEstimateNumber" type="text" placeholder="Generated on save" readonly>
+              </label>
+              <button type="button" class="collapse-toggle" data-collapse-target="estimateDetailsBody" aria-expanded="false">Details</button>
+            </div>
+            <div class="field-grid collapsible-body" id="estimateDetailsBody" hidden>
+              <label>
+                Company
+                <input id="companyName" value="D2 Carpentry & Design" autocomplete="organization">
+              </label>
+              <label>
+                Estimate Title
+                <input id="estimateTitle" value="Estimate">
+              </label>
+              <label>
+                Office Phone
+                <input id="companyPhone" value="239-469-8555" autocomplete="tel">
+              </label>
+              <label>
+                Email
+                <input id="companyEmail" value="D2CarpentryandDesign@gmail.com" autocomplete="email">
+              </label>
+              <label>
+                Company Address
+                <input id="companyAddress" value="2710 Del Prado Blvd S #2-184 Cape Coral, FL 33904" autocomplete="street-address">
+              </label>
+              <label class="estimate-number-field">
+                <span class="estimate-number-label-row">
+                  <span>Estimate No.</span>
+                  <span class="estimate-number-toggle">
+                    <input id="showEstimateNumber" type="checkbox" checked>
+                    Show
+                  </span>
+                </span>
+                <input id="estimateNumber" placeholder="26-A1001">
+              </label>
+            </div>
+          </section>
+
+          <section class="panel crm-panel dashboard-file-panel">
+            <div class="panel-header">
+              <h2>Dashboard File</h2>
+            </div>
+            <div class="hidden-technical-fields" hidden>
+              <input id="fileStatus" value="New Lead">
+              <input id="estimateStatus" value="Pending">
+              <input id="warrantyStatus" value="Not Sent">
+              <input id="inspectionTime" type="time">
+              <input id="nextActionDate" type="date">
+              <input id="nextAction">
+            </div>
+            <div class="field-grid three">
+              <label>
+                Lead Source
+                <select id="leadSource">
+                  <option>Manual</option>
+                  <option>Angi</option>
+                  <option>Website</option>
+                  <option>Phone</option>
+                  <option>Text</option>
+                  <option>Referral</option>
+                  <option>Repeat Customer</option>
+                  <option>Other</option>
+                </select>
+              </label>
+              <label>
+                Inspection Date
+                <input id="inspectionDate" type="date">
+              </label>
+            </div>
+          </section>
+
+          <section class="panel client-panel">
+            <div class="panel-header">
+              <h2>Client Information</h2>
+            </div>
+            <div class="field-grid">
+              <label>
+                Client Name
+                <input id="clientName">
+              </label>
+              <label>
+                Phone
+                <input id="clientPhone">
+              </label>
+              <label>
+                Email
+                <input id="clientEmail" type="email">
+              </label>
+              <label class="wide">
+                Address
+                <input id="projectAddress">
+              </label>
+            </div>
+          </section>
+
+          <section class="panel project-panel">
+            <div class="panel-header">
+              <h2>Project</h2>
+            </div>
+            <div class="field-grid">
+              <label>
+                Project Type
+                <select id="projectType">
+                  <option>Closet</option>
+                  <option>Pantry</option>
+                  <option>Cabinetry</option>
+                  <option>Refinishing</option>
+                  <option>Built-In</option>
+                  <option>Other</option>
+                </select>
+              </label>
+              <label data-project-pricing>
+                Finish
+                <select id="finishLevel">
+                  <option value=""></option>
+                  <option value="1">Standard melamine</option>
+                  <option value="1.18">Painted finish</option>
+                  <option value="1.32">Premium wood veneer</option>
+                </select>
+              </label>
+              <label data-project-pricing>
+                Width
+                <div class="unit-input">
+                  <input id="widthFeet" type="number" min="0" step="0.5" value="8">
+                  <span>ft</span>
+                </div>
+              </label>
+              <label data-project-pricing>
+                Height
+                <div class="unit-input">
+                  <input id="heightFeet" type="number" min="0" step="0.5" value="8">
+                  <span>ft</span>
+                </div>
+              </label>
+            </div>
+          </section>
+
+          <section class="panel materials-panel">
+            <div class="panel-header">
+              <h2>Materials & Supplies</h2>
+              <div class="panel-header-actions">
+                <a class="panel-link-button" href="crm.html?view=prices" target="_blank" rel="noopener" title="Open Price Database in a separate page">Price Database</a>
+                <button type="button" id="addMaterialItem">Add Material</button>
+              </div>
+            </div>
+            <div class="material-items" id="materialItems"></div>
+            <div class="material-summary">
+              <span>Estimated Material Cost</span>
+              <strong id="materialCostTotal">$0.00</strong>
+              <button type="button" id="addMaterialSalesTax" class="compact-text-button">Add Sales Tax</button>
+            </div>
+          </section>
+
+          <section class="panel line-items-panel">
+            <div class="panel-header">
+              <h2>Line Items</h2>
+              <button type="button" id="addLineItem">Add Item</button>
+            </div>
+            <div class="line-items" id="lineItems"></div>
+          </section>
+
+          <section class="panel project-photos-panel">
+            <div class="panel-header">
+              <h2>Project Photos</h2>
+            </div>
+            <div class="photo-dropzone" id="photoDropzone">
+              <input id="photoUpload" type="file" accept="image/*" multiple>
+              <strong>Drop photos here</strong>
+              <span>or click to choose images</span>
+            </div>
+            <div class="photo-editor-list" id="photoEditorList"></div>
+          </section>
+
+          <section class="panel assignment-panel collapsible-panel collapsed">
+            <div class="panel-header">
+              <h2>Assignment</h2>
+              <button type="button" class="collapse-toggle" data-collapse-target="assignmentBody" aria-expanded="false">Show</button>
+            </div>
+            <div class="collapsible-body" id="assignmentBody" hidden>
+            <div class="field-grid">
+              <label>
+                Assignment Language
+                <select id="assignmentLanguage">
+                  <option value="en">English</option>
+                  <option value="es">Español</option>
+                </select>
+              </label>
+              <label>
+                Date to Start
+                <input id="assignmentStartDate" type="date">
+              </label>
+              <label>
+                Expected Arrival
+                <select id="assignmentArrivalTime">
+                  <option>Open</option>
+                  <option>7:00 AM</option>
+                  <option>7:30 AM</option>
+                  <option>8:00 AM</option>
+                  <option>8:30 AM</option>
+                  <option>9:00 AM</option>
+                  <option>9:30 AM</option>
+                  <option>10:00 AM</option>
+                  <option>10:30 AM</option>
+                  <option>11:00 AM</option>
+                  <option>11:30 AM</option>
+                  <option>12:00 PM</option>
+                  <option>12:30 PM</option>
+                  <option>1:00 PM</option>
+                  <option>1:30 PM</option>
+                  <option>2:00 PM</option>
+                  <option>2:30 PM</option>
+                  <option>3:00 PM</option>
+                  <option>3:30 PM</option>
+                  <option>4:00 PM</option>
+                  <option>4:30 PM</option>
+                  <option>5:00 PM</option>
+                </select>
+              </label>
+              <label class="wide">
+                Scope of Work
+                <textarea id="assignmentScope" rows="5"></textarea>
+              </label>
+              <label class="email-send-toggle wide">
+                <input id="useSpanishScope" type="checkbox">
+                Use Spanish Scope
+              </label>
+              <label class="wide">
+                Scope of Work Spanish
+                <textarea id="assignmentScopeSpanish" rows="5"></textarea>
+              </label>
+              <label class="wide">
+                Employee Notes
+                <textarea id="assignmentNotes" rows="5"></textarea>
+              </label>
+            </div>
+            <div class="photo-dropzone" id="assignmentPhotoDropzone">
+              <input id="assignmentPhotoUpload" type="file" accept="image/*" multiple>
+              <strong>Drop assignment photos here</strong>
+              <span>or click to choose images</span>
+            </div>
+            <div class="photo-editor-list" id="assignmentPhotoEditorList"></div>
+            </div>
+          </section>
+
+          <section class="panel calculations-panel collapsible-panel collapsed">
+            <div class="panel-header">
+              <h2>Calculations</h2>
+              <button type="button" class="collapse-toggle" data-collapse-target="calculationsBody" aria-expanded="false">Show</button>
+            </div>
+            <div class="calculation-grid collapsible-body" id="calculationsBody" hidden>
+              <div class="calculation-card">
+                <div class="calculation-title">
+                  <strong>Linear Feet</strong>
+                  <span>$500 / linear ft</span>
+                </div>
+                <div class="field-grid two-tight">
+                  <label>
+                    Length
+                    <div class="unit-input">
+                      <input id="linearFeet" type="number" min="0" step="0.01">
+                      <span>ft</span>
+                    </div>
+                  </label>
+                  <label>
+                    Rate
+                    <div class="unit-input">
+                      <input id="linearRate" type="number" min="0" step="0.01" value="500">
+                      <span>$/ft</span>
+                    </div>
+                  </label>
+                </div>
+                <div class="calculation-result">
+                  <span>Linear foot total</span>
+                  <strong id="linearCalcTotal">$0.00</strong>
+                </div>
+                <button type="button" id="useLinearTotal">Use as Total</button>
+              </div>
+
+              <div class="calculation-card">
+                <div class="calculation-title">
+                  <strong>Square Feet</strong>
+                  <span>$75 / sq ft</span>
+                </div>
+                <div class="field-grid three-tight">
+                  <label>
+                    Length
+                    <div class="unit-input">
+                      <input id="squareLength" type="number" min="0" step="0.01">
+                      <span>ft</span>
+                    </div>
+                  </label>
+                  <label>
+                    Width/Height
+                    <div class="unit-input">
+                      <input id="squareWidth" type="number" min="0" step="0.01">
+                      <span>ft</span>
+                    </div>
+                  </label>
+                  <label>
+                    Rate
+                    <div class="unit-input">
+                      <input id="squareRate" type="number" min="0" step="0.01" value="75">
+                      <span>$/sf</span>
+                    </div>
+                  </label>
+                </div>
+                <div class="calculation-result">
+                  <span>Square foot total</span>
+                  <strong id="squareCalcTotal">$0.00</strong>
+                </div>
+                <button type="button" id="useSquareTotal">Use as Total</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-header">
+              <h2>Adjustments</h2>
+            </div>
+            <div class="field-grid three">
+              <label>
+                Total
+                <div class="unit-input">
+                  <input id="flatTotal" type="number" min="0" step="0.01">
+                  <span>$</span>
+                </div>
+              </label>
+              <label>
+                Discount
+                <div class="unit-input">
+                  <input id="discount" type="number" min="0" step="0.01">
+                  <select id="discountType" aria-label="Discount type">
+                    <option value="dollar">$</option>
+                    <option value="percent">%</option>
+                  </select>
+                </div>
+              </label>
+              <label>
+                Tax
+                <span class="checkbox-line">
+                  <input id="taxEnabled" type="checkbox">
+                  Apply tax
+                </span>
+                <div class="unit-input">
+                  <input id="taxRate" type="number" min="0" step="0.01">
+                  <select id="taxType" aria-label="Tax type">
+                    <option value="percent">%</option>
+                    <option value="dollar">$</option>
+                  </select>
+                </div>
+              </label>
+              <label class="estimate-deposit-field">
+                Deposit
+                <div class="unit-input">
+                  <input id="depositRate" type="number" min="0" max="100" step="1">
+                  <span>%</span>
+                </div>
+              </label>
+              <label class="invoice-payment-field invoice-initial-payment">
+                1st Deposit
+                <div class="unit-input">
+                  <input id="invoiceInitialDeposit" type="number" min="0" step="0.01">
+                  <span>$</span>
+                </div>
+              </label>
+              <label class="invoice-payment-field invoice-second-payment">
+                2nd Deposit
+                <div class="unit-input">
+                  <input id="invoiceSecondDeposit" type="number" min="0" step="0.01">
+                  <span>$</span>
+                </div>
+              </label>
+              <label class="invoice-payment-field invoice-final-payment">
+                Final Payment
+                <div class="unit-input">
+                  <input id="invoiceFinalPayment" type="number" min="0" step="0.01">
+                  <span>$</span>
+                </div>
+              </label>
+              <label class="email-send-toggle invoice-payment-field wide">
+                <input id="invoicePaidCheckbox" type="checkbox">
+                Add PAID IN FULL
+              </label>
+              <label class="wide">
+                Notes
+                <textarea id="notes" rows="4"></textarea>
+              </label>
+              <label class="wide">
+                Additional Notes
+                <textarea id="additionalNotes" rows="3"></textarea>
+              </label>
+              <label class="email-send-toggle wide">
+                <input id="addFooterValueNote" type="checkbox">
+                Add value and price-matching footer note
+              </label>
+            </div>
+            <p class="submit-status" id="submitStatus" role="status"></p>
+          </section>
+        </form>
+
+        <aside class="preview" id="estimatePreview" aria-live="polite">
+          <div class="preview-heading">
+            <div>
+              <p class="eyebrow">Estimate Draft</p>
+              <h2>Review Copy</h2>
+            </div>
+            <button class="icon-button" type="button" data-action-button="print" title="Print estimate" aria-label="Print estimate">PDF</button>
+          </div>
+          <div class="estimate-sheet" id="estimateSheet">
+            <div class="simple-sheet-header">
+              <div class="logo-card">
+                <img src="assets/d2-logo.png" alt="D2 Carpentry and Design logo">
+              </div>
+              <div class="simple-title">
+                <div class="brand-title-lockup">
+                  <h2 id="previewCompany">D2 Carpentry & Design</h2>
+                  <p>-Crafting Your Vision One Nail At A Time-</p>
+                </div>
+              </div>
+              <div class="header-estimate-info">
+                <span class="header-estimate-number" id="previewEstimateNumber"></span>
+                <div class="estimate-title-line">
+                  <h3 id="previewEstimateTitle">Estimate</h3>
+                </div>
+                <dl>
+                  <div><dt>Date</dt><dd id="previewDate"></dd></div>
+                  <div><dt>Office</dt><dd><a id="previewCompanyPhone" href="tel:+12394698555"></a></dd></div>
+                  <div><dt>Address</dt><dd id="previewCompanyAddress"></dd></div>
+                  <div><dt>Email</dt><dd><a id="previewCompanyEmail" href="mailto:D2CarpentryandDesign@gmail.com"></a></dd></div>
+                </dl>
+              </div>
+            </div>
+
+            <div class="client-block">
+              <div>
+                <span>Client Information</span>
+                <p><b class="client-field-label">Name</b> <em id="previewClient">Client name</em></p>
+                <p><b class="client-field-label">Phone</b> <a id="previewPhone"></a></p>
+                <p><b class="client-field-label">Email</b> <a id="previewClientEmail"></a></p>
+                <p><b class="client-field-label">Address</b> <a id="previewAddress" target="_blank" rel="noopener"></a></p>
+              </div>
+            </div>
+
+            <table>
+              <colgroup>
+                <col class="description-column">
+                <col class="qty-column">
+                <col class="total-column">
+              </colgroup>
+              <thead>
+                <tr>
+                  <th>Description</th>
+                  <th>Qty</th>
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody id="previewRows"></tbody>
+            </table>
+
+            <div class="totals">
+              <div id="subtotalRow"><span>Subtotal</span><strong id="subtotal">$0.00</strong></div>
+              <div id="discountRow"><span>Discount</span><strong id="discountTotal">$0.00</strong></div>
+              <div id="taxRow"><span>Tax</span><strong id="taxTotal">$0.00</strong></div>
+              <strong class="invoice-paid-stamp" id="invoicePaidStamp" hidden>PAID IN FULL</strong>
+              <div class="grand-total"><span>Total</span><strong id="grandTotal">$0.00</strong></div>
+              <div id="depositRow"><span id="depositLabel">Deposit Due</span><strong id="depositDue">$0.00</strong></div>
+            </div>
+
+            <div class="notes">
+              <span>Notes</span>
+              <p id="previewNotes"></p>
+            </div>
+
+            <div class="notes additional-notes" id="previewAdditionalNotesBlock" hidden>
+              <p id="previewAdditionalNotes"></p>
+            </div>
+
+            <div class="notes footer-value-note" id="previewFooterValueNoteBlock" hidden>
+              <p id="previewFooterValueNote"></p>
+            </div>
+
+            <div class="project-images" id="previewPhotosSection">
+              <span>Project Images</span>
+              <div class="project-image-grid" id="previewPhotos"></div>
+            </div>
+
+            <div class="internal-summary" id="internalSummary" hidden>
+              <span>Supply List</span>
+              <div class="internal-material-list" id="internalMaterialList"></div>
+              <div><strong>Material Cost</strong><b id="internalMaterialCost">$0.00</b></div>
+              <div><strong>Estimate Total</strong><b id="internalEstimateTotal">$0.00</b></div>
+              <div><strong>Projected Gross</strong><b id="internalGrossProfit">$0.00</b></div>
+            </div>
+
+            <footer class="estimate-footer">
+              <span class="footer-contact"><strong>Office:</strong> <span id="previewFooterPhone">(239) 469-8555</span></span>
+              <span class="footer-contact"><strong>Email:</strong> <span id="previewFooterEmail">D2CarpentryandDesign@gmail.com</span></span>
+              <span class="footer-contact footer-address"><strong>Address:</strong> <span id="previewFooterAddress"></span></span>
+            </footer>
+          </div>
+        </aside>
+
+        <aside class="preview payment-preview" id="paymentInvoicePreview" aria-live="polite" hidden>
+          <div class="preview-heading">
+            <div>
+              <p class="eyebrow">Payment Draft</p>
+              <h2>Payment Invoice</h2>
+            </div>
+            <button class="icon-button" type="button" id="printPaymentInvoice" title="Print payment invoice" aria-label="Print payment invoice">PDF</button>
+          </div>
+          <iframe id="paymentInvoiceFrame" title="Payment invoice preview"></iframe>
+        </aside>
+
+        <aside class="preview payment-preview assignment-preview" id="assignmentSheetPreview" aria-live="polite" hidden>
+          <div class="preview-heading">
+            <div>
+              <p class="eyebrow">Employee Draft</p>
+              <h2>Assignment</h2>
+            </div>
+            <div class="preview-heading-actions">
+              <button class="icon-button" type="button" id="assignmentEnglish" title="Generate English assignment" aria-label="Generate English assignment">English</button>
+              <button class="icon-button" type="button" id="assignmentSpanish" title="Generate Spanish assignment" aria-label="Generate Spanish assignment">Spanish</button>
+              <button class="icon-button" type="button" id="printAssignmentSheet" title="Print assignment sheet" aria-label="Print assignment sheet">PDF</button>
+            </div>
+          </div>
+          <iframe id="assignmentSheetFrame" title="Assignment sheet preview" style="display:block;width:100%;min-height:820px;"></iframe>
+        </aside>
+      </section>
+
+      <footer class="bottom-actions">
+        <div class="top-actions">
+          <button type="button" class="icon-button" data-action-button="submit" title="Create Dashboard lead from this estimate" aria-label="Create Dashboard lead from this estimate">Create Lead</button>
+          <button type="button" class="icon-button" data-action-button="new" title="New estimate" aria-label="New estimate">+ New</button>
+          <button type="button" class="icon-button" data-action-button="open-file" title="Open editable estimate file" aria-label="Open editable estimate file">Open File</button>
+          <button type="button" class="icon-button" data-action-button="save" title="Save editable estimate file" aria-label="Save editable estimate file">Save</button>
+          <label class="view-select-wrap">
+            <select data-document-view-select aria-label="Choose document view">
+              <option value="">Version</option>
+              <option value="customer">Customer</option>
+              <option value="internal">Office</option>
+              <option value="team">Team</option>
+              <option value="supply">Supplies</option>
+              <option value="payment">Payment</option>
+              <option value="assignment">Assignment</option>
+            </select>
+          </label>
+          <button type="button" class="icon-button" data-action-button="invoice" title="Generate invoice" aria-label="Generate invoice">Invoice</button>
+          <div class="share-menu">
+            <button type="button" class="icon-button" data-share-toggle aria-expanded="false">Share</button>
+            <div class="share-options" hidden>
+              <button type="button" data-share-action="pdf">PDF</button>
+              <button type="button" data-share-action="email">Email</button>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </main>
+    <script src="vendor/jspdf.umd.min.js"></script>
+    <script src="vendor/html2canvas.min.js"></script>
+    <script src="materials-database.js?v=20260804-price-update-2"></script>
+    <script src="app.js?v=20260809-estimator-action-menu"></script>
+  </body>
+</html>
