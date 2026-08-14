@@ -87,6 +87,7 @@ function mergeFiles(existing = [], incoming = []) {
     merged.set(key, {
       ...prior,
       ...file,
+      freshExpenseReceipts: mergeReceiptHistory(prior.freshExpenseReceipts, file.freshExpenseReceipts),
       expenseReceipts: mergeReceiptHistory(prior.expenseReceipts, file.expenseReceipts),
       expenseLines: mergeExpenseLines(prior.expenseLines, file.expenseLines),
       receiptHistory: mergeReceiptHistory(prior.receiptHistory, file.receiptHistory),

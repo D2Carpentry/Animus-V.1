@@ -163,6 +163,7 @@ function normalizeFile(file = {}) {
     followUpDate: file.followUpDate || "",
     anticipatedCompletionDate: file.anticipatedCompletionDate || "",
     editableEstimate: file.editableEstimate || null,
+    freshExpenseReceipts: Array.isArray(file.freshExpenseReceipts) ? file.freshExpenseReceipts : [],
     expenseReceipts: Array.isArray(file.expenseReceipts) ? file.expenseReceipts : [],
     expenseLines: Array.isArray(file.expenseLines) ? file.expenseLines : [],
     receiptHistory: Array.isArray(file.receiptHistory) ? file.receiptHistory : [],
@@ -272,6 +273,7 @@ function mergeMobileRows(primary = [], secondary = []) {
     merged.set(key, {
       ...prior,
       ...row,
+      freshExpenseReceipts: mergeMobileReceiptHistory(prior.freshExpenseReceipts, row.freshExpenseReceipts),
       expenseReceipts: mergeMobileReceiptHistory(prior.expenseReceipts, row.expenseReceipts),
       expenseLines: mergeMobileExpenseLines(prior.expenseLines, row.expenseLines),
       receiptHistory: mergeMobileReceiptHistory(prior.receiptHistory, row.receiptHistory),
