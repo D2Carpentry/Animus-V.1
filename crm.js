@@ -3683,15 +3683,22 @@ function normalizeReceiptProduct(value) {
   return String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ");
 }
 
-function updatePriceDatabaseFromReceipt() {
-  captureReceiptDraftFields();
-  const usableLines = receiptDraft.lines
+function importLinesToPriceDatabase(lines = [], options = {}) {
+  const usableLines = lines
+    .map((line) => ({
+      product: line.product || line.description || line.name || "",
+      price: line.price || line.baseAmount || line.amount || "",
+      category: line.category || options.category || "Supplies",
+      unit: line.unit || "each",
+      use: line.use,
+    }))
     .filter((line) => line.use !== false && line.product && parseMoney(line.price) > 0);
   if (!usableLines.length) {
     window.alert("Add at least one checked receipt line with an item name and price.");
-    return;
+    return { updatedCount: 0, addedCount: 0 };
   }
-  const today = receiptDraft.date || todayIso(0);
+  const today = options.date || todayIso(0);
+  const vendor = options.vendor || "";
   let updatedCount = 0;
   let addedCount = 0;
   usableLines.forEach((line) => {
@@ -3704,10 +3711,10 @@ function updatePriceDatabaseFromReceipt() {
       sourceId: existing?.readonly ? existing.id : existing?.sourceId,
       product: line.product,
       name: line.product,
-      category: line.category || receiptDraft.category || existing?.category || "Supplies",
+      category: line.category || options.category || existing?.category || "Supplies",
       unit: line.unit || existing?.unit || "each",
-      vendor: receiptDraft.vendor || existing?.vendor || existing?.source || "",
-      source: receiptDraft.vendor || existing?.vendor || existing?.source || "",
+      vendor: vendor || existing?.vendor || existing?.source || "",
+      source: vendor || existing?.vendor || existing?.source || "",
       priceLow: price,
       priceHigh: price,
       defaultPrice: price,
@@ -3725,7 +3732,27 @@ function updatePriceDatabaseFromReceipt() {
   });
   savePriceRows();
   renderPriceDatabase();
+  return { updatedCount, addedCount };
+}
+
+function updatePriceDatabaseFromReceipt() {
+  captureReceiptDraftFields();
+  const { updatedCount, addedCount } = importLinesToPriceDatabase(receiptDraft.lines, {
+    vendor: receiptDraft.vendor,
+    date: receiptDraft.date,
+    category: receiptDraft.category,
+  });
   $("crmReceiptStatus").textContent = `${updatedCount} updated, ${addedCount} added to the Price Database.`;
+}
+
+function importFileReceiptToPriceDatabase() {
+  captureFileReceiptReviewFields();
+  const { updatedCount, addedCount } = importLinesToPriceDatabase(fileReceiptDraft.lines, {
+    vendor: fileReceiptDraft.vendor,
+    date: fileReceiptDraft.date,
+    category: fileReceiptDraft.category,
+  });
+  setFileReceiptStatus(`${updatedCount} updated, ${addedCount} added to the Parts Database.`, "good");
 }
 
 function invoiceLineItemsFromEstimate(file) {
@@ -4878,6 +4905,7 @@ $("crmReceiptUpload").addEventListener("change", (event) => {
   event.target.value = "";
 });
 $("crmReadReceiptText").addEventListener("click", readPastedReceiptTextForFile);
+$("crmImportReceiptToPrices").addEventListener("click", importFileReceiptToPriceDatabase);
 $("crmSaveScannedReceipt").addEventListener("click", saveScannedReceiptToFile);
 $("crmClearScannedReceipt").addEventListener("click", clearFileReceiptDraft);
 $("crmAddReceiptExpenseLine").addEventListener("click", addFileReceiptExpenseLine);
