@@ -2467,7 +2467,15 @@ body[data-copy-mode="team"] .estimate-sheet td:first-child {
 }
 
 .crm-expenses-layout {
-  grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.crm-file-receipt-panel {
+  order: 1;
+}
+
+.crm-file-expenses-panel {
+  order: 2;
 }
 
 .crm-receipt-layout {
