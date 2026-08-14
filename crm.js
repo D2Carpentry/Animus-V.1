@@ -288,6 +288,7 @@ function mergeDashboardFileRecords(primaryFile = {}, secondaryFile = {}) {
   return {
     ...primaryFile,
     ...secondaryFile,
+    expenseReceipts: mergeReceiptHistoryArrays(primaryFile.expenseReceipts, secondaryFile.expenseReceipts),
     expenseLines: mergeExpenseLineArrays(primaryFile.expenseLines, secondaryFile.expenseLines),
     receiptHistory: mergeReceiptHistoryArrays(primaryFile.receiptHistory, secondaryFile.receiptHistory),
   };
@@ -1066,6 +1067,7 @@ function normalizeCrmFile(file) {
   if (!Array.isArray(file.timeline)) file.timeline = [];
   if (!Array.isArray(file.expenseLines)) file.expenseLines = [];
   if (!Array.isArray(file.receiptHistory)) file.receiptHistory = [];
+  if (!Array.isArray(file.expenseReceipts)) file.expenseReceipts = [];
   restoreExpenseLinesFromReceiptHistory(file);
   file.projectStage = file.projectStage || inferProjectStage(file.fileStatus);
   file.projectType = normalizeProjectType(file.projectType);
@@ -4001,6 +4003,357 @@ function saveScannedReceiptToFile() {
   }
   upsertReceiptHistoryGroup(file, receiptGroupId, receiptLines);
   addSystemNote(file, `Receipt expense ${isEditingSavedReceipt ? "updated" : "saved"}${vendor ? ` from ${vendor}` : ""} for ${crmCurrency.format(receiptTotal)}.`);
+  syncFileExpensesToRevenue(file);
+  saveCrmFiles();
+  fileReceiptDraft = blankFileReceiptDraft();
+  renderFileExpenses();
+  setFileReceiptStatus("Receipt saved to this file.", "good");
+  saveExpenseChangeToCloud("Receipt saved to Cloudflare.");
+}
+
+function cleanExpenseReceiptLine(line = {}) {
+  return {
+    id: line.id || makeCrmId("expenseLine"),
+    use: line.use !== false,
+    description: line.description || line.note || "",
+    category: line.category || "Supplies",
+    price: line.price === undefined ? (line.baseAmount || line.amount || "") : line.price,
+    addTax: line.addTax !== false,
+    taxRate: Number(line.taxRate) || DEFAULT_EXPENSE_TAX_RATE,
+  };
+}
+
+function expenseReceiptLineTotal(line = {}) {
+  const price = parseMoney(line.price);
+  if (line.use === false) return 0;
+  return line.addTax ? price + (price * (Number(line.taxRate) || DEFAULT_EXPENSE_TAX_RATE)) : price;
+}
+
+function cleanExpenseReceipt(receipt = {}) {
+  const lines = Array.isArray(receipt.lines) ? receipt.lines.map(cleanExpenseReceiptLine) : [];
+  return {
+    id: receipt.id || makeCrmId("receipt"),
+    createdAt: receipt.createdAt || new Date().toISOString(),
+    updatedAt: receipt.updatedAt || receipt.createdAt || new Date().toISOString(),
+    date: receipt.date || todayIso(0),
+    vendor: receipt.vendor || "",
+    category: receipt.category || "Supplies",
+    paymentType: receipt.paymentType || "",
+    paymentCard: receipt.paymentCard || "",
+    imageTitle: receipt.imageTitle || receipt.receiptFileName || receipt.fileName || "",
+    fileName: receipt.fileName || receipt.receiptFileName || "",
+    imageDataUrl: receipt.imageDataUrl || receipt.receiptDataUrl || "",
+    notes: receipt.notes || "",
+    lines,
+  };
+}
+
+function receiptFromDraft(draft = fileReceiptDraft, receiptId = makeCrmId("receipt")) {
+  const lines = usableReceiptDraftLines(draft).map((line) => cleanExpenseReceiptLine({
+    description: line.description || draft.notes || draft.fileName || "Receipt expense",
+    category: line.category || selectedFileReceiptCategoryForDraft(draft),
+    price: line.price || draft.amount || "",
+    addTax: line.addTax !== false,
+    taxRate: receiptTaxRateForDraft(draft) || DEFAULT_EXPENSE_TAX_RATE,
+  }));
+  if (!lines.length && (parseMoney(draft.amount) || draft.vendor || draft.notes || draft.imageDataUrl)) {
+    lines.push(cleanExpenseReceiptLine({
+      description: draft.notes || draft.imageTitle || draft.fileName || "Receipt expense",
+      category: selectedFileReceiptCategoryForDraft(draft),
+      price: draft.amount || "",
+      addTax: false,
+      taxRate: DEFAULT_EXPENSE_TAX_RATE,
+    }));
+  }
+  return cleanExpenseReceipt({
+    id: receiptId,
+    date: draft.date || todayIso(0),
+    vendor: draft.vendor || "",
+    category: selectedFileReceiptCategoryForDraft(draft),
+    paymentType: draft.paymentType || "",
+    paymentCard: draft.paymentCard || "",
+    imageTitle: draft.imageTitle || draft.fileName || "",
+    fileName: draft.fileName || "",
+    imageDataUrl: draft.imageDataUrl || "",
+    notes: draft.notes || "",
+    lines,
+  });
+}
+
+function receiptTotal(receipt = {}) {
+  return (Array.isArray(receipt.lines) ? receipt.lines : []).reduce((sum, line) => sum + expenseReceiptLineTotal(line), 0);
+}
+
+function ensureExpenseReceipts(file) {
+  if (!file) return [];
+  file.expenseReceipts = Array.isArray(file.expenseReceipts) ? file.expenseReceipts.map(cleanExpenseReceipt) : [];
+  if (!file.expenseReceipts.length && Array.isArray(file.receiptHistory) && file.receiptHistory.length) {
+    file.expenseReceipts = file.receiptHistory.map((entry) => cleanExpenseReceipt({
+      id: entry.id,
+      createdAt: entry.savedAt,
+      updatedAt: entry.updatedAt,
+      date: entry.date,
+      vendor: entry.vendor,
+      category: entry.category,
+      paymentType: entry.paymentType,
+      imageTitle: entry.label,
+      lines: Array.isArray(entry.lines) ? entry.lines.map((line) => ({
+        id: line.id,
+        description: line.note,
+        category: line.category,
+        price: line.baseAmount || line.amount,
+        addTax: Boolean(line.addTax),
+        taxRate: line.taxRate,
+        receiptDataUrl: line.receiptDataUrl,
+      })) : [],
+      imageDataUrl: Array.isArray(entry.lines) ? (entry.lines.find((line) => line.receiptDataUrl)?.receiptDataUrl || "") : "",
+    })).filter((receipt) => receipt.lines.length);
+  }
+  rebuildExpenseLinesFromReceipts(file);
+  return file.expenseReceipts;
+}
+
+function rebuildExpenseLinesFromReceipts(file) {
+  if (!file) return;
+  file.expenseReceipts = Array.isArray(file.expenseReceipts) ? file.expenseReceipts.map(cleanExpenseReceipt) : [];
+  file.expenseLines = file.expenseReceipts.flatMap((receipt) => {
+    return receipt.lines
+      .filter((line) => line.use !== false)
+      .map((line, index) => {
+        const baseAmount = parseMoney(line.price);
+        const taxRate = Number(line.taxRate) || DEFAULT_EXPENSE_TAX_RATE;
+        const tax = line.addTax ? baseAmount * taxRate : 0;
+        return {
+          id: line.id || makeCrmId("expense"),
+          receiptGroupId: receipt.id,
+          date: receipt.date || todayIso(0),
+          category: line.category || receipt.category || "Supplies",
+          vendor: receipt.vendor || "",
+          note: line.description || receipt.notes || "Receipt expense",
+          baseAmount,
+          amount: baseAmount + tax,
+          tax,
+          addTax: Boolean(line.addTax),
+          taxRate,
+          paymentType: [receipt.paymentType, receipt.paymentCard].filter(Boolean).join(" - "),
+          receiptFileName: receipt.imageTitle || receipt.fileName || "",
+          receiptDataUrl: index === 0 ? (receipt.imageDataUrl || "") : "",
+          receiptSource: "Saved receipt",
+        };
+      });
+  });
+  file.receiptHistory = file.expenseReceipts.map((receipt) => receiptHistoryEntryFromLines(receipt.id, file.expenseLines.filter((line) => line.receiptGroupId === receipt.id), {
+    savedAt: receipt.createdAt,
+    updatedAt: receipt.updatedAt,
+    label: receipt.imageTitle || receipt.vendor || receipt.notes || "Saved receipt",
+    date: receipt.date,
+    vendor: receipt.vendor,
+    category: receipt.category,
+    paymentType: [receipt.paymentType, receipt.paymentCard].filter(Boolean).join(" - "),
+  }));
+}
+
+function renderReceiptHistory(file) {
+  const list = $("crmReceiptHistoryList");
+  if (!list) return;
+  if (!file) {
+    list.innerHTML = `<p class="crm-empty-state">Select a file to see saved receipts and expenses.</p>`;
+    return;
+  }
+  const receipts = ensureExpenseReceipts(file);
+  if (!receipts.length) {
+    list.innerHTML = `<p class="crm-empty-state">No saved receipts or expenses yet.</p>`;
+    return;
+  }
+  list.innerHTML = receipts
+    .slice()
+    .sort((a, b) => String(b.updatedAt || b.createdAt || "").localeCompare(String(a.updatedAt || a.createdAt || "")))
+    .map((receipt) => {
+      const meta = [
+        receipt.date || todayIso(0),
+        receipt.vendor || "",
+        receipt.lines.length ? `${receipt.lines.length} line${receipt.lines.length === 1 ? "" : "s"}` : "",
+        [receipt.paymentType, receipt.paymentCard].filter(Boolean).join(" - "),
+      ].filter(Boolean).join(" · ");
+      return `
+        <button type="button" class="crm-receipt-history-item" data-file-receipt-group-open="${escapeHtml(receipt.id)}">
+          <span>
+            <strong>${escapeHtml(receipt.imageTitle || receipt.vendor || receipt.notes || "Saved receipt")}</strong>
+            <small>${escapeHtml(meta || "Saved expense")}</small>
+          </span>
+          <b>${crmCurrency.format(receiptTotal(receipt))}</b>
+        </button>
+      `;
+    }).join("");
+  document.querySelectorAll("[data-file-receipt-group-open]").forEach((button) => {
+    button.addEventListener("click", () => openSavedExpenseGroupInReceiptEditor(button.dataset.fileReceiptGroupOpen));
+  });
+}
+
+function renderFileExpenses() {
+  const file = normalizeCrmFile(activeFile());
+  const title = $("crmExpensesFileTitle");
+  const heading = $("crmExpensesHeading");
+  const total = $("crmFileExpenseTotal");
+  const rows = $("crmFileExpenseRows");
+  if (!file) {
+    title.textContent = "Select a file to track expenses.";
+    heading.textContent = "No file selected";
+    total.textContent = crmCurrency.format(0);
+    rows.innerHTML = `<tr><td colspan="9">No file selected.</td></tr>`;
+    fileReceiptDraft = blankFileReceiptDraft();
+    bulkReceiptDrafts = [];
+    renderFileReceiptDraft();
+    renderReceiptHistory(null);
+    renderBulkReceiptReview();
+    return;
+  }
+  ensureExpenseReceipts(file);
+  title.textContent = `${file.fileNumber || "Project"} · ${file.clientName || "Unnamed Client"}`;
+  heading.textContent = file.clientName || "Unnamed Client";
+  total.textContent = crmCurrency.format(fileExpenseTotal(file));
+  rows.innerHTML = (file.expenseLines || []).map((line) => {
+    const baseAmount = expenseLineBaseAmount(line);
+    const taxAmount = expenseLineTaxAmount(line);
+    const totalAmount = receiptExpenseLineAmount(line);
+    const notePreview = line.note ? line.note.split(/\s+/).slice(0, 5).join(" ") : "Add details";
+    return `
+      <tr>
+        <td><input class="crm-revenue-input" type="date" value="${escapeHtml(line.date || todayIso(0))}" data-file-expense-field="date" data-file-expense-id="${escapeHtml(line.id)}"></td>
+        <td>${escapeHtml(line.category || "Supplies")}</td>
+        <td>${escapeHtml(line.vendor || "")}</td>
+        <td><button type="button" class="crm-expense-note-button" data-file-expense-note="${escapeHtml(line.id)}"><span>${escapeHtml(notePreview)}</span></button></td>
+        <td>${crmCurrency.format(baseAmount)}</td>
+        <td class="crm-expense-tax-toggle">${line.addTax ? `Yes <small>${crmCurrency.format(taxAmount)}</small>` : "No"}</td>
+        <td><strong>${crmCurrency.format(totalAmount)}</strong></td>
+        <td><button type="button" data-file-expense-open="${escapeHtml(line.id)}">${line.receiptDataUrl ? "Open" : "Edit"}</button></td>
+        <td><button type="button" data-file-expense-delete="${escapeHtml(line.id)}">Delete</button></td>
+      </tr>
+    `;
+  }).join("") || `<tr><td colspan="9">No expenses added yet.</td></tr>`;
+  renderFileReceiptDraft();
+  renderReceiptHistory(file);
+  renderBulkReceiptReview();
+  document.querySelectorAll("[data-file-expense-note]").forEach((button) => {
+    button.addEventListener("click", () => openExpenseNoteModal(button.dataset.fileExpenseNote));
+  });
+  document.querySelectorAll("[data-file-expense-open]").forEach((button) => {
+    button.addEventListener("click", () => openSavedExpenseInReceiptEditor(button.dataset.fileExpenseOpen));
+  });
+  document.querySelectorAll("[data-file-expense-delete]").forEach((button) => {
+    button.addEventListener("click", () => deleteFileExpenseLine(button.dataset.fileExpenseDelete));
+  });
+}
+
+function openSavedExpenseGroupInReceiptEditor(groupId) {
+  const file = normalizeCrmFile(activeFile());
+  const receipt = ensureExpenseReceipts(file).find((entry) => entry.id === groupId);
+  if (!receipt) return;
+  const paymentType = receipt.paymentType || "";
+  fileReceiptDraft = {
+    ...blankFileReceiptDraft(),
+    imageDataUrl: receipt.imageDataUrl || "",
+    fileName: receipt.fileName || "",
+    imageTitle: receipt.imageTitle || receipt.fileName || "",
+    vendor: receipt.vendor || "",
+    date: receipt.date || "",
+    category: ["Supplies", "Materials", "Fuel", "Equipment"].includes(receipt.category) ? receipt.category : (receipt.category ? "Other" : "Supplies"),
+    customCategory: ["Supplies", "Materials", "Fuel", "Equipment"].includes(receipt.category) ? "" : (receipt.category || ""),
+    amount: receiptTotal(receipt).toFixed(2),
+    paymentType,
+    paymentCard: receipt.paymentCard || "",
+    notes: receipt.notes || "",
+    lines: receipt.lines.map((line) => blankFileReceiptLine(line)),
+    isEditingSavedReceipt: true,
+    editingReceiptGroupId: receipt.id,
+    status: "Editing a saved receipt. Save Expense will update this receipt.",
+    aiAvailable: false,
+  };
+  renderFileReceiptDraft();
+  $("crmFileReceiptReview")?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function openSavedExpenseInReceiptEditor(lineId) {
+  const file = normalizeCrmFile(activeFile());
+  const line = file?.expenseLines?.find((entry) => entry.id === lineId);
+  if (!line) return;
+  openSavedExpenseGroupInReceiptEditor(line.receiptGroupId || line.id);
+}
+
+function addFileExpenseLine() {
+  const file = normalizeCrmFile(activeFile());
+  if (!file) {
+    window.alert("Select a customer file before adding an expense.");
+    return;
+  }
+  const receipt = cleanExpenseReceipt({
+    imageTitle: "Manual Expense",
+    notes: "",
+    lines: [cleanExpenseReceiptLine({ description: "Manual expense", price: "", addTax: false })],
+  });
+  file.expenseReceipts.unshift(receipt);
+  rebuildExpenseLinesFromReceipts(file);
+  addSystemNote(file, "Manual expense added.");
+  syncFileExpensesToRevenue(file);
+  saveCrmFiles();
+  renderFileExpenses();
+  saveExpenseChangeToCloud("Expense line saved to Cloudflare.");
+}
+
+function deleteFileExpenseLine(lineId) {
+  const file = normalizeCrmFile(activeFile());
+  if (!file) return;
+  const line = file.expenseLines.find((entry) => entry.id === lineId);
+  const groupId = line?.receiptGroupId || line?.id || lineId;
+  file.expenseReceipts = ensureExpenseReceipts(file).filter((receipt) => receipt.id !== groupId);
+  rebuildExpenseLinesFromReceipts(file);
+  addSystemNote(file, "Expense receipt deleted.");
+  syncFileExpensesToRevenue(file);
+  saveCrmFiles();
+  renderFileExpenses();
+  saveExpenseChangeToCloud("Expense deleted and saved to Cloudflare.");
+}
+
+function saveBulkReceiptsToFile() {
+  const file = normalizeCrmFile(activeFile());
+  if (!file) {
+    window.alert("Select a customer file before saving receipts.");
+    return;
+  }
+  const receipts = bulkReceiptDrafts.map((draft) => receiptFromDraft(draft)).filter((receipt) => receipt.lines.length);
+  if (!receipts.length) {
+    window.alert("No receipt details were ready to save.");
+    return;
+  }
+  file.expenseReceipts = [...receipts, ...ensureExpenseReceipts(file)];
+  rebuildExpenseLinesFromReceipts(file);
+  addSystemNote(file, `${receipts.length} receipt${receipts.length === 1 ? "" : "s"} saved to expenses.`);
+  syncFileExpensesToRevenue(file);
+  saveCrmFiles();
+  bulkReceiptDrafts = [];
+  renderFileExpenses();
+  setFileReceiptStatus("Receipt batch saved to this file.", "good");
+  saveExpenseChangeToCloud("Receipt batch saved to Cloudflare.");
+}
+
+function saveScannedReceiptToFile() {
+  const file = normalizeCrmFile(activeFile());
+  if (!file) {
+    window.alert("Select a customer file before saving a receipt.");
+    return;
+  }
+  captureFileReceiptReviewFields();
+  const isEditingSavedReceipt = Boolean(fileReceiptDraft.isEditingSavedReceipt && fileReceiptDraft.editingReceiptGroupId);
+  const receiptId = isEditingSavedReceipt ? fileReceiptDraft.editingReceiptGroupId : makeCrmId("receipt");
+  const receipt = receiptFromDraft(fileReceiptDraft, receiptId);
+  if (!receipt.lines.length) {
+    setFileReceiptStatus("Add receipt details before saving.", "warn");
+    return;
+  }
+  file.expenseReceipts = ensureExpenseReceipts(file).filter((entry) => entry.id !== receiptId);
+  file.expenseReceipts.unshift({ ...receipt, updatedAt: new Date().toISOString() });
+  rebuildExpenseLinesFromReceipts(file);
+  addSystemNote(file, `Receipt expense ${isEditingSavedReceipt ? "updated" : "saved"}${receipt.vendor ? ` from ${receipt.vendor}` : ""} for ${crmCurrency.format(receiptTotal(receipt))}.`);
   syncFileExpensesToRevenue(file);
   saveCrmFiles();
   fileReceiptDraft = blankFileReceiptDraft();
