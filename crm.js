@@ -636,6 +636,7 @@ function persistRestoredDashboardIfNeeded() {
 
 function buildDashboardSyncPayload() {
   captureCurrentDashboardEdits();
+  syncAllFileExpensesToRevenue();
   return {
     action: "dashboardSync",
     syncedAt: new Date().toISOString(),
@@ -731,6 +732,15 @@ async function fetchDashboardFromCloudflare() {
   return result.dashboard || null;
 }
 
+function saveExpenseChangeToCloud(message = "Expense saved to Cloudflare.") {
+  saveCrmFiles();
+  saveRevenueRows();
+  const payload = buildDashboardSyncPayload();
+  postPayloadToCloudflare(payload)
+    .then(() => showDashboardSaveStatus(message))
+    .catch(() => showDashboardSaveStatus("Expense saved in this browser, but cloud save did not finish. Click Save when the connection is steady.", true));
+}
+
 function postCalendarEventToGoogle(event) {
   return postPayloadToGoogle({
     action: "calendarEvent",
@@ -807,9 +817,19 @@ function captureVisibleFileExpenseEdits() {
     const line = file.expenseLines.find((entry) => entry.id === field.dataset.fileExpenseId);
     if (!line) return;
     const key = field.dataset.fileExpenseField;
-    line[key] = key === "amount" ? parseMoney(field.value) : field.value;
+    if (key === "addTax") {
+      line.addTax = Boolean(field.checked);
+    } else if (key === "baseAmount" || key === "amount") {
+      line.baseAmount = parseMoney(field.value);
+    } else {
+      line[key] = field.value;
+    }
+    line.taxRate = line.taxRate || DEFAULT_EXPENSE_TAX_RATE;
+    line.tax = line.addTax ? expenseLineTaxAmount(line) : 0;
+    line.amount = receiptExpenseLineAmount(line);
   });
   syncFileExpensesToRevenue(file);
+  saveCrmFiles();
 }
 
 function captureCurrentDashboardEdits() {
@@ -2875,13 +2895,56 @@ function fileExpenseTotal(file) {
   }, 0);
 }
 
+function revenueLabelForFile(file) {
+  return `${file?.clientName || "Unnamed Client"}${file?.fileNumber ? ` - ${file.fileNumber}` : ""}`;
+}
+
+function ensureExpenseRevenueRowForFile(file) {
+  if (!file) return null;
+  const existing = revenueRowForDashboardFile(file);
+  if (existing) return existing;
+  const expenses = fileExpenseTotal(file);
+  const gross = Number(file.estimateTotal) || Number(file.editableEstimate?.totals?.total) || 0;
+  if (!expenses && !gross) return null;
+  const row = {
+    id: makeCrmId("rev-file"),
+    date: todayIso(0),
+    dashboardFileId: file.id || "",
+    fileNumber: file.fileNumber || "",
+    clientJob: revenueLabelForFile(file),
+    gross,
+    expenses,
+    labor: 0,
+    profit: gross - expenses,
+    receiptNotes: "",
+    laborAssigns: "",
+    expenseLines: [],
+    attachedEstimate: file.editableEstimate
+      ? { ...file.editableEstimate, dashboardFileId: file.id || "", fileNumber: file.fileNumber || "" }
+      : { dashboardFileId: file.id || "", fileNumber: file.fileNumber || "" },
+  };
+  crmRevenueRows.unshift(row);
+  return row;
+}
+
 function syncFileExpensesToRevenue(file) {
   if (!file) return;
-  const row = revenueRowForDashboardFile(file);
+  const row = ensureExpenseRevenueRowForFile(file);
   if (!row) return;
+  row.dashboardFileId = file.id || row.dashboardFileId || "";
+  row.fileNumber = file.fileNumber || row.fileNumber || "";
+  if (!row.clientJob || row.clientJob === "Unnamed Client") row.clientJob = revenueLabelForFile(file);
   row.expenseLines = Array.isArray(file.expenseLines) ? file.expenseLines.map((line) => ({ ...line })) : [];
   syncRevenueExpenseTotal(row);
   saveRevenueRows();
+}
+
+function syncAllFileExpensesToRevenue() {
+  crmFiles.forEach((file) => {
+    if (Array.isArray(file.expenseLines) && file.expenseLines.length) {
+      syncFileExpensesToRevenue(file);
+    }
+  });
 }
 
 function blankFileReceiptDraft() {
@@ -3542,6 +3605,7 @@ function addFileExpenseLine() {
   syncFileExpensesToRevenue(file);
   saveCrmFiles();
   renderFileExpenses();
+  saveExpenseChangeToCloud("Expense line saved to Cloudflare.");
 }
 
 function updateFileExpenseField(field) {
@@ -3600,6 +3664,7 @@ function deleteFileExpenseLine(lineId) {
   syncFileExpensesToRevenue(file);
   saveCrmFiles();
   renderFileExpenses();
+  saveExpenseChangeToCloud("Expense deleted and saved to Cloudflare.");
 }
 
 function readUploadFileAsDataUrl(uploadFile) {
@@ -3713,6 +3778,7 @@ function saveBulkReceiptsToFile() {
   bulkReceiptDrafts = [];
   renderFileExpenses();
   setFileReceiptStatus("Receipt batch saved to this file.", "good");
+  saveExpenseChangeToCloud("Receipt batch saved to Cloudflare.");
 }
 
 function readPastedReceiptTextForFile() {
@@ -3764,6 +3830,7 @@ function saveScannedReceiptToFile() {
   fileReceiptDraft = blankFileReceiptDraft();
   renderFileExpenses();
   setFileReceiptStatus("Receipt saved to this file.", "good");
+  saveExpenseChangeToCloud("Receipt saved to Cloudflare.");
 }
 
 function updateRevenueField(field) {

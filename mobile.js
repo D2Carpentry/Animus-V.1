@@ -305,6 +305,7 @@ function googleScriptUrl() {
 
 function syncPayload() {
   captureDetailFields();
+  syncAllMobileFileExpensesToRevenue();
   return {
     action: "dashboardSync",
     syncedAt: new Date().toISOString(),
@@ -788,11 +789,43 @@ function findMobileRevenueRowForFile(file) {
 }
 
 function syncMobileFileExpensesToRevenue(file = activeFile()) {
-  const row = findMobileRevenueRowForFile(file);
+  const row = ensureMobileRevenueRowForFile(file);
   if (!row) return;
   row.expenses = mobileFileExpenseTotal(file);
   row.profit = (Number(row.gross) || 0) - (Number(row.expenses) || 0) - (Number(row.labor) || 0);
   row.expenseLines = Array.isArray(file.expenseLines) ? file.expenseLines.map((line) => ({ ...line })) : [];
+}
+
+function ensureMobileRevenueRowForFile(file) {
+  if (!file) return null;
+  const existing = findMobileRevenueRowForFile(file);
+  if (existing) return existing;
+  const expenseTotal = mobileFileExpenseTotal(file);
+  if (!expenseTotal && !Number(file.estimateTotal)) return null;
+  const row = {
+    id: makeId("rev-file"),
+    date: dateKey(new Date()),
+    dashboardFileId: file.id || "",
+    fileNumber: file.fileNumber || "",
+    clientJob: `${file.clientName || "Unnamed Client"}${file.fileNumber ? ` - ${file.fileNumber}` : ""}`,
+    gross: Number(file.estimateTotal) || 0,
+    expenses: expenseTotal,
+    labor: 0,
+    profit: (Number(file.estimateTotal) || 0) - expenseTotal,
+    receiptNotes: "",
+    laborAssigns: "",
+    expenseLines: Array.isArray(file.expenseLines) ? file.expenseLines.map((line) => ({ ...line })) : [],
+  };
+  mobileRevenueRows.unshift(row);
+  return row;
+}
+
+function syncAllMobileFileExpensesToRevenue() {
+  mobileFiles.forEach((file) => {
+    if (Array.isArray(file.expenseLines) && file.expenseLines.length) {
+      syncMobileFileExpensesToRevenue(file);
+    }
+  });
 }
 
 function hydrateMobileExpensesFromRevenue(fileToHydrate = null) {
@@ -1129,7 +1162,7 @@ async function handleMobileReceiptFile(file) {
   renderMobileExpenses();
 }
 
-function saveMobileReceiptExpense() {
+async function saveMobileReceiptExpense() {
   const file = activeFile();
   if (!file) {
     window.alert("Select a customer file before saving a receipt.");
@@ -1157,6 +1190,11 @@ function saveMobileReceiptExpense() {
   saveLocalData();
   renderAll();
   setTab("expenses");
+  try {
+    await saveCloud();
+  } catch (error) {
+    window.alert("Expense saved on this device, but cloud save did not complete. Tap Save when your connection is working.");
+  }
 }
 
 function openMobileSavedExpense(groupId) {
@@ -1199,9 +1237,10 @@ function deleteMobileExpenseGroup(groupId) {
   saveLocalData();
   renderAll();
   setTab("expenses");
+  saveCloud().catch(() => {});
 }
 
-function addMobileManualExpense() {
+async function addMobileManualExpense() {
   const file = activeFile();
   if (!file) {
     window.alert("Select a customer file before adding an expense.");
@@ -1242,6 +1281,11 @@ function addMobileManualExpense() {
   saveLocalData();
   renderAll();
   setTab("expenses");
+  try {
+    await saveCloud();
+  } catch (error) {
+    window.alert("Expense saved on this device, but cloud save did not complete. Tap Save when your connection is working.");
+  }
 }
 
 function loadMobileEstimator() {
