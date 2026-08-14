@@ -32,7 +32,7 @@ window.D2_REVENUE_ROWS = [
   { id: "rev-sheet-31", date: "", clientJob: "Brian- Welks", gross: 0, expenses: 12.34, labor: 0, profit: -12.34, receiptNotes: "SW: 12.34 (Paint Sample)", laborAssigns: "" },
 ];
 
-window.addEventListener("load", () => {
+function installD2ExpenseRepair() {
   if (window.D2_EXPENSE_REPAIR_READY) return;
   window.D2_EXPENSE_REPAIR_READY = true;
 
@@ -428,4 +428,10 @@ window.addEventListener("load", () => {
   });
 
   if (!$("crmExpensesView")?.hidden) freshRenderFileExpenses();
-});
+}
+
+if (document.readyState === "loading") {
+  window.addEventListener("load", installD2ExpenseRepair, { once: true });
+} else {
+  installD2ExpenseRepair();
+}
