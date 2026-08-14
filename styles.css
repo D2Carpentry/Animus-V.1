@@ -2651,8 +2651,6 @@ body[data-copy-mode="team"] .estimate-sheet td:first-child {
   display: grid;
   gap: 14px;
   margin-top: 14px;
-  padding-top: 14px;
-  border-top: 1px solid #e4e8ef;
 }
 
 .crm-file-receipt-review[hidden] {
@@ -2677,6 +2675,32 @@ body[data-copy-mode="team"] .estimate-sheet td:first-child {
   font: inherit;
   font-weight: 800;
   background: #fff;
+}
+
+.crm-file-receipt-top {
+  display: grid;
+  grid-template-columns: minmax(240px, 360px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: stretch;
+}
+
+.crm-file-receipt-top .crm-receipt-preview {
+  min-height: 260px;
+  height: 100%;
+  margin: 0;
+  border-radius: 10px;
+}
+
+.crm-file-receipt-top .crm-receipt-preview img {
+  max-height: 340px;
+}
+
+.crm-file-receipt-fields {
+  align-content: start;
+  padding: 14px;
+  border: 1px solid #dce3ee;
+  border-radius: 10px;
+  background: #f7f9fc;
 }
 
 .crm-file-receipt-lines {
@@ -4047,6 +4071,10 @@ body[data-copy-mode="team"] .estimate-sheet td:first-child {
   .crm-command-panel,
   .crm-layout,
   .crm-file-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .crm-file-receipt-top {
     grid-template-columns: 1fr;
   }
 

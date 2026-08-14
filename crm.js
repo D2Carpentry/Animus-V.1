@@ -2589,7 +2589,7 @@ function blankFileReceiptLine(line = {}) {
     description: line.description || line.name || line.product || "",
     category: line.category || "Supplies",
     price: line.price || line.total || line.amount || "",
-    addTax: Boolean(line.addTax),
+    addTax: line.addTax === false ? false : true,
   };
 }
 
