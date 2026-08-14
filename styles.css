@@ -2824,6 +2824,78 @@ body[data-copy-mode="team"] .estimate-sheet td:first-child {
   cursor: pointer;
 }
 
+.crm-bulk-receipts-panel[hidden] {
+  display: none !important;
+}
+
+.crm-bulk-receipt-list {
+  display: grid;
+  gap: 10px;
+}
+
+.crm-bulk-receipt-card {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr) auto auto auto;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid #dce3ee;
+  border-radius: 8px;
+  padding: 12px;
+  background: #fff;
+}
+
+.crm-bulk-receipt-thumb {
+  width: 76px;
+  height: 76px;
+  overflow: hidden;
+  border: 1px solid #dce3ee;
+  border-radius: 8px;
+  background: #f7f9fc;
+}
+
+.crm-bulk-receipt-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.crm-bulk-receipt-card div:nth-child(2) {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.crm-bulk-receipt-card strong,
+.crm-bulk-receipt-card small,
+.crm-bulk-receipt-card em {
+  overflow-wrap: anywhere;
+}
+
+.crm-bulk-receipt-card small,
+.crm-bulk-receipt-card em {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.crm-bulk-receipt-card em {
+  font-style: normal;
+}
+
+.crm-bulk-receipt-card b {
+  color: var(--blue);
+  white-space: nowrap;
+}
+
+.crm-bulk-receipt-card button {
+  border: 1px solid #d7dce5;
+  border-radius: 8px;
+  padding: 9px 12px;
+  color: var(--blue);
+  font-weight: 900;
+  background: #fff;
+  cursor: pointer;
+}
+
 .crm-parts-import-modal {
   max-width: 760px;
 }
@@ -4170,6 +4242,15 @@ body[data-copy-mode="team"] .estimate-sheet td:first-child {
 
   .crm-file-receipt-top {
     grid-template-columns: 1fr;
+  }
+
+  .crm-bulk-receipt-card {
+    grid-template-columns: 64px minmax(0, 1fr);
+  }
+
+  .crm-bulk-receipt-card b,
+  .crm-bulk-receipt-card button {
+    justify-self: start;
   }
 
   .crm-command-grid {
