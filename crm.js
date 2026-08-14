@@ -248,16 +248,59 @@ function markDashboardRestoreApplied() {
   }
 }
 
-function mergeDashboardFiles(primary = [], secondary = []) {
-  const merged = [];
-  const seen = new Set();
-  [...primary, ...secondary].forEach((file) => {
-    const key = String(file.fileNumber || file.id || file.clientName || "").trim().toLowerCase();
-    if (!key || seen.has(key)) return;
-    seen.add(key);
-    merged.push({ ...file });
+function fileRecordKey(file = {}) {
+  return String(file.fileNumber || file.id || file.clientName || "").trim().toLowerCase();
+}
+
+function expenseGroupKey(line = {}) {
+  return String(line.receiptGroupId || line.id || "").trim();
+}
+
+function mergeExpenseLineArrays(primary = [], secondary = []) {
+  const merged = new Map();
+  [...primary, ...secondary].forEach((line) => {
+    if (!line) return;
+    const groupKey = expenseGroupKey(line);
+    const key = String(line.id || groupKey).trim();
+    if (!key) return;
+    merged.set(key, { ...(merged.get(key) || {}), ...line });
   });
-  return merged;
+  return [...merged.values()];
+}
+
+function mergeReceiptHistoryArrays(primary = [], secondary = []) {
+  const merged = new Map();
+  [...primary, ...secondary].forEach((entry) => {
+    if (!entry) return;
+    const key = String(entry.id || "").trim();
+    if (!key) return;
+    const prior = merged.get(key) || {};
+    merged.set(key, {
+      ...prior,
+      ...entry,
+      lines: mergeExpenseLineArrays(prior.lines, entry.lines),
+    });
+  });
+  return [...merged.values()];
+}
+
+function mergeDashboardFileRecords(primaryFile = {}, secondaryFile = {}) {
+  return {
+    ...primaryFile,
+    ...secondaryFile,
+    expenseLines: mergeExpenseLineArrays(primaryFile.expenseLines, secondaryFile.expenseLines),
+    receiptHistory: mergeReceiptHistoryArrays(primaryFile.receiptHistory, secondaryFile.receiptHistory),
+  };
+}
+
+function mergeDashboardFiles(primary = [], secondary = []) {
+  const merged = new Map();
+  [...primary, ...secondary].forEach((file) => {
+    const key = fileRecordKey(file);
+    if (!key) return;
+    merged.set(key, merged.has(key) ? mergeDashboardFileRecords(merged.get(key), file) : { ...file });
+  });
+  return [...merged.values()];
 }
 
 function defaultRevenueRows() {
@@ -524,6 +567,10 @@ function loadDeletedPriceIds() {
 
 function saveCrmFiles() {
   try {
+    crmFiles.forEach((file) => {
+      restoreExpenseLinesFromReceiptHistory(file);
+      syncReceiptHistoryFromExpenseLines(file);
+    });
     if (Array.isArray(crmFiles) && crmFiles.length) {
       localStorage.setItem(CRM_STORAGE_BACKUP_KEY, JSON.stringify(crmFiles));
     }
@@ -636,6 +683,10 @@ function persistRestoredDashboardIfNeeded() {
 
 function buildDashboardSyncPayload() {
   captureCurrentDashboardEdits();
+  crmFiles.forEach((file) => {
+    restoreExpenseLinesFromReceiptHistory(file);
+    syncReceiptHistoryFromExpenseLines(file);
+  });
   syncAllFileExpensesToRevenue();
   return {
     action: "dashboardSync",
@@ -1015,6 +1066,7 @@ function normalizeCrmFile(file) {
   if (!Array.isArray(file.timeline)) file.timeline = [];
   if (!Array.isArray(file.expenseLines)) file.expenseLines = [];
   if (!Array.isArray(file.receiptHistory)) file.receiptHistory = [];
+  restoreExpenseLinesFromReceiptHistory(file);
   file.projectStage = file.projectStage || inferProjectStage(file.fileStatus);
   file.projectType = normalizeProjectType(file.projectType);
   file.estimateStatus = file.estimateStatus || inferEstimateStatus(file.fileStatus, file.statusDetail);
@@ -2905,6 +2957,7 @@ function receiptExpenseLineAmount(line = {}) {
 }
 
 function fileExpenseTotal(file) {
+  restoreExpenseLinesFromReceiptHistory(file);
   return (Array.isArray(file?.expenseLines) ? file.expenseLines : []).reduce((sum, line) => {
     return sum + receiptExpenseLineAmount(line);
   }, 0);
@@ -2944,6 +2997,8 @@ function ensureExpenseRevenueRowForFile(file) {
 
 function syncFileExpensesToRevenue(file) {
   if (!file) return;
+  restoreExpenseLinesFromReceiptHistory(file);
+  syncReceiptHistoryFromExpenseLines(file);
   const row = ensureExpenseRevenueRowForFile(file);
   if (!row) return;
   row.dashboardFileId = file.id || row.dashboardFileId || "";
@@ -3437,8 +3492,29 @@ function syncReceiptHistoryFromExpenseLines(file) {
   groupedReceipts.forEach((lines, groupId) => upsertReceiptHistoryGroup(file, groupId, lines));
 }
 
+function restoreExpenseLinesFromReceiptHistory(file) {
+  if (!file) return;
+  file.expenseLines = Array.isArray(file.expenseLines) ? file.expenseLines : [];
+  file.receiptHistory = Array.isArray(file.receiptHistory) ? file.receiptHistory : [];
+  const existingGroups = new Set(file.expenseLines.map((line) => line.receiptGroupId || line.id).filter(Boolean));
+  file.receiptHistory.forEach((entry) => {
+    const groupId = entry?.id;
+    const lines = Array.isArray(entry?.lines) ? entry.lines : [];
+    if (!groupId || !lines.length || existingGroups.has(groupId)) return;
+    lines.forEach((line) => {
+      file.expenseLines.push({
+        ...line,
+        id: line.id || makeCrmId("expense"),
+        receiptGroupId: line.receiptGroupId || groupId,
+      });
+    });
+    existingGroups.add(groupId);
+  });
+}
+
 function receiptHistoryGroupsForFile(file) {
   if (!file) return [];
+  restoreExpenseLinesFromReceiptHistory(file);
   syncReceiptHistoryFromExpenseLines(file);
   return (Array.isArray(file.receiptHistory) ? file.receiptHistory : [])
     .filter((entry) => entry && entry.id)

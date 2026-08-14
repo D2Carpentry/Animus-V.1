@@ -140,7 +140,7 @@ function categoryForFile(file = {}) {
 }
 
 function normalizeFile(file = {}) {
-  return {
+  const normalized = {
     id: file.id || makeId("file"),
     fileNumber: file.fileNumber || "New File",
     clientName: file.clientName || "",
@@ -169,6 +169,10 @@ function normalizeFile(file = {}) {
     timeline: Array.isArray(file.timeline) ? file.timeline : [],
     ...file,
   };
+  normalized.expenseLines = Array.isArray(normalized.expenseLines) ? normalized.expenseLines : [];
+  normalized.receiptHistory = Array.isArray(normalized.receiptHistory) ? normalized.receiptHistory : [];
+  restoreMobileExpenseLinesFromReceiptHistory(normalized);
+  return normalized;
 }
 
 function normalizeMobileCalendarEvent(event = {}) {
@@ -219,16 +223,59 @@ function markMobileRestoreApplied() {
   }
 }
 
-function mergeMobileRows(primary = [], secondary = []) {
-  const merged = [];
-  const seen = new Set();
-  [...primary, ...secondary].forEach((row) => {
-    const key = String(row.fileNumber || row.id || row.clientName || row.clientJob || row.name || "").trim().toLowerCase();
-    if (!key || seen.has(key)) return;
-    seen.add(key);
-    merged.push({ ...row });
+function mobileRowKey(row = {}) {
+  return String(row.fileNumber || row.id || row.clientName || row.clientJob || row.name || "").trim().toLowerCase();
+}
+
+function mobileExpenseGroupKey(line = {}) {
+  return String(line.receiptGroupId || line.id || "").trim();
+}
+
+function mergeMobileExpenseLines(primary = [], secondary = []) {
+  const merged = new Map();
+  [...primary, ...secondary].forEach((line) => {
+    if (!line) return;
+    const key = String(line.id || mobileExpenseGroupKey(line)).trim();
+    if (!key) return;
+    merged.set(key, { ...(merged.get(key) || {}), ...line });
   });
-  return merged;
+  return [...merged.values()];
+}
+
+function mergeMobileReceiptHistory(primary = [], secondary = []) {
+  const merged = new Map();
+  [...primary, ...secondary].forEach((entry) => {
+    if (!entry) return;
+    const key = String(entry.id || "").trim();
+    if (!key) return;
+    const prior = merged.get(key) || {};
+    merged.set(key, {
+      ...prior,
+      ...entry,
+      lines: mergeMobileExpenseLines(prior.lines, entry.lines),
+    });
+  });
+  return [...merged.values()];
+}
+
+function mergeMobileRows(primary = [], secondary = []) {
+  const merged = new Map();
+  [...primary, ...secondary].forEach((row) => {
+    const key = mobileRowKey(row);
+    if (!key) return;
+    if (!merged.has(key)) {
+      merged.set(key, { ...row });
+      return;
+    }
+    const prior = merged.get(key);
+    merged.set(key, {
+      ...prior,
+      ...row,
+      expenseLines: mergeMobileExpenseLines(prior.expenseLines, row.expenseLines),
+      receiptHistory: mergeMobileReceiptHistory(prior.receiptHistory, row.receiptHistory),
+    });
+  });
+  return [...merged.values()];
 }
 
 function activeFile() {
@@ -294,6 +341,10 @@ function loadLocalData() {
 }
 
 function saveLocalData() {
+  mobileFiles.forEach((file) => {
+    restoreMobileExpenseLinesFromReceiptHistory(file);
+    syncMobileReceiptHistoryFromExpenseLines(file);
+  });
   localStorage.setItem(MOBILE_STORAGE_KEY, JSON.stringify(mobileFiles));
   localStorage.setItem(MOBILE_REVENUE_KEY, JSON.stringify(mobileRevenueRows));
   localStorage.setItem(MOBILE_PRICE_KEY, JSON.stringify(mobilePriceRows));
@@ -771,6 +822,7 @@ function mobileExpenseFinalAmount(line = {}) {
 }
 
 function mobileFileExpenseTotal(file = activeFile()) {
+  restoreMobileExpenseLinesFromReceiptHistory(file);
   return (Array.isArray(file?.expenseLines) ? file.expenseLines : []).reduce((sum, line) => sum + mobileExpenseFinalAmount(line), 0);
 }
 
@@ -791,6 +843,8 @@ function findMobileRevenueRowForFile(file) {
 }
 
 function syncMobileFileExpensesToRevenue(file = activeFile()) {
+  restoreMobileExpenseLinesFromReceiptHistory(file);
+  syncMobileReceiptHistoryFromExpenseLines(file);
   const row = ensureMobileRevenueRowForFile(file);
   if (!row) return;
   row.expenses = mobileFileExpenseTotal(file);
@@ -1074,6 +1128,26 @@ function syncMobileReceiptHistoryFromExpenseLines(file) {
   groups.forEach((lines, groupId) => upsertMobileReceiptHistoryGroup(file, groupId, lines));
 }
 
+function restoreMobileExpenseLinesFromReceiptHistory(file) {
+  if (!file) return;
+  file.expenseLines = Array.isArray(file.expenseLines) ? file.expenseLines : [];
+  file.receiptHistory = Array.isArray(file.receiptHistory) ? file.receiptHistory : [];
+  const existingGroups = new Set(file.expenseLines.map((line) => line.receiptGroupId || line.id).filter(Boolean));
+  file.receiptHistory.forEach((entry) => {
+    const groupId = entry?.id;
+    const lines = Array.isArray(entry?.lines) ? entry.lines : [];
+    if (!groupId || !lines.length || existingGroups.has(groupId)) return;
+    lines.forEach((line) => {
+      file.expenseLines.push({
+        ...line,
+        id: line.id || makeId("expense"),
+        receiptGroupId: line.receiptGroupId || groupId,
+      });
+    });
+    existingGroups.add(groupId);
+  });
+}
+
 function refreshMobileReceiptHistoryGroup(file, groupId) {
   if (!file || !groupId) return;
   const lines = (Array.isArray(file.expenseLines) ? file.expenseLines : []).filter((line) => (line.receiptGroupId || line.id) === groupId);
@@ -1086,6 +1160,7 @@ function refreshMobileReceiptHistoryGroup(file, groupId) {
 
 function mobileReceiptHistoryGroups(file) {
   if (!file) return [];
+  restoreMobileExpenseLinesFromReceiptHistory(file);
   syncMobileReceiptHistoryFromExpenseLines(file);
   return (Array.isArray(file.receiptHistory) ? file.receiptHistory : [])
     .filter((entry) => entry && entry.id)
