@@ -6,7 +6,7 @@
     <title>D2 Command Center</title>
     <meta name="theme-color" content="#0d4a91">
     <link rel="icon" href="icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=20260814-bulk-receipts">
+    <link rel="stylesheet" href="styles.css?v=20260814-payroll-tab">
     <link rel="stylesheet" href="calendar-upgrade.css?v=20260808-calendar-popups">
   </head>
   <body class="crm-body">
@@ -32,6 +32,7 @@
         <button type="button" class="icon-button active" data-crm-view="dashboard">Command Center</button>
         <button type="button" class="icon-button" data-crm-view="calendar">Calendar</button>
         <button type="button" class="icon-button" data-crm-view="revenue">Revenue</button>
+        <button type="button" class="icon-button" data-crm-view="payroll">Payroll</button>
         <button type="button" class="icon-button" data-crm-view="prices">Price Database</button>
         <button type="button" class="icon-button" data-crm-view="estimator">Estimator</button>
         <a class="icon-button" href="mobile.html">Mobile</a>
@@ -553,8 +554,8 @@
                       <th>Expenses</th>
                       <th>Labor</th>
                       <th>Profit</th>
-                      <th>Receipt Notes</th>
-                      <th>Labor Assigns</th>
+                      <th>Expenses</th>
+                      <th>Payroll</th>
                       <th></th>
                     </tr>
                   </thead>
@@ -578,6 +579,78 @@
                 </div>
                 <p class="crm-helper-text">Paste rows from Google Sheets using this order: Date, Client / Job, Amount Charged, Expenses, Labor, Profit, Receipt Notes, Labor Assigns.</p>
                 <textarea id="crmRevenueImport" rows="7" placeholder="Paste copied spreadsheet rows here"></textarea>
+              </section>
+            </aside>
+          </section>
+        </section>
+
+        <section class="crm-revenue-view" id="crmPayrollView" hidden>
+          <section class="crm-command-panel crm-revenue-hero">
+            <div class="crm-command-copy">
+              <h2>Payroll</h2>
+              <p>Track labor by file, employee, hours, rate, and payment status.</p>
+            </div>
+          </section>
+          <section class="crm-revenue-summary">
+            <div><span>Total Hours</span><strong id="crmPayrollHours">0</strong></div>
+            <div><span>Gross Payroll</span><strong id="crmPayrollGross">$0.00</strong></div>
+            <div><span>Paid</span><strong id="crmPayrollPaid">$0.00</strong></div>
+            <div><span>Pending</span><strong id="crmPayrollPending">$0.00</strong></div>
+          </section>
+
+          <section class="crm-layout crm-revenue-layout">
+            <section class="panel crm-detail-card crm-revenue-table-card">
+              <div class="panel-header">
+                <div>
+                  <p class="eyebrow">Labor Log</p>
+                  <h2>Payroll Worksheet</h2>
+                </div>
+                <div class="crm-panel-actions">
+                  <label class="crm-inline-control">
+                    <span>Year</span>
+                    <select id="crmPayrollYearFilter">
+                      <option value="all">All Years</option>
+                    </select>
+                  </label>
+                  <label class="crm-inline-control">
+                    <span>Status</span>
+                    <select id="crmPayrollStatusFilter">
+                      <option value="all">All Statuses</option>
+                      <option value="Pending">Pending</option>
+                      <option value="Paid">Paid</option>
+                    </select>
+                  </label>
+                  <button type="button" id="crmUpdatePayroll">Update Payroll</button>
+                  <button type="button" id="crmAddPayrollRow">Add Payroll Row</button>
+                </div>
+              </div>
+              <div class="crm-revenue-table-wrap">
+                <table class="crm-revenue-table crm-payroll-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>File / Job</th>
+                      <th>Employee</th>
+                      <th>Role</th>
+                      <th>Hours</th>
+                      <th>Rate</th>
+                      <th>Total</th>
+                      <th>Status</th>
+                      <th>Notes</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody id="crmPayrollRows"></tbody>
+                </table>
+              </div>
+            </section>
+
+            <aside class="crm-revenue-side">
+              <section class="panel crm-detail-card">
+                <div class="panel-header">
+                  <h2>Payroll Detail</h2>
+                </div>
+                <div id="crmPayrollDetail" class="crm-expense-detail"></div>
               </section>
             </aside>
           </section>
@@ -885,7 +958,7 @@
         caches.keys().then((keys) => keys.forEach((key) => caches.delete(key)));
       }
     </script>
-    <script src="crm.js?v=20260814-bulk-receipts"></script>
+    <script src="crm.js?v=20260814-payroll-tab"></script>
     <script src="calendar-upgrade.js?v=20260808-calendar-popups"></script>
   </body>
 </html>

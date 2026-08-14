@@ -116,6 +116,7 @@ async function handlePost(context) {
 
   const files = Array.isArray(dashboard.dashboardFiles) ? dashboard.dashboardFiles : [];
   const revenueRows = Array.isArray(dashboard.revenueRows) ? dashboard.revenueRows : [];
+  const payrollRows = Array.isArray(dashboard.payrollRows) ? dashboard.payrollRows : [];
   const priceRows = Array.isArray(dashboard.priceRows) ? dashboard.priceRows : [];
 
   return jsonResponse({
@@ -124,6 +125,7 @@ async function handlePost(context) {
     dashboard,
     fileCount: files.length,
     revenueCount: revenueRows.length,
+    payrollCount: payrollRows.length,
     priceCount: priceRows.length,
   });
 }

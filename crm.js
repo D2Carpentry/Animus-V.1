@@ -5,11 +5,13 @@ const crmCurrency = new Intl.NumberFormat("en-US", {
 
 const CRM_STORAGE_KEY = "d2CrmDemoFiles";
 const CRM_REVENUE_STORAGE_KEY = "d2CrmRevenueRows";
+const CRM_PAYROLL_STORAGE_KEY = "d2CrmPayrollRows";
 const CRM_PRICE_DATABASE_KEY = "d2PriceDatabase";
 const CRM_PRICE_DELETED_KEY = "d2PriceDeletedIds";
 const CRM_EXTERNAL_CALENDAR_KEY = "d2ExternalCalendarEvents";
 const CRM_STORAGE_BACKUP_KEY = "d2CrmDemoFilesBackup";
 const CRM_REVENUE_BACKUP_KEY = "d2CrmRevenueRowsBackup";
+const CRM_PAYROLL_BACKUP_KEY = "d2CrmPayrollRowsBackup";
 const CRM_REVENUE_DELETED_KEY = "d2CrmRevenueDeletedIds";
 const CRM_PRICE_BACKUP_KEY = "d2PriceDatabaseBackup";
 const CRM_RECEIPT_DRAFT_KEY = "d2ReceiptScannerDraft";
@@ -147,6 +149,10 @@ let crmRevenueRows = loadRevenueRows();
 let activeRevenueId = crmRevenueRows[0] ? crmRevenueRows[0].id : null;
 let crmRevenueDateSort = "newest";
 let crmRevenueYearFilter = String(new Date().getFullYear());
+let crmPayrollRows = loadPayrollRows();
+let activePayrollId = crmPayrollRows[0] ? crmPayrollRows[0].id : null;
+let crmPayrollYearFilter = String(new Date().getFullYear());
+let crmPayrollStatusFilter = "all";
 let crmCalendarFilter = "upcoming";
 let crmCalendarCursor = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 let crmSelectedCalendarDate = todayIso(0);
@@ -558,6 +564,30 @@ function saveRevenueRows() {
   }
 }
 
+function loadPayrollRows() {
+  try {
+    const saved = localStorage.getItem(CRM_PAYROLL_STORAGE_KEY);
+    const rows = saved ? JSON.parse(saved) : [];
+    if (Array.isArray(rows) && rows.length) return rows.map(normalizePayrollRow);
+    const backup = localStorage.getItem(CRM_PAYROLL_BACKUP_KEY);
+    const backupRows = backup ? JSON.parse(backup) : [];
+    return Array.isArray(backupRows) ? backupRows.map(normalizePayrollRow) : [];
+  } catch (error) {
+    return [];
+  }
+}
+
+function savePayrollRows() {
+  try {
+    if (Array.isArray(crmPayrollRows) && crmPayrollRows.length) {
+      localStorage.setItem(CRM_PAYROLL_BACKUP_KEY, JSON.stringify(crmPayrollRows));
+    }
+    localStorage.setItem(CRM_PAYROLL_STORAGE_KEY, JSON.stringify(crmPayrollRows));
+  } catch (error) {
+    // Cloud save is the long-term storage layer.
+  }
+}
+
 function savePriceRows() {
   try {
     if (Array.isArray(crmPriceRows) && crmPriceRows.length) {
@@ -612,6 +642,7 @@ function buildDashboardSyncPayload() {
     source: "D2 Command Center",
     dashboardFiles: crmFiles,
     revenueRows: crmRevenueRows,
+    payrollRows: crmPayrollRows,
     priceRows: crmPriceRows,
     deletedPriceIds: crmDeletedPriceIds,
   };
@@ -752,6 +783,23 @@ function captureVisibleRevenueEdits() {
   syncActiveExpenseDetailEdits();
 }
 
+function captureVisiblePayrollEdits() {
+  document.querySelectorAll("[data-payroll-edit]").forEach((field) => {
+    const row = crmPayrollRows.find((entry) => entry.id === field.dataset.payrollEdit);
+    if (!row) return;
+    const key = field.dataset.payrollField;
+    if (["hours", "rate"].includes(key)) row[key] = parseMoney(field.value);
+    else if (key === "date") row[key] = normalizeDate(field.value);
+    else row[key] = field.value;
+    if (key === "fileId") {
+      const file = crmFiles.find((entry) => entry.id === row.fileId);
+      row.fileNumber = file?.fileNumber || "";
+      row.clientJob = file?.clientName || row.clientJob || "";
+    }
+    row.total = payrollRowTotal(row);
+  });
+}
+
 function captureVisibleFileExpenseEdits() {
   const file = normalizeCrmFile(activeFile());
   if (!file || !Array.isArray(file.expenseLines)) return;
@@ -772,6 +820,7 @@ function captureCurrentDashboardEdits() {
   captureOpenFinancialEdits();
   captureVisibleFileExpenseEdits();
   captureVisibleRevenueEdits();
+  captureVisiblePayrollEdits();
 }
 
 function fetchGoogleCalendarEvents(startDate, endDate) {
@@ -856,6 +905,7 @@ async function saveDashboardToGoogle() {
   captureCurrentDashboardEdits();
   saveCrmFiles();
   saveRevenueRows();
+  savePayrollRows();
   savePriceRows();
   saveDeletedPriceIds();
   const saveButton = $("crmSaveDemo");
@@ -898,16 +948,20 @@ async function loadDashboardFromGoogle() {
     }
     const files = Array.isArray(dashboard.dashboardFiles) ? dashboard.dashboardFiles : [];
     const revenueRows = Array.isArray(dashboard.revenueRows) ? dashboard.revenueRows : [];
+    const payrollRows = Array.isArray(dashboard.payrollRows) ? dashboard.payrollRows : [];
     const priceRows = Array.isArray(dashboard.priceRows) ? dashboard.priceRows : [];
     const deletedPriceIds = Array.isArray(dashboard.deletedPriceIds) ? dashboard.deletedPriceIds : [];
     crmFiles = repairCrmFileCategories(files.map((file) => normalizeCrmFile({ ...file })));
     crmRevenueRows = dedupeRevenueRows(revenueRows.map((row) => ({ ...row })));
+    crmPayrollRows = payrollRows.map((row) => normalizePayrollRow(row));
     crmPriceRows = priceRows.map((row) => normalizedPriceRow(row));
     crmDeletedPriceIds = deletedPriceIds;
     activeFileId = crmFiles[0] ? crmFiles[0].id : null;
     activeRevenueId = crmRevenueRows[0] ? crmRevenueRows[0].id : null;
+    activePayrollId = crmPayrollRows[0] ? crmPayrollRows[0].id : null;
     saveCrmFiles();
     saveRevenueRows();
+    savePayrollRows();
     savePriceRows();
     saveDeletedPriceIds();
     renderCrm();
@@ -1818,6 +1872,7 @@ function renderCrm() {
   renderFileList();
   renderActiveFile();
   renderRevenue();
+  renderPayroll();
   if (!$("crmExpensesView")?.hidden) renderFileExpenses();
 }
 
@@ -2126,6 +2181,71 @@ function revenueProfit(row) {
   return (Number(row.gross) || 0) - (Number(row.expenses) || 0) - (Number(row.labor) || 0);
 }
 
+function normalizePayrollRow(row = {}) {
+  return {
+    id: row.id || makeCrmId("payroll"),
+    revenueId: row.revenueId || "",
+    date: normalizeDate(row.date || todayIso(0)),
+    fileId: row.fileId || "",
+    fileNumber: row.fileNumber || "",
+    clientJob: row.clientJob || "",
+    employee: row.employee || "",
+    role: row.role || "",
+    hours: parseMoney(row.hours),
+    rate: parseMoney(row.rate),
+    total: parseMoney(row.total) || (parseMoney(row.hours) * parseMoney(row.rate)),
+    status: row.status === "Paid" ? "Paid" : "Pending",
+    notes: row.notes || "",
+  };
+}
+
+function payrollRowTotal(row = {}) {
+  const hours = parseMoney(row.hours);
+  const rate = parseMoney(row.rate);
+  return parseMoney(row.total) || (hours * rate);
+}
+
+function payrollYear(row = {}) {
+  const date = normalizeDate(row.date || "");
+  return date ? date.slice(0, 4) : "";
+}
+
+function payrollYearOptions() {
+  const years = new Set(crmPayrollRows.map((row) => payrollYear(row)).filter(Boolean));
+  years.add(String(new Date().getFullYear()));
+  return [...years].sort((a, b) => Number(b) - Number(a));
+}
+
+function filteredPayrollRows() {
+  return crmPayrollRows
+    .filter((row) => crmPayrollYearFilter === "all" || payrollYear(row) === crmPayrollYearFilter)
+    .filter((row) => crmPayrollStatusFilter === "all" || row.status === crmPayrollStatusFilter);
+}
+
+function payrollTotals() {
+  return filteredPayrollRows().reduce((totals, row) => {
+    const amount = payrollRowTotal(row);
+    totals.hours += parseMoney(row.hours);
+    totals.gross += amount;
+    if (row.status === "Paid") totals.paid += amount;
+    else totals.pending += amount;
+    return totals;
+  }, { hours: 0, gross: 0, paid: 0, pending: 0 });
+}
+
+function payrollJobLabel(row = {}) {
+  const file = row.fileId ? crmFiles.find((entry) => entry.id === row.fileId) : null;
+  return file ? `${file.clientName || "Unnamed Client"} · ${file.fileNumber || "No file #"}` : (row.clientJob || row.fileNumber || "No file linked");
+}
+
+function payrollFileOptions(selectedFileId = "") {
+  const options = crmFiles.map((file) => {
+    const label = `${file.clientName || "Unnamed Client"} · ${file.fileNumber || "No file #"}`;
+    return `<option value="${escapeHtml(file.id)}"${file.id === selectedFileId ? " selected" : ""}>${escapeHtml(label)}</option>`;
+  }).join("");
+  return `<option value="">No file linked</option>${options}`;
+}
+
 function expenseLineTotal(row) {
   if (!Array.isArray(row?.expenseLines)) return 0;
   return row.expenseLines.reduce((sum, line) => sum + (Number(line.amount) || 0), 0);
@@ -2351,8 +2471,8 @@ function renderRevenue() {
           <td><input class="crm-revenue-input crm-money-input" inputmode="decimal" value="${escapeHtml(Number(row.expenses) || "")}" data-revenue-edit="${escapeHtml(row.id)}" data-revenue-field="expenses" placeholder="0"></td>
           <td><input class="crm-revenue-input crm-money-input" inputmode="decimal" value="${escapeHtml(Number(row.labor) || "")}" data-revenue-edit="${escapeHtml(row.id)}" data-revenue-field="labor" placeholder="0"></td>
           <td><strong class="crm-profit-value">${crmCurrency.format(revenueProfit(row))}</strong></td>
-          <td><textarea class="crm-revenue-input crm-revenue-notes" data-revenue-edit="${escapeHtml(row.id)}" data-revenue-field="receiptNotes" placeholder="Receipt notes">${escapeHtml(row.receiptNotes || "")}</textarea></td>
-          <td><input class="crm-revenue-input" type="text" value="${escapeHtml(row.laborAssigns || "")}" data-revenue-edit="${escapeHtml(row.id)}" data-revenue-field="laborAssigns" placeholder="Labor"></td>
+          <td><button type="button" class="crm-table-action-button" data-revenue-expenses="${escapeHtml(row.id)}">View Expenses</button></td>
+          <td><button type="button" class="crm-table-action-button" data-revenue-payroll="${escapeHtml(row.id)}">Payroll</button></td>
           <td class="crm-revenue-actions">
             <button type="button" data-revenue-delete="${escapeHtml(row.id)}">Delete</button>
           </td>
@@ -2362,6 +2482,12 @@ function renderRevenue() {
     .join("") : `<tr><td colspan="9" class="crm-empty-row">No revenue rows for this year.</td></tr>`;
   document.querySelectorAll("[data-revenue-delete]").forEach((button) => {
     button.addEventListener("click", () => deleteRevenueRow(button.dataset.revenueDelete));
+  });
+  document.querySelectorAll("[data-revenue-expenses]").forEach((button) => {
+    button.addEventListener("click", () => openRevenueExpenses(button.dataset.revenueExpenses));
+  });
+  document.querySelectorAll("[data-revenue-payroll]").forEach((button) => {
+    button.addEventListener("click", () => openRevenuePayroll(button.dataset.revenuePayroll));
   });
   document.querySelectorAll("[data-revenue-edit]").forEach((field) => {
     field.addEventListener("change", () => updateRevenueField(field));
@@ -2373,6 +2499,49 @@ function renderRevenue() {
     });
   });
   renderExpenseDetail();
+}
+
+function openRevenueExpenses(rowId) {
+  const row = crmRevenueRows.find((entry) => entry.id === rowId);
+  if (!row) return;
+  activeRevenueId = row.id;
+  const file = findFileForRevenue(row);
+  if (file) activeFileId = file.id;
+  switchCrmView("expenses");
+  renderFileExpenses();
+}
+
+function openRevenuePayroll(rowId) {
+  const row = crmRevenueRows.find((entry) => entry.id === rowId);
+  if (!row) return;
+  activeRevenueId = row.id;
+  const file = findFileForRevenue(row);
+  if (file) activeFileId = file.id;
+  const existingPayroll = crmPayrollRows.find((entry) => {
+    if (file?.id && entry.fileId === file.id) return true;
+    return entry.revenueId === row.id;
+  });
+  if (existingPayroll) activePayrollId = existingPayroll.id;
+  else {
+    const payrollRow = normalizePayrollRow({
+      id: makeCrmId("payroll"),
+      revenueId: row.id,
+      date: row.date || todayIso(0),
+      fileId: file?.id || "",
+      fileNumber: file?.fileNumber || "",
+      clientJob: row.clientJob || file?.clientName || "",
+      employee: row.laborAssigns || "",
+      role: "",
+      hours: "",
+      rate: "",
+      status: "Pending",
+    });
+    crmPayrollRows.unshift(payrollRow);
+    activePayrollId = payrollRow.id;
+    savePayrollRows();
+  }
+  switchCrmView("payroll");
+  renderPayroll();
 }
 
 function updateRevenueRows() {
@@ -2401,6 +2570,155 @@ function updateRevenueRows() {
     const refreshedButton = $("crmUpdateRevenue");
     if (refreshedButton) refreshedButton.textContent = "Update Revenue";
   }, 1000);
+}
+
+function renderPayroll() {
+  const totals = payrollTotals();
+  $("crmPayrollHours").textContent = String(Math.round(totals.hours * 100) / 100);
+  $("crmPayrollGross").textContent = crmCurrency.format(totals.gross);
+  $("crmPayrollPaid").textContent = crmCurrency.format(totals.paid);
+  $("crmPayrollPending").textContent = crmCurrency.format(totals.pending);
+
+  const yearControl = $("crmPayrollYearFilter");
+  if (yearControl) {
+    const years = payrollYearOptions();
+    yearControl.innerHTML = `<option value="all">All Years</option>${years
+      .map((year) => `<option value="${escapeHtml(year)}">${escapeHtml(year)}</option>`)
+      .join("")}`;
+    if (crmPayrollYearFilter !== "all" && !years.includes(crmPayrollYearFilter)) {
+      crmPayrollYearFilter = years[0] || "all";
+    }
+    yearControl.value = crmPayrollYearFilter;
+  }
+  if ($("crmPayrollStatusFilter")) $("crmPayrollStatusFilter").value = crmPayrollStatusFilter;
+
+  const rows = filteredPayrollRows().sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+  $("crmPayrollRows").innerHTML = rows.length ? rows.map((row) => {
+    const total = payrollRowTotal(row);
+    return `
+      <tr class="${row.id === activePayrollId ? "active" : ""}">
+        <td><input class="crm-revenue-input crm-revenue-date" type="date" value="${escapeHtml(row.date || "")}" data-payroll-edit="${escapeHtml(row.id)}" data-payroll-field="date"></td>
+        <td>
+          <select class="crm-revenue-input crm-payroll-file-select" data-payroll-edit="${escapeHtml(row.id)}" data-payroll-field="fileId">
+            ${payrollFileOptions(row.fileId)}
+          </select>
+          <small>${escapeHtml(payrollJobLabel(row))}</small>
+        </td>
+        <td><input class="crm-revenue-input" type="text" value="${escapeHtml(row.employee || "")}" data-payroll-edit="${escapeHtml(row.id)}" data-payroll-field="employee" placeholder="Employee"></td>
+        <td><input class="crm-revenue-input" type="text" value="${escapeHtml(row.role || "")}" data-payroll-edit="${escapeHtml(row.id)}" data-payroll-field="role" placeholder="Installer, painter"></td>
+        <td><input class="crm-revenue-input crm-money-input" inputmode="decimal" value="${escapeHtml(row.hours || "")}" data-payroll-edit="${escapeHtml(row.id)}" data-payroll-field="hours" placeholder="0"></td>
+        <td><input class="crm-revenue-input crm-money-input" inputmode="decimal" value="${escapeHtml(row.rate || "")}" data-payroll-edit="${escapeHtml(row.id)}" data-payroll-field="rate" placeholder="0"></td>
+        <td><strong class="crm-profit-value">${crmCurrency.format(total)}</strong></td>
+        <td>
+          <select class="crm-revenue-input" data-payroll-edit="${escapeHtml(row.id)}" data-payroll-field="status">
+            <option${row.status !== "Paid" ? " selected" : ""}>Pending</option>
+            <option${row.status === "Paid" ? " selected" : ""}>Paid</option>
+          </select>
+        </td>
+        <td><input class="crm-revenue-input" type="text" value="${escapeHtml(row.notes || "")}" data-payroll-edit="${escapeHtml(row.id)}" data-payroll-field="notes" placeholder="Notes"></td>
+        <td class="crm-revenue-actions"><button type="button" data-payroll-delete="${escapeHtml(row.id)}">Delete</button></td>
+      </tr>
+    `;
+  }).join("") : `<tr><td colspan="10" class="crm-empty-row">No payroll rows yet.</td></tr>`;
+
+  document.querySelectorAll("[data-payroll-edit]").forEach((field) => {
+    field.addEventListener("change", () => updatePayrollField(field));
+    field.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        field.blur();
+      }
+    });
+  });
+  document.querySelectorAll("[data-payroll-delete]").forEach((button) => {
+    button.addEventListener("click", () => deletePayrollRow(button.dataset.payrollDelete));
+  });
+  renderPayrollDetail();
+}
+
+function renderPayrollDetail() {
+  const row = crmPayrollRows.find((entry) => entry.id === activePayrollId) || crmPayrollRows[0];
+  if (!row) {
+    $("crmPayrollDetail").innerHTML = `<p class="crm-empty-state">Select or add a payroll row to see details.</p>`;
+    return;
+  }
+  const total = payrollRowTotal(row);
+  $("crmPayrollDetail").innerHTML = `
+    <p class="eyebrow">${escapeHtml(row.status || "Pending")}</p>
+    <h3>${escapeHtml(row.employee || "Unassigned Labor")}</h3>
+    <dl>
+      <div><dt>File</dt><dd>${escapeHtml(payrollJobLabel(row))}</dd></div>
+      <div><dt>Hours</dt><dd>${escapeHtml(String(row.hours || 0))}</dd></div>
+      <div><dt>Rate</dt><dd>${crmCurrency.format(parseMoney(row.rate))}</dd></div>
+      <div><dt>Total</dt><dd>${crmCurrency.format(total)}</dd></div>
+    </dl>
+    <p class="crm-helper-text">Use this page to record who worked, what they did, how many hours, and whether they have been paid.</p>
+  `;
+}
+
+function updatePayrollField(field) {
+  const row = crmPayrollRows.find((entry) => entry.id === field.dataset.payrollEdit);
+  if (!row) return;
+  const key = field.dataset.payrollField;
+  if (["hours", "rate"].includes(key)) row[key] = parseMoney(field.value);
+  else if (key === "date") row[key] = normalizeDate(field.value);
+  else row[key] = field.value;
+  if (key === "fileId") {
+    const file = crmFiles.find((entry) => entry.id === row.fileId);
+    row.fileNumber = file?.fileNumber || "";
+    row.clientJob = file?.clientName || row.clientJob || "";
+  }
+  row.total = payrollRowTotal(row);
+  activePayrollId = row.id;
+  savePayrollRows();
+  renderPayroll();
+}
+
+function updatePayrollRows() {
+  document.querySelectorAll("[data-payroll-edit]").forEach((field) => {
+    const row = crmPayrollRows.find((entry) => entry.id === field.dataset.payrollEdit);
+    if (!row) return;
+    const key = field.dataset.payrollField;
+    if (["hours", "rate"].includes(key)) row[key] = parseMoney(field.value);
+    else if (key === "date") row[key] = normalizeDate(field.value);
+    else row[key] = field.value;
+    row.total = payrollRowTotal(row);
+  });
+  savePayrollRows();
+  renderPayroll();
+  const button = $("crmUpdatePayroll");
+  if (!button) return;
+  button.textContent = "Updated";
+  window.setTimeout(() => {
+    const refreshedButton = $("crmUpdatePayroll");
+    if (refreshedButton) refreshedButton.textContent = "Update Payroll";
+  }, 1000);
+}
+
+function addPayrollRow() {
+  const file = activeFile();
+  const row = normalizePayrollRow({
+    id: makeCrmId("payroll"),
+    date: todayIso(0),
+    fileId: file?.id || "",
+    fileNumber: file?.fileNumber || "",
+    clientJob: file?.clientName || "",
+    status: "Pending",
+  });
+  crmPayrollRows.unshift(row);
+  activePayrollId = row.id;
+  savePayrollRows();
+  renderPayroll();
+}
+
+function deletePayrollRow(rowId) {
+  const row = crmPayrollRows.find((entry) => entry.id === rowId);
+  if (!row) return;
+  if (!window.confirm(`Delete payroll row for ${row.employee || row.clientJob || "this job"}?`)) return;
+  crmPayrollRows = crmPayrollRows.filter((entry) => entry.id !== rowId);
+  activePayrollId = crmPayrollRows[0] ? crmPayrollRows[0].id : null;
+  savePayrollRows();
+  renderPayroll();
 }
 
 function syncActiveExpenseDetailEdits() {
@@ -5031,6 +5349,7 @@ async function importGoogleCalendarEvents() {
 
 function switchCrmView(view) {
   const showRevenue = view === "revenue";
+  const showPayroll = view === "payroll";
   const showCalendar = view === "calendar";
   const showInvoice = view === "invoice";
   const showExpenses = view === "expenses";
@@ -5040,9 +5359,10 @@ function switchCrmView(view) {
   document.body.classList.toggle("crm-estimator-active", showEstimator);
   document.querySelectorAll(".crm-dashboard-view").forEach((section) => {
     const keepEstimatorShell = showEstimator && estimatorShell && section === estimatorShell;
-    section.hidden = !keepEstimatorShell && (showRevenue || showCalendar || showInvoice || showExpenses || showPrices || showEstimator);
+    section.hidden = !keepEstimatorShell && (showRevenue || showPayroll || showCalendar || showInvoice || showExpenses || showPrices || showEstimator);
   });
   $("crmRevenueView").hidden = !showRevenue;
+  $("crmPayrollView").hidden = !showPayroll;
   $("crmCalendarView").hidden = !showCalendar;
   $("crmInvoiceView").hidden = !showInvoice;
   $("crmExpensesView").hidden = !showExpenses;
@@ -5051,6 +5371,7 @@ function switchCrmView(view) {
   document.querySelectorAll("[data-crm-view]").forEach((button) => {
     button.classList.toggle("active", button.dataset.crmView === view);
   });
+  if (showPayroll) renderPayroll();
   if (showInvoice) renderInvoiceView();
   if (showCalendar) renderCalendar();
   if (showExpenses) renderFileExpenses();
@@ -5221,6 +5542,16 @@ $("crmRevenueDateSort").addEventListener("change", (event) => {
 $("crmRevenueYearFilter").addEventListener("change", (event) => {
   crmRevenueYearFilter = event.target.value;
   renderRevenue();
+});
+$("crmAddPayrollRow").addEventListener("click", addPayrollRow);
+$("crmUpdatePayroll").addEventListener("click", updatePayrollRows);
+$("crmPayrollYearFilter").addEventListener("change", (event) => {
+  crmPayrollYearFilter = event.target.value;
+  renderPayroll();
+});
+$("crmPayrollStatusFilter").addEventListener("change", (event) => {
+  crmPayrollStatusFilter = event.target.value;
+  renderPayroll();
 });
 $("crmAddFileExpense").addEventListener("click", addFileExpenseLine);
 $("crmReceiptUpload").addEventListener("change", (event) => {
