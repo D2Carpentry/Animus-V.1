@@ -2578,6 +2578,68 @@ body[data-copy-mode="team"] .estimate-sheet td:first-child {
   font-weight: 800;
 }
 
+.crm-file-receipt-review {
+  display: grid;
+  gap: 14px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #e4e8ef;
+}
+
+.crm-file-receipt-review[hidden] {
+  display: none !important;
+}
+
+.crm-file-receipt-review label {
+  display: grid;
+  gap: 7px;
+  color: var(--muted);
+  font-weight: 900;
+}
+
+.crm-file-receipt-review input,
+.crm-file-receipt-review select,
+.crm-file-receipt-review textarea {
+  width: 100%;
+  border: 1px solid #d8ded6;
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 800;
+  background: #fff;
+}
+
+.crm-receipt-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.crm-receipt-review-actions button {
+  border: 1px solid #d7dce5;
+  border-radius: 8px;
+  padding: 10px 14px;
+  color: var(--blue);
+  font-weight: 900;
+  background: #fff;
+  cursor: pointer;
+}
+
+.crm-receipt-review-actions .primary-action {
+  border-color: var(--blue);
+  color: #fff;
+  background: var(--blue);
+}
+
+.crm-receipt-status-good {
+  color: #0f7b46 !important;
+}
+
+.crm-receipt-status-warn {
+  color: #a16300 !important;
+}
+
 .crm-revenue-hero {
   grid-template-columns: minmax(240px, 0.58fr) minmax(0, 1.42fr);
 }

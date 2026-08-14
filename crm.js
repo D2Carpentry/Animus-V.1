@@ -18,6 +18,7 @@ const DEFAULT_GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzZki
 const OLD_GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxFBQzWViCApvF-c95kAyT0oSNImMgzhf30gP10H2WJT_S5XkejFctq5bT7IjCALMi5Qg/exec";
 const GOOGLE_SCRIPT_URL_STORAGE_KEY = "d2GoogleScriptUrl";
 const CLOUDFLARE_DASHBOARD_API = "https://animus-v-1.pages.dev/api/dashboard";
+const CLOUDFLARE_RECEIPT_API = "https://animus-v-1.pages.dev/api/receipt";
 const NOTE_EDIT_WINDOW_MS = 12 * 60 * 60 * 1000;
 
 const CRM_STATUS_DESCRIPTIONS = {
@@ -154,6 +155,7 @@ let crmPriceRows = loadPriceRows();
 let crmDeletedPriceIds = loadDeletedPriceIds();
 let editingPriceId = "";
 let receiptDraft = loadReceiptDraft();
+let fileReceiptDraft = blankFileReceiptDraft();
 let pendingEstimateUploadFileId = "";
 let openEstimateAfterUpload = false;
 let estimateChoiceTarget = "";
@@ -2540,6 +2542,172 @@ function syncFileExpensesToRevenue(file) {
   saveRevenueRows();
 }
 
+function blankFileReceiptDraft() {
+  return {
+    imageDataUrl: "",
+    fileName: "",
+    vendor: "",
+    date: todayIso(0),
+    category: "Supplies",
+    amount: "",
+    tax: "",
+    paymentType: "",
+    notes: "",
+    pastedText: "",
+    status: "",
+    aiAvailable: false,
+  };
+}
+
+function categoryFromReceiptText(text = "") {
+  const cleanText = text.toLowerCase();
+  if (/(paint|primer|stain|renner|sherwin|roller|brush|finish|urethane|sealer)/.test(cleanText)) return "Paint / Finish";
+  if (/(screw|hinge|slide|hardware|pull|handle|bracket|nail|tapcon)/.test(cleanText)) return "Hardware";
+  if (/(plywood|birch|mdf|lumber|stud|wood|board|trim|poplar|maple)/.test(cleanText)) return "Materials";
+  if (/(blade|saw|tool|drill|sander|router|ladder|equipment)/.test(cleanText)) return "Equipment";
+  if (/(gas|fuel|shell|mobil|chevron|wawa|racetrac)/.test(cleanText)) return "Fuel";
+  if (/(labor|helper|installer|subcontractor)/.test(cleanText)) return "Labor";
+  return "Supplies";
+}
+
+function vendorFromReceiptText(text = "") {
+  const knownVendors = [
+    "Home Depot",
+    "Lowe's",
+    "Sherwin-Williams",
+    "Imeca",
+    "American Paint Supplies",
+    "Vision Ace Hardware",
+    "Amazon",
+    "Ace Hardware",
+  ];
+  const cleanText = text.toLowerCase();
+  return knownVendors.find((vendor) => cleanText.includes(vendor.toLowerCase())) || "";
+}
+
+function parseDateFromReceiptText(text = "") {
+  const match = String(text).match(/\b(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})\b/);
+  if (!match) return "";
+  let [, month, day, year] = match;
+  if (year.length === 2) year = `20${year}`;
+  const date = new Date(Number(year), Number(month) - 1, Number(day));
+  return Number.isNaN(date.getTime()) ? "" : date.toISOString().slice(0, 10);
+}
+
+function parseReceiptText(text = "", fallback = {}) {
+  const amounts = [...String(text).matchAll(/\$?\s?(\d{1,4}(?:,\d{3})*(?:\.\d{2}))/g)]
+    .map((match) => parseMoney(match[1]))
+    .filter((amount) => amount > 0);
+  const totalMatch = String(text).match(/(?:grand\s+total|total|amount|sale)\D{0,16}\$?\s?(\d{1,4}(?:,\d{3})*(?:\.\d{2}))/i);
+  const taxMatch = String(text).match(/(?:tax|sales\s+tax)\D{0,16}\$?\s?(\d{1,4}(?:,\d{3})*(?:\.\d{2}))/i);
+  const amount = totalMatch ? parseMoney(totalMatch[1]) : (amounts.length ? Math.max(...amounts) : "");
+  const tax = taxMatch ? parseMoney(taxMatch[1]) : "";
+  const cleanText = String(text || "").trim();
+  return {
+    vendor: vendorFromReceiptText(cleanText) || fallback.vendor || "",
+    date: parseDateFromReceiptText(cleanText) || fallback.date || todayIso(0),
+    category: categoryFromReceiptText(cleanText || fallback.fileName || fallback.vendor || ""),
+    amount,
+    tax,
+    paymentType: /cash/i.test(cleanText) ? "Cash" : (/visa|mastercard|amex|card|debit|credit/i.test(cleanText) ? "Card" : ""),
+    notes: cleanText
+      .split(/\n+/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .slice(0, 12)
+      .join("\n"),
+  };
+}
+
+function receiptResultToDraft(result = {}, fallback = {}) {
+  const receipt = result.receipt || result || {};
+  const lineItems = Array.isArray(receipt.lineItems) ? receipt.lineItems : [];
+  const itemNotes = lineItems
+    .map((item) => {
+      const name = item.name || item.description || "";
+      const total = item.total || item.amount || item.price || "";
+      return [name, total ? crmCurrency.format(parseMoney(total)) : ""].filter(Boolean).join(" - ");
+    })
+    .filter(Boolean)
+    .join("\n");
+  return {
+    ...blankFileReceiptDraft(),
+    ...fallback,
+    vendor: receipt.vendor || fallback.vendor || "",
+    date: receipt.date || fallback.date || todayIso(0),
+    category: receipt.category || fallback.category || categoryFromReceiptText(`${receipt.vendor || ""} ${receipt.notes || ""} ${itemNotes}`),
+    amount: receipt.total || receipt.amount || fallback.amount || "",
+    tax: receipt.tax || fallback.tax || "",
+    paymentType: receipt.paymentType || receipt.payment || fallback.paymentType || "",
+    notes: [receipt.notes || "", itemNotes].filter(Boolean).join("\n").trim() || fallback.notes || "",
+    aiAvailable: Boolean(result.aiAvailable),
+    status: result.aiAvailable
+      ? "Receipt read. Review the fields, then save the expense."
+      : "Receipt attached. AI reading is not connected yet, so review or paste receipt text before saving.",
+  };
+}
+
+async function readFileReceiptWithAi(imageDataUrl, uploadFile) {
+  const response = await fetch(CLOUDFLARE_RECEIPT_API, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    cache: "no-store",
+    body: JSON.stringify({
+      imageDataUrl,
+      fileName: uploadFile?.name || "",
+    }),
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || result.ok === false) {
+    throw new Error(result.error || `Receipt reader failed with status ${response.status}.`);
+  }
+  return result;
+}
+
+function setFileReceiptStatus(message, kind = "") {
+  const status = $("crmFileReceiptStatus");
+  if (!status) return;
+  status.textContent = message;
+  status.classList.toggle("crm-receipt-status-good", kind === "good");
+  status.classList.toggle("crm-receipt-status-warn", kind === "warn");
+}
+
+function captureFileReceiptReviewFields() {
+  if (!$("crmFileReceiptReview") || $("crmFileReceiptReview").hidden) return;
+  fileReceiptDraft.vendor = $("crmFileReceiptVendor").value.trim();
+  fileReceiptDraft.date = $("crmFileReceiptDate").value || todayIso(0);
+  fileReceiptDraft.category = $("crmFileReceiptCategory").value || "Supplies";
+  fileReceiptDraft.amount = $("crmFileReceiptAmount").value;
+  fileReceiptDraft.tax = $("crmFileReceiptTax").value;
+  fileReceiptDraft.paymentType = $("crmFileReceiptPayment").value.trim();
+  fileReceiptDraft.notes = $("crmFileReceiptNotes").value.trim();
+  fileReceiptDraft.pastedText = $("crmFileReceiptOcrText").value.trim();
+}
+
+function renderFileReceiptDraft() {
+  const preview = $("crmReceiptPreview");
+  const review = $("crmFileReceiptReview");
+  if (!preview || !review) return;
+  if (!fileReceiptDraft.imageDataUrl && !fileReceiptDraft.vendor && !fileReceiptDraft.amount) {
+    preview.innerHTML = `<p class="crm-empty-state">No receipt photo attached yet.</p>`;
+    review.hidden = true;
+    return;
+  }
+  preview.innerHTML = fileReceiptDraft.imageDataUrl
+    ? `<img src="${escapeHtml(fileReceiptDraft.imageDataUrl)}" alt="Receipt preview"><p>${escapeHtml(fileReceiptDraft.fileName || "Receipt photo")}</p>`
+    : `<p class="crm-empty-state">No receipt photo attached yet.</p>`;
+  review.hidden = false;
+  $("crmFileReceiptVendor").value = fileReceiptDraft.vendor || "";
+  $("crmFileReceiptDate").value = fileReceiptDraft.date || todayIso(0);
+  $("crmFileReceiptCategory").value = fileReceiptDraft.category || "Supplies";
+  $("crmFileReceiptAmount").value = fileReceiptDraft.amount ? String(fileReceiptDraft.amount) : "";
+  $("crmFileReceiptTax").value = fileReceiptDraft.tax ? String(fileReceiptDraft.tax) : "";
+  $("crmFileReceiptPayment").value = fileReceiptDraft.paymentType || "";
+  $("crmFileReceiptNotes").value = fileReceiptDraft.notes || "";
+  $("crmFileReceiptOcrText").value = fileReceiptDraft.pastedText || "";
+  setFileReceiptStatus(fileReceiptDraft.status || "Review the receipt before saving.", fileReceiptDraft.aiAvailable ? "good" : "warn");
+}
+
 function renderFileExpenses() {
   const file = normalizeCrmFile(activeFile());
   const title = $("crmExpensesFileTitle");
@@ -2552,7 +2720,8 @@ function renderFileExpenses() {
     heading.textContent = "No file selected";
     total.textContent = crmCurrency.format(0);
     rows.innerHTML = `<tr><td colspan="7">No file selected.</td></tr>`;
-    preview.innerHTML = "";
+    fileReceiptDraft = blankFileReceiptDraft();
+    renderFileReceiptDraft();
     return;
   }
   title.textContent = `${file.fileNumber || "Project"} · ${file.clientName || "Unnamed Client"}`;
@@ -2564,8 +2733,12 @@ function renderFileExpenses() {
       <td>
         <select class="crm-revenue-input" data-file-expense-field="category" data-file-expense-id="${escapeHtml(line.id)}">
           <option${line.category === "Supplies" ? " selected" : ""}>Supplies</option>
+          <option${line.category === "Materials" ? " selected" : ""}>Materials</option>
+          <option${line.category === "Hardware" ? " selected" : ""}>Hardware</option>
+          <option${line.category === "Paint / Finish" ? " selected" : ""}>Paint / Finish</option>
           <option${line.category === "Equipment" ? " selected" : ""}>Equipment</option>
           <option${line.category === "Labor" ? " selected" : ""}>Labor</option>
+          <option${line.category === "Fuel" ? " selected" : ""}>Fuel</option>
           <option${line.category === "Other" ? " selected" : ""}>Other</option>
         </select>
       </td>
@@ -2577,10 +2750,25 @@ function renderFileExpenses() {
     </tr>
   `).join("") || `<tr><td colspan="7">No expenses added yet.</td></tr>`;
 
-  const receiptLine = (file.expenseLines || []).find((line) => line.receiptDataUrl);
-  preview.innerHTML = receiptLine
-    ? `<img src="${escapeHtml(receiptLine.receiptDataUrl)}" alt="Receipt preview"><p>${escapeHtml(receiptLine.vendor || receiptLine.note || "Receipt attached")}</p>`
-    : `<p class="crm-empty-state">No receipt photo attached yet.</p>`;
+  if (!fileReceiptDraft.imageDataUrl && !fileReceiptDraft.vendor && !fileReceiptDraft.amount) {
+    const receiptLine = (file.expenseLines || []).find((line) => line.receiptDataUrl);
+    if (receiptLine) {
+      fileReceiptDraft = {
+        ...blankFileReceiptDraft(),
+        imageDataUrl: receiptLine.receiptDataUrl || "",
+        fileName: receiptLine.receiptFileName || "",
+        vendor: receiptLine.vendor || "",
+        date: receiptLine.date || todayIso(0),
+        category: receiptLine.category || "Supplies",
+        amount: receiptLine.amount || "",
+        tax: receiptLine.tax || "",
+        paymentType: receiptLine.paymentType || "",
+        notes: receiptLine.note || "",
+        status: "Showing the latest saved receipt for this file.",
+      };
+    }
+  }
+  renderFileReceiptDraft();
 
   document.querySelectorAll("[data-file-expense-field]").forEach((field) => {
     field.addEventListener("change", () => updateFileExpenseField(field));
@@ -2611,6 +2799,9 @@ function addFileExpenseLine() {
     vendor: "",
     note: "",
     amount: "",
+    tax: "",
+    paymentType: "",
+    receiptFileName: "",
     receiptDataUrl: "",
   });
   addSystemNote(file, "Expense line added.");
@@ -2641,30 +2832,98 @@ function deleteFileExpenseLine(lineId) {
   renderFileExpenses();
 }
 
-function attachReceiptToFileExpense(uploadFile) {
+async function attachReceiptToFileExpense(uploadFile) {
   const file = normalizeCrmFile(activeFile());
   if (!file || !uploadFile) return;
-  const openLines = file.expenseLines.filter((entry) => !entry.receiptDataUrl);
-  const targetLine = openLines[openLines.length - 1] || {
-    id: makeCrmId("expense"),
-    date: todayIso(0),
-    category: "Supplies",
-    vendor: "",
-    note: uploadFile.name || "Receipt photo",
-    amount: "",
-    receiptDataUrl: "",
-  };
-  if (!file.expenseLines.some((line) => line.id === targetLine.id)) file.expenseLines.push(targetLine);
   const reader = new FileReader();
-  reader.addEventListener("load", () => {
-    targetLine.receiptDataUrl = reader.result;
-    if (!targetLine.note) targetLine.note = uploadFile.name || "Receipt photo";
-    addSystemNote(file, "Receipt photo attached to expenses.");
-    syncFileExpensesToRevenue(file);
-    saveCrmFiles();
-    renderFileExpenses();
+  reader.addEventListener("load", async () => {
+    const imageDataUrl = reader.result;
+    const localGuess = parseReceiptText(uploadFile.name || "", {
+      fileName: uploadFile.name || "",
+      date: todayIso(0),
+    });
+    fileReceiptDraft = {
+      ...blankFileReceiptDraft(),
+      ...localGuess,
+      imageDataUrl,
+      fileName: uploadFile.name || "",
+      status: "Reading receipt photo...",
+    };
+    renderFileReceiptDraft();
+    try {
+      const result = await readFileReceiptWithAi(imageDataUrl, uploadFile);
+      fileReceiptDraft = receiptResultToDraft(result, {
+        ...fileReceiptDraft,
+        imageDataUrl,
+        fileName: uploadFile.name || "",
+      });
+    } catch (error) {
+      fileReceiptDraft = {
+        ...fileReceiptDraft,
+        status: "Receipt photo attached. AI reading is not connected yet, so review or paste receipt text before saving.",
+        aiAvailable: false,
+      };
+    }
+    renderFileReceiptDraft();
   });
   reader.readAsDataURL(uploadFile);
+}
+
+function readPastedReceiptTextForFile() {
+  captureFileReceiptReviewFields();
+  if (!fileReceiptDraft.pastedText) {
+    setFileReceiptStatus("Paste receipt text first, then click Read Text.", "warn");
+    return;
+  }
+  const parsed = parseReceiptText(fileReceiptDraft.pastedText, fileReceiptDraft);
+  fileReceiptDraft = {
+    ...fileReceiptDraft,
+    ...parsed,
+    pastedText: fileReceiptDraft.pastedText,
+    status: "Receipt text read. Review the fields, then save the expense.",
+    aiAvailable: false,
+  };
+  renderFileReceiptDraft();
+}
+
+function clearFileReceiptDraft() {
+  fileReceiptDraft = blankFileReceiptDraft();
+  renderFileReceiptDraft();
+}
+
+function saveScannedReceiptToFile() {
+  const file = normalizeCrmFile(activeFile());
+  if (!file) {
+    window.alert("Select a customer file before saving a receipt.");
+    return;
+  }
+  captureFileReceiptReviewFields();
+  const amount = parseMoney(fileReceiptDraft.amount);
+  const vendor = fileReceiptDraft.vendor || "";
+  const note = fileReceiptDraft.notes || fileReceiptDraft.fileName || "Receipt expense";
+  if (!amount && !vendor && !note && !fileReceiptDraft.imageDataUrl) {
+    setFileReceiptStatus("Add receipt details before saving.", "warn");
+    return;
+  }
+  file.expenseLines.push({
+    id: makeCrmId("expense"),
+    date: fileReceiptDraft.date || todayIso(0),
+    category: fileReceiptDraft.category || "Supplies",
+    vendor,
+    note,
+    amount,
+    tax: parseMoney(fileReceiptDraft.tax),
+    paymentType: fileReceiptDraft.paymentType || "",
+    receiptFileName: fileReceiptDraft.fileName || "",
+    receiptDataUrl: fileReceiptDraft.imageDataUrl || "",
+    receiptSource: fileReceiptDraft.aiAvailable ? "AI receipt reader" : "Receipt review",
+  });
+  addSystemNote(file, `Receipt expense saved${vendor ? ` from ${vendor}` : ""}${amount ? ` for ${crmCurrency.format(amount)}` : ""}.`);
+  syncFileExpensesToRevenue(file);
+  saveCrmFiles();
+  fileReceiptDraft = blankFileReceiptDraft();
+  renderFileExpenses();
+  setFileReceiptStatus("Receipt saved to this file.", "good");
 }
 
 function updateRevenueField(field) {
@@ -4355,6 +4614,24 @@ $("crmAddFileExpense").addEventListener("click", addFileExpenseLine);
 $("crmReceiptUpload").addEventListener("change", (event) => {
   attachReceiptToFileExpense(event.target.files[0]);
   event.target.value = "";
+});
+$("crmReadReceiptText").addEventListener("click", readPastedReceiptTextForFile);
+$("crmSaveScannedReceipt").addEventListener("click", saveScannedReceiptToFile);
+$("crmClearScannedReceipt").addEventListener("click", clearFileReceiptDraft);
+[
+  "crmFileReceiptVendor",
+  "crmFileReceiptDate",
+  "crmFileReceiptCategory",
+  "crmFileReceiptAmount",
+  "crmFileReceiptTax",
+  "crmFileReceiptPayment",
+  "crmFileReceiptNotes",
+  "crmFileReceiptOcrText",
+].forEach((id) => {
+  const element = $(id);
+  if (!element) return;
+  element.addEventListener("input", captureFileReceiptReviewFields);
+  element.addEventListener("change", captureFileReceiptReviewFields);
 });
 $("crmUploadEstimateFile").addEventListener("click", () => $("crmEstimateFileUpload").click());
 $("crmEstimateFileUpload").addEventListener("change", (event) => {

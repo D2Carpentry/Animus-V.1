@@ -6,7 +6,7 @@
     <title>D2 Command Center</title>
     <meta name="theme-color" content="#0d4a91">
     <link rel="icon" href="icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=20260811-cloudflare-save">
+    <link rel="stylesheet" href="styles.css?v=20260813-receipt-ai">
     <link rel="stylesheet" href="calendar-upgrade.css?v=20260808-calendar-popups">
   </head>
   <body class="crm-body">
@@ -610,8 +610,8 @@
             </div>
             <div class="crm-invoice-controls">
               <button type="button" id="crmAddFileExpense">Add Expense</button>
-              <label class="icon-button crm-receipt-upload">
-                Add Receipt Photo
+              <label class="icon-button primary-action crm-receipt-upload">
+                Scan Receipt
                 <input id="crmReceiptUpload" type="file" accept="image/*" capture="environment" hidden>
               </label>
             </div>
@@ -648,8 +648,59 @@
               <div class="panel-header">
                 <h2>Receipt Reader</h2>
               </div>
-              <p class="crm-helper-text">For now, attach the receipt photo and type the total. Later we can connect OCR so the store, items, prices, and total can be read automatically from the picture.</p>
+              <p class="crm-helper-text">Take a receipt photo, review what ANIMUS reads, then save it to this file.</p>
               <div id="crmReceiptPreview" class="crm-receipt-preview"></div>
+              <div class="crm-file-receipt-review" id="crmFileReceiptReview" hidden>
+                <div class="field-grid two">
+                  <label>
+                    Vendor
+                    <input id="crmFileReceiptVendor" placeholder="Home Depot">
+                  </label>
+                  <label>
+                    Date
+                    <input id="crmFileReceiptDate" type="date">
+                  </label>
+                  <label>
+                    Category
+                    <select id="crmFileReceiptCategory">
+                      <option>Supplies</option>
+                      <option>Materials</option>
+                      <option>Hardware</option>
+                      <option>Paint / Finish</option>
+                      <option>Equipment</option>
+                      <option>Labor</option>
+                      <option>Fuel</option>
+                      <option>Other</option>
+                    </select>
+                  </label>
+                  <label>
+                    Total
+                    <input id="crmFileReceiptAmount" inputmode="decimal" placeholder="0.00">
+                  </label>
+                  <label>
+                    Tax
+                    <input id="crmFileReceiptTax" inputmode="decimal" placeholder="0.00">
+                  </label>
+                  <label>
+                    Paid By
+                    <input id="crmFileReceiptPayment" placeholder="Card, cash, account">
+                  </label>
+                </div>
+                <label>
+                  Items / Notes
+                  <textarea id="crmFileReceiptNotes" rows="4" placeholder="Receipt items, materials, or notes"></textarea>
+                </label>
+                <label>
+                  Paste Receipt Text
+                  <textarea id="crmFileReceiptOcrText" rows="5" placeholder="Optional: paste receipt text here if the photo cannot be read yet."></textarea>
+                </label>
+                <div class="crm-receipt-review-actions">
+                  <button type="button" id="crmReadReceiptText">Read Text</button>
+                  <button type="button" class="primary-action" id="crmSaveScannedReceipt">Save Expense</button>
+                  <button type="button" id="crmClearScannedReceipt">Clear</button>
+                </div>
+                <p class="crm-helper-text" id="crmFileReceiptStatus">Review the receipt before saving.</p>
+              </div>
             </aside>
           </section>
           <section class="crm-revenue-view crm-expenses-receipts-section" id="crmReceiptView">
@@ -823,7 +874,7 @@
         caches.keys().then((keys) => keys.forEach((key) => caches.delete(key)));
       }
     </script>
-    <script src="crm.js?v=20260811-cloudflare-save"></script>
+    <script src="crm.js?v=20260813-receipt-ai"></script>
     <script src="calendar-upgrade.js?v=20260808-calendar-popups"></script>
   </body>
 </html>
