@@ -6,7 +6,7 @@
     <title>D2 Command Center</title>
     <meta name="theme-color" content="#0d4a91">
     <link rel="icon" href="icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=20260813-receipt-lines">
+    <link rel="stylesheet" href="styles.css?v=20260813-expense-lines">
     <link rel="stylesheet" href="calendar-upgrade.css?v=20260808-calendar-popups">
   </head>
   <body class="crm-body">
@@ -634,7 +634,9 @@
                       <th>Category</th>
                       <th>Vendor / Store</th>
                       <th>Items / Notes</th>
-                      <th>Amount</th>
+                      <th>Price</th>
+                      <th>Tax</th>
+                      <th>Total</th>
                       <th>Receipt</th>
                       <th></th>
                     </tr>
@@ -882,6 +884,17 @@
         </div>
       </section>
     </div>
+    <div class="crm-modal-backdrop" id="crmExpenseNoteModal" hidden>
+      <section class="crm-choice-modal crm-expense-note-modal" role="dialog" aria-modal="true" aria-labelledby="crmExpenseNoteTitle">
+        <button type="button" class="crm-modal-close" id="crmExpenseNoteClose" aria-label="Close">×</button>
+        <p class="eyebrow">Expense Detail</p>
+        <h2 id="crmExpenseNoteTitle">Items / Notes</h2>
+        <textarea id="crmExpenseNoteText" rows="10" placeholder="Exact receipt item name or notes"></textarea>
+        <div class="crm-choice-actions">
+          <button type="button" class="icon-button primary-action" id="crmExpenseNoteSave">Save Notes</button>
+        </div>
+      </section>
+    </div>
     <script src="materials-database.js?v=20260804-price-update-2"></script>
     <script src="dashboard-restore-data.js?v=20260806-fresh-estimator-date-pdf"></script>
     <script src="revenue-data.js?v=20260806-fresh-estimator-date-pdf"></script>
@@ -897,7 +910,7 @@
         caches.keys().then((keys) => keys.forEach((key) => caches.delete(key)));
       }
     </script>
-    <script src="crm.js?v=20260813-receipt-lines"></script>
+    <script src="crm.js?v=20260813-expense-lines"></script>
     <script src="calendar-upgrade.js?v=20260808-calendar-popups"></script>
   </body>
 </html>

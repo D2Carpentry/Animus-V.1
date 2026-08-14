@@ -20,6 +20,7 @@ const GOOGLE_SCRIPT_URL_STORAGE_KEY = "d2GoogleScriptUrl";
 const CLOUDFLARE_DASHBOARD_API = "https://animus-v-1.pages.dev/api/dashboard";
 const CLOUDFLARE_RECEIPT_API = "https://animus-v-1.pages.dev/api/receipt";
 const NOTE_EDIT_WINDOW_MS = 12 * 60 * 60 * 1000;
+const DEFAULT_EXPENSE_TAX_RATE = 0.065;
 
 const CRM_STATUS_DESCRIPTIONS = {
   "New Lead": "Inquiry received from your website, social media, or local referral.",
@@ -156,6 +157,7 @@ let crmDeletedPriceIds = loadDeletedPriceIds();
 let editingPriceId = "";
 let receiptDraft = loadReceiptDraft();
 let fileReceiptDraft = blankFileReceiptDraft();
+let editingExpenseNoteLineId = "";
 let pendingEstimateUploadFileId = "";
 let openEstimateAfterUpload = false;
 let estimateChoiceTarget = "";
@@ -2527,8 +2529,24 @@ function renderExpenseDetail() {
   }
 }
 
+function expenseLineBaseAmount(line = {}) {
+  const base = Number(line.baseAmount);
+  return Number.isFinite(base) && base > 0 ? base : (Number(line.amount) || 0);
+}
+
+function expenseLineTaxRate(line = {}) {
+  const rate = Number(line.taxRate);
+  return Number.isFinite(rate) && rate > 0 ? rate : DEFAULT_EXPENSE_TAX_RATE;
+}
+
+function expenseLineTaxAmount(line = {}) {
+  if (!line.addTax) return Number(line.tax) || 0;
+  return expenseLineBaseAmount(line) * expenseLineTaxRate(line);
+}
+
 function receiptExpenseLineAmount(line = {}) {
-  return Number(line.amount) || 0;
+  if (line.addTax) return expenseLineBaseAmount(line) + expenseLineTaxAmount(line);
+  return Number(line.amount) || expenseLineBaseAmount(line);
 }
 
 function fileExpenseTotal(file) {
@@ -2861,7 +2879,7 @@ function renderFileExpenses() {
     title.textContent = "Select a file to track expenses.";
     heading.textContent = "No file selected";
     total.textContent = crmCurrency.format(0);
-    rows.innerHTML = `<tr><td colspan="7">No file selected.</td></tr>`;
+    rows.innerHTML = `<tr><td colspan="9">No file selected.</td></tr>`;
     fileReceiptDraft = blankFileReceiptDraft();
     renderFileReceiptDraft();
     return;
@@ -2869,7 +2887,12 @@ function renderFileExpenses() {
   title.textContent = `${file.fileNumber || "Project"} · ${file.clientName || "Unnamed Client"}`;
   heading.textContent = file.clientName || "Unnamed Client";
   total.textContent = crmCurrency.format(fileExpenseTotal(file));
-  rows.innerHTML = (file.expenseLines || []).map((line) => `
+  rows.innerHTML = (file.expenseLines || []).map((line) => {
+    const baseAmount = expenseLineBaseAmount(line);
+    const taxAmount = expenseLineTaxAmount(line);
+    const totalAmount = receiptExpenseLineAmount(line);
+    const notePreview = line.note ? line.note.split(/\s+/).slice(0, 5).join(" ") : "Add details";
+    return `
     <tr>
       <td><input class="crm-revenue-input" type="date" value="${escapeHtml(line.date || todayIso(0))}" data-file-expense-field="date" data-file-expense-id="${escapeHtml(line.id)}"></td>
       <td>
@@ -2885,12 +2908,22 @@ function renderFileExpenses() {
         </select>
       </td>
       <td><input class="crm-revenue-input" type="text" value="${escapeHtml(line.vendor || "")}" data-file-expense-field="vendor" data-file-expense-id="${escapeHtml(line.id)}" placeholder="Store"></td>
-      <td><textarea class="crm-revenue-input crm-revenue-notes" data-file-expense-field="note" data-file-expense-id="${escapeHtml(line.id)}" placeholder="Items / notes">${escapeHtml(line.note || "")}</textarea></td>
-      <td><input class="crm-revenue-input crm-money-input" type="text" inputmode="decimal" value="${escapeHtml(Number(line.amount) || "")}" data-file-expense-field="amount" data-file-expense-id="${escapeHtml(line.id)}" placeholder="0.00"></td>
+      <td>
+        <button type="button" class="crm-expense-note-button" data-file-expense-note="${escapeHtml(line.id)}">
+          <span>${escapeHtml(notePreview)}</span>
+        </button>
+      </td>
+      <td><input class="crm-revenue-input crm-money-input" type="text" inputmode="decimal" value="${escapeHtml(baseAmount || "")}" data-file-expense-field="baseAmount" data-file-expense-id="${escapeHtml(line.id)}" placeholder="0.00"></td>
+      <td class="crm-expense-tax-toggle">
+        <input type="checkbox" data-file-expense-field="addTax" data-file-expense-id="${escapeHtml(line.id)}" ${line.addTax ? "checked" : ""} aria-label="Add tax to this expense">
+        <small>${taxAmount ? crmCurrency.format(taxAmount) : ""}</small>
+      </td>
+      <td><strong>${crmCurrency.format(totalAmount)}</strong></td>
       <td>${line.receiptDataUrl ? `<button type="button" data-file-receipt-preview="${escapeHtml(line.id)}">View</button>` : `<span class="crm-muted">None</span>`}</td>
       <td><button type="button" data-file-expense-delete="${escapeHtml(line.id)}">Delete</button></td>
     </tr>
-  `).join("") || `<tr><td colspan="7">No expenses added yet.</td></tr>`;
+  `;
+  }).join("") || `<tr><td colspan="9">No expenses added yet.</td></tr>`;
 
   if (!fileReceiptDraft.imageDataUrl && !fileReceiptDraft.vendor && !fileReceiptDraft.amount) {
     const receiptLine = (file.expenseLines || []).find((line) => line.receiptDataUrl);
@@ -2921,6 +2954,9 @@ function renderFileExpenses() {
   document.querySelectorAll("[data-file-expense-field]").forEach((field) => {
     field.addEventListener("change", () => updateFileExpenseField(field));
   });
+  document.querySelectorAll("[data-file-expense-note]").forEach((button) => {
+    button.addEventListener("click", () => openExpenseNoteModal(button.dataset.fileExpenseNote));
+  });
   document.querySelectorAll("[data-file-expense-delete]").forEach((button) => {
     button.addEventListener("click", () => deleteFileExpenseLine(button.dataset.fileExpenseDelete));
   });
@@ -2946,8 +2982,11 @@ function addFileExpenseLine() {
     category: "Supplies",
     vendor: "",
     note: "",
+    baseAmount: "",
     amount: "",
     tax: "",
+    addTax: false,
+    taxRate: DEFAULT_EXPENSE_TAX_RATE,
     paymentType: "",
     receiptFileName: "",
     receiptDataUrl: "",
@@ -2964,9 +3003,45 @@ function updateFileExpenseField(field) {
   const line = file.expenseLines.find((entry) => entry.id === field.dataset.fileExpenseId);
   if (!line) return;
   const key = field.dataset.fileExpenseField;
-  line[key] = key === "amount" ? parseMoney(field.value) : field.value;
+  if (key === "addTax") {
+    line.addTax = Boolean(field.checked);
+  } else if (key === "baseAmount" || key === "amount") {
+    line.baseAmount = parseMoney(field.value);
+  } else {
+    line[key] = field.value;
+  }
+  line.taxRate = line.taxRate || DEFAULT_EXPENSE_TAX_RATE;
+  line.tax = line.addTax ? expenseLineTaxAmount(line) : 0;
+  line.amount = receiptExpenseLineAmount(line);
   syncFileExpensesToRevenue(file);
   saveCrmFiles();
+  renderFileExpenses();
+}
+
+function openExpenseNoteModal(lineId) {
+  const file = normalizeCrmFile(activeFile());
+  const line = file?.expenseLines?.find((entry) => entry.id === lineId);
+  if (!line) return;
+  editingExpenseNoteLineId = lineId;
+  $("crmExpenseNoteTitle").textContent = `${line.vendor || file.clientName || "Expense"} Notes`;
+  $("crmExpenseNoteText").value = line.note || "";
+  $("crmExpenseNoteModal").hidden = false;
+  $("crmExpenseNoteText").focus();
+}
+
+function closeExpenseNoteModal() {
+  editingExpenseNoteLineId = "";
+  $("crmExpenseNoteModal").hidden = true;
+}
+
+function saveExpenseNoteModal() {
+  const file = normalizeCrmFile(activeFile());
+  const line = file?.expenseLines?.find((entry) => entry.id === editingExpenseNoteLineId);
+  if (!line) return closeExpenseNoteModal();
+  line.note = $("crmExpenseNoteText").value.trim();
+  syncFileExpensesToRevenue(file);
+  saveCrmFiles();
+  closeExpenseNoteModal();
   renderFileExpenses();
 }
 
@@ -3063,6 +3138,7 @@ function saveScannedReceiptToFile() {
     lines.forEach((line, index) => {
       const baseAmount = parseMoney(line.price);
       const finalAmount = receiptLineFinalAmount(line);
+      const taxRate = receiptTaxRate() || DEFAULT_EXPENSE_TAX_RATE;
       file.expenseLines.push({
         id: makeCrmId("expense"),
         date: fileReceiptDraft.date || todayIso(0),
@@ -3073,6 +3149,7 @@ function saveScannedReceiptToFile() {
         baseAmount,
         tax: line.addTax ? Math.max(0, finalAmount - baseAmount) : 0,
         addTax: Boolean(line.addTax),
+        taxRate,
         paymentType: fileReceiptDraft.paymentType || "",
         receiptFileName: fileReceiptDraft.fileName || "",
         receiptDataUrl: index === 0 ? (fileReceiptDraft.imageDataUrl || "") : "",
@@ -3087,7 +3164,10 @@ function saveScannedReceiptToFile() {
       vendor,
       note,
       amount,
+      baseAmount: amount,
       tax: receiptTax,
+      addTax: false,
+      taxRate: receiptTaxRate() || DEFAULT_EXPENSE_TAX_RATE,
       paymentType: fileReceiptDraft.paymentType || "",
       receiptFileName: fileReceiptDraft.fileName || "",
       receiptDataUrl: fileReceiptDraft.imageDataUrl || "",
@@ -4763,6 +4843,11 @@ $("crmEstimateChoiceClose").addEventListener("click", closeEstimateChoiceDialog)
 $("crmEstimateChoiceModal").addEventListener("click", (event) => {
   if (event.target.id === "crmEstimateChoiceModal") closeEstimateChoiceDialog();
 });
+$("crmExpenseNoteClose").addEventListener("click", closeExpenseNoteModal);
+$("crmExpenseNoteSave").addEventListener("click", saveExpenseNoteModal);
+$("crmExpenseNoteModal").addEventListener("click", (event) => {
+  if (event.target.id === "crmExpenseNoteModal") closeExpenseNoteModal();
+});
 $("crmEstimateChoiceCreate").addEventListener("click", () => createEstimateForFile(activeFile(), estimateChoiceTarget));
 $("crmEstimateChoiceUpload").addEventListener("click", () => startEstimateUploadForFile(activeFile(), estimateChoiceTarget));
 $("crmEstimateChoiceView").addEventListener("click", () => {
@@ -4774,6 +4859,7 @@ $("crmEstimateChoiceView").addEventListener("click", () => {
 });
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && !$("crmEstimateChoiceModal").hidden) closeEstimateChoiceDialog();
+  if (event.key === "Escape" && !$("crmExpenseNoteModal").hidden) closeExpenseNoteModal();
 });
 $("crmImportRevenue").addEventListener("click", importRevenueRows);
 $("crmAddRevenueRow").addEventListener("click", addRevenueRow);
