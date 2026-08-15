@@ -7010,8 +7010,8 @@ function clearManualExpenseForm() {
   if ($("crmManualExpenseNotes")) $("crmManualExpenseNotes").value = "";
   const preview = $("crmAiReceiptPreview");
   if (preview) {
-    preview.hidden = true;
-    preview.innerHTML = "";
+    preview.hidden = false;
+    preview.innerHTML = `<div class="crm-receipt-preview-empty">No receipt photo selected yet.</div>`;
   }
 }
 
@@ -7422,6 +7422,10 @@ $("crmSaveManualExpense")?.addEventListener("click", saveManualExpense);
 $("crmClearManualExpense")?.addEventListener("click", () => {
   clearManualExpenseForm();
   setManualExpenseStatus("Manual expense cleared.");
+});
+$("crmAddManualExpense")?.addEventListener("click", () => {
+  clearManualExpenseForm();
+  setManualExpenseStatus("Ready for a new expense.");
 });
 $("crmScanReceiptExpense")?.addEventListener("click", () => {
   $("crmAiReceiptUpload")?.click();
