@@ -692,6 +692,12 @@
                 </div>
                 <strong id="crmManualExpenseTotal">$0.00</strong>
               </div>
+              <div class="crm-ai-expense-tools">
+                <input id="crmAiReceiptUpload" type="file" accept="image/*" hidden>
+                <button type="button" class="primary-action" id="crmScanReceiptExpense">Scan Receipt with AI</button>
+                <span>Upload a receipt photo, then review the fields before saving.</span>
+              </div>
+              <div class="crm-ai-receipt-preview" id="crmAiReceiptPreview" hidden></div>
               <div class="field-grid three">
                 <label>
                   Date
@@ -735,7 +741,7 @@
                 <button type="button" class="primary-action" id="crmSaveManualExpense">Save Expense</button>
                 <button type="button" id="crmClearManualExpense">Clear</button>
               </div>
-              <p class="crm-helper-text" id="crmManualExpenseStatus">Manual expenses only for this first rebuild step.</p>
+              <p class="crm-helper-text" id="crmManualExpenseStatus">Add an expense manually or scan a receipt with AI.</p>
             </section>
 
             <section class="panel crm-detail-card">
@@ -886,7 +892,7 @@
         caches.keys().then((keys) => keys.forEach((key) => caches.delete(key)));
       }
     </script>
-    <script src="crm.js?v=20260814-expense-v1-list-revenue"></script>
+    <script src="crm.js?v=20260814-expense-v1-ai"></script>
     <script src="calendar-upgrade.js?v=20260808-calendar-popups"></script>
   </body>
 </html>

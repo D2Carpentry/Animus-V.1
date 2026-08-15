@@ -7008,14 +7008,100 @@ function clearManualExpenseForm() {
   if ($("crmManualExpensePayment")) $("crmManualExpensePayment").value = "";
   if ($("crmManualExpenseAmount")) $("crmManualExpenseAmount").value = "";
   if ($("crmManualExpenseNotes")) $("crmManualExpenseNotes").value = "";
+  const preview = $("crmAiReceiptPreview");
+  if (preview) {
+    preview.hidden = true;
+    preview.innerHTML = "";
+  }
 }
 
 function setManualExpenseStatus(message = "", kind = "") {
   const status = $("crmManualExpenseStatus");
   if (!status) return;
-  status.textContent = message || "Manual expenses only for this first rebuild step.";
+  status.textContent = message || "Add an expense manually or scan a receipt with AI.";
   status.classList.toggle("good", kind === "good");
   status.classList.toggle("warn", kind === "warn");
+}
+
+function manualExpenseSelectOptionValue(selectId, value = "") {
+  const select = $(selectId);
+  if (!select) return "";
+  const normalized = String(value || "").trim().toLowerCase();
+  const option = Array.from(select.options).find((item) => {
+    return item.value.trim().toLowerCase() === normalized || item.textContent.trim().toLowerCase() === normalized;
+  });
+  return option ? option.value : "";
+}
+
+function manualExpensePaymentFromReceipt(value = "") {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (!normalized) return "";
+  if (normalized.includes("cash")) return "Cash";
+  if (normalized.includes("chase business")) return "Credit - Chase Business";
+  if (normalized.includes("bank of america")) return "Credit - Bank of America";
+  if (normalized.includes("chase personal")) return "Credit - Chase Personal";
+  if (normalized.includes("credit") || normalized.includes("card")) return "Credit - Chase Business";
+  return manualExpenseSelectOptionValue("crmManualExpensePayment", value);
+}
+
+function manualExpenseNotesFromDraft(draft = {}) {
+  const lineNotes = Array.isArray(draft.lines)
+    ? draft.lines
+      .map((line) => {
+        const name = line.description || line.name || "";
+        const amount = parseMoney(line.price || line.amount || line.total);
+        return [name, amount ? crmCurrency.format(amount) : ""].filter(Boolean).join(" - ");
+      })
+      .filter(Boolean)
+      .join("\n")
+    : "";
+  return [draft.notes || "", lineNotes].filter(Boolean).join("\n").trim();
+}
+
+function fillManualExpenseFromReceiptDraft(draft = {}, uploadFile = null, imageDataUrl = "") {
+  const category = manualExpenseSelectOptionValue("crmManualExpenseCategory", draft.category) || "Supplies";
+  const payment = manualExpensePaymentFromReceipt(draft.paymentType);
+  if ($("crmManualExpenseDate")) $("crmManualExpenseDate").value = draft.date || todayIso(0);
+  if ($("crmManualExpenseVendor")) $("crmManualExpenseVendor").value = draft.vendor || "";
+  if ($("crmManualExpenseCategory")) $("crmManualExpenseCategory").value = category;
+  if ($("crmManualExpensePayment")) $("crmManualExpensePayment").value = payment;
+  if ($("crmManualExpenseAmount")) $("crmManualExpenseAmount").value = draft.amount ? String(draft.amount) : "";
+  if ($("crmManualExpenseNotes")) $("crmManualExpenseNotes").value = manualExpenseNotesFromDraft(draft) || uploadFile?.name || "";
+  const preview = $("crmAiReceiptPreview");
+  if (preview) {
+    preview.hidden = false;
+    preview.innerHTML = imageDataUrl
+      ? `<img src="${escapeHtml(imageDataUrl)}" alt="Receipt preview"><p>${escapeHtml(uploadFile?.name || "Receipt photo")}</p>`
+      : `<p>${escapeHtml(uploadFile?.name || "Receipt scanned")}</p>`;
+  }
+}
+
+async function scanManualExpenseReceipt(files) {
+  const file = normalizeCrmFile(activeFile());
+  const uploadFile = files && files[0];
+  if (!file) {
+    setManualExpenseStatus("Select a file before scanning a receipt.", "warn");
+    return;
+  }
+  if (!uploadFile) return;
+  try {
+    showReceiptLoading("Reading receipt photo with AI...");
+    const imageDataUrl = await readUploadFileAsDataUrl(uploadFile);
+    const fallback = {
+      fileName: uploadFile.name,
+      date: todayIso(0),
+      category: "Supplies",
+      notes: uploadFile.name,
+    };
+    const result = await readFileReceiptWithAi(imageDataUrl, uploadFile);
+    const draft = receiptResultToDraft(result, fallback);
+    fillManualExpenseFromReceiptDraft(draft, uploadFile, imageDataUrl);
+    setManualExpenseStatus(draft.status || "Receipt read with AI. Review the fields, then click Save Expense.", draft.aiAvailable ? "good" : "warn");
+  } catch (error) {
+    setManualExpenseStatus(error?.message || "Receipt could not be read. Add the expense manually.", "warn");
+  } finally {
+    hideReceiptLoading();
+  }
 }
 
 function renderManualExpenses() {
@@ -7336,6 +7422,13 @@ $("crmSaveManualExpense")?.addEventListener("click", saveManualExpense);
 $("crmClearManualExpense")?.addEventListener("click", () => {
   clearManualExpenseForm();
   setManualExpenseStatus("Manual expense cleared.");
+});
+$("crmScanReceiptExpense")?.addEventListener("click", () => {
+  $("crmAiReceiptUpload")?.click();
+});
+$("crmAiReceiptUpload")?.addEventListener("change", (event) => {
+  scanManualExpenseReceipt(event.target.files);
+  event.target.value = "";
 });
 [
   "crmFileReceiptVendor",

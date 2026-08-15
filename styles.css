@@ -4370,6 +4370,48 @@ body[data-copy-mode="team"] .estimate-sheet td:first-child {
   font-weight: 900;
 }
 
+.crm-ai-expense-tools {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 0 0 14px;
+}
+
+.crm-ai-expense-tools span {
+  color: var(--muted);
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+
+.crm-ai-receipt-preview {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid #d7dce5;
+  border-radius: 8px;
+  background: #f8fafc;
+  padding: 10px;
+  margin-bottom: 14px;
+}
+
+.crm-ai-receipt-preview img {
+  width: 74px;
+  height: 74px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid #d7dce5;
+  background: #fff;
+}
+
+.crm-ai-receipt-preview p {
+  margin: 0;
+  color: var(--ink);
+  font-size: 0.92rem;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
 .crm-manual-expense-table-wrap {
   overflow-x: auto;
 }
