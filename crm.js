@@ -567,15 +567,69 @@ function loadDeletedPriceIds() {
   }
 }
 
+function receiptHistoryToFreshReceipt(entry = {}) {
+  return cleanFreshExpenseReceipt({
+    id: entry.id,
+    createdAt: entry.savedAt || entry.createdAt,
+    updatedAt: entry.updatedAt || entry.savedAt || entry.createdAt,
+    date: entry.date,
+    vendor: entry.vendor,
+    category: entry.category,
+    paymentType: entry.paymentType,
+    imageTitle: entry.label,
+    lines: Array.isArray(entry.lines) ? entry.lines.map((line) => ({
+      id: line.id,
+      description: line.description || line.note || "",
+      category: line.category || entry.category || "Supplies",
+      price: line.price === undefined ? (line.baseAmount || line.amount || "") : line.price,
+      addTax: line.addTax !== false,
+      taxRate: line.taxRate || DEFAULT_EXPENSE_TAX_RATE,
+      receiptDataUrl: line.receiptDataUrl || "",
+    })) : [],
+    imageDataUrl: Array.isArray(entry.lines) ? (entry.lines.find((line) => line.receiptDataUrl)?.receiptDataUrl || "") : "",
+  });
+}
+
+function receiptStoreKey(receipt = {}) {
+  return String(receipt.id || `${receipt.date || ""}|${receipt.vendor || ""}|${receipt.imageTitle || ""}|${receipt.notes || ""}`)
+    .trim()
+    .toLowerCase();
+}
+
+function mergeFileReceiptStores(file) {
+  const merged = [];
+  const seen = new Set();
+  [
+    ...(Array.isArray(file.freshExpenseReceipts) ? file.freshExpenseReceipts : []),
+    ...(Array.isArray(file.expenseReceipts) ? file.expenseReceipts : []),
+    ...(Array.isArray(file.receiptHistory) ? file.receiptHistory.map(receiptHistoryToFreshReceipt) : []),
+  ].forEach((receipt) => {
+    const clean = cleanFreshExpenseReceipt(receipt);
+    const hasContent = clean.vendor || clean.imageTitle || clean.notes || clean.imageDataUrl || clean.lines.length;
+    const key = receiptStoreKey(clean);
+    if (!hasContent || !key || seen.has(key)) return;
+    seen.add(key);
+    merged.push(clean);
+  });
+  return merged.sort((a, b) => String(b.updatedAt || b.createdAt || "").localeCompare(String(a.updatedAt || a.createdAt || "")));
+}
+
+function syncExpenseFileForStorage(file) {
+  if (!file) return;
+  const receipts = mergeFileReceiptStores(file);
+  if (receipts.length) {
+    file.freshExpenseReceipts = receipts;
+    rebuildFreshFileExpenses(file);
+    return;
+  }
+  restoreExpenseLinesFromReceiptHistory(file);
+  syncReceiptHistoryFromExpenseLines(file);
+}
+
 function saveCrmFiles() {
   try {
     crmFiles.forEach((file) => {
-      if (Array.isArray(file.freshExpenseReceipts) && file.freshExpenseReceipts.length) {
-        rebuildFreshFileExpenses(file);
-      } else {
-        restoreExpenseLinesFromReceiptHistory(file);
-        syncReceiptHistoryFromExpenseLines(file);
-      }
+      syncExpenseFileForStorage(file);
     });
     if (Array.isArray(crmFiles) && crmFiles.length) {
       localStorage.setItem(CRM_STORAGE_BACKUP_KEY, JSON.stringify(crmFiles));
@@ -690,12 +744,7 @@ function persistRestoredDashboardIfNeeded() {
 function buildDashboardSyncPayload() {
   captureCurrentDashboardEdits();
   crmFiles.forEach((file) => {
-    if (Array.isArray(file.freshExpenseReceipts) && file.freshExpenseReceipts.length) {
-      rebuildFreshFileExpenses(file);
-    } else {
-      restoreExpenseLinesFromReceiptHistory(file);
-      syncReceiptHistoryFromExpenseLines(file);
-    }
+    syncExpenseFileForStorage(file);
   });
   syncAllFileExpensesToRevenue();
   return {
@@ -1078,7 +1127,7 @@ function normalizeCrmFile(file) {
   if (!Array.isArray(file.receiptHistory)) file.receiptHistory = [];
   if (!Array.isArray(file.expenseReceipts)) file.expenseReceipts = [];
   if (!Array.isArray(file.freshExpenseReceipts)) file.freshExpenseReceipts = [];
-  restoreExpenseLinesFromReceiptHistory(file);
+  syncExpenseFileForStorage(file);
   file.projectStage = file.projectStage || inferProjectStage(file.fileStatus);
   file.projectType = normalizeProjectType(file.projectType);
   file.estimateStatus = file.estimateStatus || inferEstimateStatus(file.fileStatus, file.statusDetail);
@@ -7118,13 +7167,6 @@ document.addEventListener("click", (event) => {
   event.preventDefault();
   event.stopImmediatePropagation();
   action();
-}, true);
-
-document.addEventListener("change", (event) => {
-  if (event.target?.id !== "crmReceiptUpload") return;
-  event.stopImmediatePropagation();
-  freshExpenseAttachReceipt(event.target.files);
-  event.target.value = "";
 }, true);
 
 persistRestoredDashboardIfNeeded();
