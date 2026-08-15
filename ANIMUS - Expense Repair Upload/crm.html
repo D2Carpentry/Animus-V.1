@@ -1,0 +1,972 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>D2 Command Center</title>
+    <meta name="theme-color" content="#0d4a91">
+    <link rel="icon" href="icon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="styles.css?v=20260814-payroll-tab">
+    <link rel="stylesheet" href="calendar-upgrade.css?v=20260808-calendar-popups">
+  </head>
+  <body class="crm-body">
+    <main class="crm-shell">
+      <header class="crm-topbar">
+        <div class="crm-brand">
+          <img src="assets/d2-logo.png" alt="D2 Carpentry and Design logo">
+          <div>
+            <p class="eyebrow">D2 Carpentry and Design</p>
+            <h1>Command Center</h1>
+          </div>
+        </div>
+        <div class="crm-header-search">
+          <input id="crmFileSearch" type="search" placeholder="Search name, phone, or file #">
+          <button type="button" id="crmSearchFile">Search</button>
+          <button class="icon-button header-save-button" type="button" id="crmSaveDemo">Save</button>
+          <span class="crm-save-status" id="crmSaveStatus" aria-live="polite"></span>
+        </div>
+      </header>
+
+      <nav class="crm-actions crm-nav-actions" aria-label="Command Center actions">
+        <button type="button" class="icon-button primary-action" id="crmNewFile">+ New File</button>
+        <button type="button" class="icon-button active" data-crm-view="dashboard">Command Center</button>
+        <button type="button" class="icon-button" data-crm-view="calendar">Calendar</button>
+        <button type="button" class="icon-button" data-crm-view="revenue">Revenue</button>
+        <button type="button" class="icon-button" data-crm-view="payroll">Payroll</button>
+        <button type="button" class="icon-button" data-crm-view="prices">Price Database</button>
+        <button type="button" class="icon-button" data-crm-view="estimator">Estimator</button>
+        <a class="icon-button" href="mobile.html">Mobile</a>
+      </nav>
+
+      <section class="crm-dashboard">
+        <section class="crm-command-panel crm-dashboard-view">
+          <div class="crm-command-grid">
+            <button type="button" class="crm-command-card active" data-crm-filter="new">
+              <span>New Leads</span>
+              <strong id="newLeadCount">0</strong>
+            </button>
+            <button type="button" class="crm-command-card" data-crm-filter="contact">
+              <span>Pending Contact</span>
+              <strong id="pendingContactCount">0</strong>
+            </button>
+            <button type="button" class="crm-command-card" data-crm-filter="estimate">
+              <span>Pending Estimates</span>
+              <strong id="pendingEstimateCount">0</strong>
+            </button>
+            <button type="button" class="crm-command-card" data-crm-filter="negotiation">
+              <span>In Negotiation</span>
+              <strong id="negotiationCount">0</strong>
+            </button>
+            <button type="button" class="crm-command-card" data-crm-filter="active">
+              <span>Active Jobs</span>
+              <strong id="activeJobCount">0</strong>
+            </button>
+            <button type="button" class="crm-command-card" data-crm-filter="archive">
+              <span>Closed Files</span>
+              <strong id="archivedCount">0</strong>
+            </button>
+          </div>
+          <section class="crm-estimator-embed" id="crmEstimatorView" hidden>
+            <iframe id="crmEstimatorFrame" title="D2 Estimator"></iframe>
+          </section>
+        </section>
+
+        <section class="crm-layout crm-dashboard-view">
+          <aside class="crm-file-list-panel">
+            <div class="crm-panel-heading">
+              <div>
+                <p class="eyebrow">Files</p>
+                <h2 id="crmListTitle">New Leads</h2>
+              </div>
+              <select id="crmFileFilter" aria-label="File filter">
+                <option value="new" selected>New Leads</option>
+                <option value="contact">Pending Contact</option>
+                <option value="estimate">Pending Estimates</option>
+                <option value="negotiation">In Negotiation</option>
+                <option value="active">Active Jobs</option>
+                <option value="archive">Closed Files</option>
+              </select>
+            </div>
+            <div class="crm-file-list" id="crmFileList"></div>
+          </aside>
+
+          <section class="crm-file-workspace">
+            <div class="crm-file-header">
+              <div>
+                <p class="eyebrow" id="activeFileNumber">No file selected</p>
+                <h2 id="activeClientName">Create or select a customer file</h2>
+              </div>
+              <div class="crm-file-header-actions">
+                <button type="button" class="icon-button" id="crmOpenEstimate">Estimate</button>
+                <button type="button" class="icon-button" id="crmOpenAssignment">Assignment</button>
+                <button type="button" class="icon-button" id="crmOpenInvoice">Invoice</button>
+                <button type="button" class="icon-button" id="crmOpenExpenses">Expenses</button>
+                <button type="button" class="icon-button" id="crmArchiveFile">Archive</button>
+                <button type="button" class="icon-button danger-action" id="crmDeleteFile">Delete File</button>
+              </div>
+            </div>
+
+            <div class="crm-file-grid">
+              <section class="panel crm-detail-card">
+                <div class="panel-header">
+                  <h2>Customer</h2>
+                </div>
+                <div class="field-grid two-tight">
+                  <label>
+                    Name
+                    <input id="crmClientName">
+                  </label>
+                  <label>
+                    Phone
+                    <input id="crmClientPhone">
+                  </label>
+                  <label>
+                    Email
+                    <input id="crmClientEmail" type="email">
+                  </label>
+                  <label>
+                    Source
+                    <select id="crmLeadSource">
+                      <option>Manual</option>
+                      <option>Angi</option>
+                      <option>Website</option>
+                      <option>Phone</option>
+                      <option>Text</option>
+                      <option>Referral</option>
+                      <option>Repeat Customer</option>
+                      <option>Other</option>
+                    </select>
+                  </label>
+                  <label class="wide">
+                    Address
+                    <input id="crmProjectAddress">
+                  </label>
+                </div>
+              </section>
+
+              <section class="panel crm-detail-card">
+                <div class="panel-header">
+                  <h2>Status</h2>
+                </div>
+                <div class="field-grid two-tight">
+                  <label>
+                    File Status
+                    <select id="crmFileStatus">
+                      <option>New Lead</option>
+                      <option>Contact Established</option>
+                      <option>Contact Attempted</option>
+                      <option>Inspection Completed</option>
+                      <option>In Negotiation</option>
+                      <option>Job Won</option>
+                      <option>In Progress</option>
+                      <option>Work Completed</option>
+                      <option>Closed / Paid</option>
+                      <option>Job Lost / Closed</option>
+                    </select>
+                  </label>
+                  <label>
+                    Status Detail
+                    <select id="crmStatusDetail"></select>
+                  </label>
+                  <label>
+                    Project Type
+                    <select id="crmProjectType">
+                      <option>Closet</option>
+                      <option>Pantry</option>
+                      <option>Cabinetry</option>
+                      <option>Refinishing</option>
+                      <option>Built-In</option>
+                      <option>Other</option>
+                    </select>
+                  </label>
+                  <p class="crm-status-description wide" id="crmStatusDescription"></p>
+                </div>
+              </section>
+
+              <section class="panel crm-detail-card">
+                <div class="panel-header">
+                  <h2>Contact</h2>
+                </div>
+                <div class="field-grid two-tight">
+                  <label>
+                    Contact Email Sent?
+                    <select id="crmContactEmailSent">
+                      <option>No</option>
+                      <option>Yes</option>
+                    </select>
+                  </label>
+                  <label>
+                    Contact Text Sent?
+                    <select id="crmContactTextSent">
+                      <option>No</option>
+                      <option>Yes</option>
+                    </select>
+                  </label>
+                  <label>
+                    Inspection Date Set?
+                    <select id="crmInspectionDateSet">
+                      <option>No</option>
+                      <option>Yes</option>
+                    </select>
+                  </label>
+                  <label>
+                    Inspection Date
+                    <input id="crmInspectionDate" type="date">
+                  </label>
+                  <label>
+                    Inspection Time
+                    <input id="crmInspectionTime" type="time">
+                  </label>
+                  <label>
+                    Start Date
+                    <input id="crmStartDate" type="date">
+                  </label>
+                  <label>
+                    Arrival Window
+                    <select id="crmArrivalWindow">
+                      <option>Open</option>
+                      <option>7:00 AM</option>
+                      <option>8:00 AM</option>
+                      <option>9:00 AM</option>
+                      <option>10:00 AM</option>
+                      <option>Afternoon</option>
+                    </select>
+                  </label>
+                  <label>
+                    Follow-Up Date
+                    <input id="crmFollowUpDate" type="date">
+                  </label>
+                  <label>
+                    Anticipated Completion
+                    <input id="crmAnticipatedCompletionDate" type="date">
+                  </label>
+                  <label>
+                    Next Action Date
+                    <input id="crmNextActionDate" type="date">
+                  </label>
+                  <label class="wide">
+                    Next Action
+                    <input id="crmNextAction" placeholder="Follow up, send estimate, confirm start date">
+                  </label>
+                </div>
+                <input id="crmEstimateStatus" type="hidden" value="Not Started">
+                <input id="crmInvoiceStatus" type="hidden" value="Not Created">
+                <input id="crmReviewStatus" type="hidden" value="Not Ready">
+                <input id="crmReviewSent" type="hidden" value="No">
+              </section>
+
+              <section class="panel crm-detail-card">
+                <div class="panel-header">
+                  <h2>Financials</h2>
+                </div>
+                <div class="crm-money-grid">
+                  <div class="crm-estimate-total-card">
+                    <span>Estimate Amount</span>
+                    <strong id="crmEstimateTotal">$0.00</strong>
+                    <button type="button" id="crmEditEstimateTotal">Edit</button>
+                  </div>
+                  <div class="crm-estimate-total-card">
+                    <span>Materials</span>
+                    <strong id="crmMaterialTotal">$0.00</strong>
+                    <button type="button" id="crmEditMaterialTotal">Edit</button>
+                  </div>
+                  <div><span>Pending Amount Owed</span><strong id="crmBalanceTotal">$0.00</strong></div>
+                  <div><span>Total Estimate Paid</span><strong id="crmPaidTotal">$0.00</strong></div>
+                </div>
+                <div class="crm-estimate-edit" id="crmEstimateEditPanel" hidden>
+                  <label>
+                    Estimate Amount
+                    <input id="crmEstimateAmountInput" type="number" min="0" step="0.01">
+                  </label>
+                  <button type="button" id="crmSaveEstimateAmount">Save Amount</button>
+                </div>
+                <div class="crm-estimate-edit" id="crmMaterialEditPanel" hidden>
+                  <label>
+                    Materials Amount
+                    <input id="crmMaterialAmountInput" type="number" min="0" step="0.01">
+                  </label>
+                  <button type="button" id="crmSaveMaterialAmount">Save Materials</button>
+                </div>
+                <div class="field-grid two-tight crm-money-controls">
+                  <label>
+                    Initial Deposit Secured?
+                    <select id="crmInitialDepositSecured">
+                      <option>No</option>
+                      <option>Yes</option>
+                    </select>
+                  </label>
+                  <label>
+                    Initial Deposit
+                    <input id="crmInitialDeposit" type="number" min="0" step="0.01">
+                  </label>
+                  <label>
+                    Midpoint Deposit Secured?
+                    <select id="crmMidpointDepositSecured">
+                      <option>No</option>
+                      <option>Yes</option>
+                    </select>
+                  </label>
+                  <label>
+                    Midpoint Deposit
+                    <input id="crmMidpointDeposit" type="number" min="0" step="0.01">
+                  </label>
+                  <label>
+                    Final Payment Secured?
+                    <select id="crmFinalPaymentSecured">
+                      <option>No</option>
+                      <option>Yes</option>
+                    </select>
+                  </label>
+                  <label>
+                    Final Payment Amount
+                    <input id="crmFinalPaymentAmount" type="number" min="0" step="0.01">
+                  </label>
+                  <label>
+                    Paid in Full?
+                    <select id="crmPaidInFull">
+                      <option>No</option>
+                      <option>Yes</option>
+                    </select>
+                  </label>
+                </div>
+              </section>
+
+              <section class="panel crm-detail-card">
+                <div class="panel-header">
+                  <h2>Operations</h2>
+                </div>
+                <div class="field-grid two-tight">
+                  <label>
+                    Invoice Sent?
+                    <select id="crmInvoiceSent">
+                      <option>No</option>
+                      <option>Yes</option>
+                    </select>
+                  </label>
+                  <label>
+                    Review Requested?
+                    <select id="crmReviewRequested">
+                      <option>No</option>
+                      <option>Yes</option>
+                    </select>
+                  </label>
+                  <label>
+                    Closing Call Completed?
+                    <select id="crmClosingCallCompleted">
+                      <option>No</option>
+                      <option>Yes</option>
+                    </select>
+                  </label>
+                  <label>
+                    Warranty Details
+                    <select id="crmWarrantyStatus">
+                      <option>Not Sent</option>
+                      <option>Ready to Send</option>
+                      <option>Sent</option>
+                    </select>
+                  </label>
+                </div>
+              </section>
+
+              <section class="panel crm-detail-card crm-notes-card">
+                <div class="panel-header">
+                  <h2>File Notes</h2>
+                  <button type="button" id="crmAddNote">Add Note</button>
+                </div>
+                <div class="crm-note-composer">
+                  <textarea id="crmNewNote" rows="4" placeholder="Add a new call note, customer update, follow-up detail, or job note"></textarea>
+                </div>
+                <div class="crm-note-list" id="crmNoteList"></div>
+              </section>
+
+              <section class="panel crm-detail-card crm-timeline-card">
+                <div class="panel-header">
+                  <h2>Timeline</h2>
+                </div>
+                <div class="crm-timeline" id="crmTimeline"></div>
+              </section>
+            </div>
+          </section>
+        </section>
+
+        <section class="crm-revenue-view" id="crmCalendarView" hidden>
+          <section class="crm-command-panel crm-revenue-hero">
+            <div class="crm-command-copy">
+              <h2>Calendar</h2>
+            </div>
+            <div class="crm-calendar-actions">
+              <button type="button" id="crmShowCalendarAgenda">Upcoming Events</button>
+              <button type="button" id="crmShowCalendarAdd">Add Event</button>
+              <button type="button" id="crmImportGoogleCalendar">Import Google Calendar</button>
+              <button type="button" id="crmSyncAllCalendar">Sync Upcoming</button>
+              <button type="button" id="crmOpenGoogleCalendar">Open Google Calendar</button>
+            </div>
+          </section>
+
+          <section class="crm-layout crm-calendar-layout">
+            <section class="panel crm-detail-card crm-calendar-card">
+              <div class="panel-header">
+                <div>
+                  <p class="eyebrow">D2 Schedule</p>
+                  <h2 id="crmCalendarMonthTitle">CRM Calendar</h2>
+                </div>
+                <div class="crm-panel-actions">
+                  <button type="button" id="crmCalendarPrev">Previous</button>
+                  <button type="button" id="crmCalendarToday">Today</button>
+                  <button type="button" id="crmCalendarNext">Next</button>
+                  <label class="crm-inline-control">
+                    <span>View</span>
+                    <select id="crmCalendarFilter">
+                      <option value="upcoming">Upcoming</option>
+                      <option value="week">This Week</option>
+                      <option value="inspection">Inspections</option>
+                      <option value="followUp">Follow-Ups</option>
+                      <option value="start">Job Starts</option>
+                      <option value="completion">Completions</option>
+                      <option value="google">Imported Google Events</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
+              <div class="crm-calendar-grid" id="crmCalendarGrid"></div>
+            </section>
+
+            <aside class="crm-revenue-side crm-calendar-popovers" id="crmCalendarPopovers" hidden>
+              <section class="panel crm-detail-card crm-calendar-agenda-panel" id="crmCalendarAgendaPanel" hidden>
+                <div class="panel-header">
+                  <h2>Upcoming</h2>
+                  <button type="button" class="crm-calendar-popup-close" data-calendar-close>Close</button>
+                </div>
+                <div class="crm-calendar-list" id="crmCalendarAgenda"></div>
+              </section>
+
+              <section class="panel crm-detail-card" id="crmCalendarDayPanel" hidden>
+                <div class="panel-header">
+                  <h2>Day Details</h2>
+                  <button type="button" class="crm-calendar-popup-close" data-calendar-close>Close</button>
+                </div>
+                <div class="crm-calendar-list" id="crmCalendarList"></div>
+              </section>
+
+              <section class="panel crm-detail-card" id="crmCalendarEventPanel" hidden>
+                <div class="panel-header">
+                  <h2>Event Details</h2>
+                  <button type="button" class="crm-calendar-popup-close" data-calendar-close>Close</button>
+                </div>
+                <div class="crm-calendar-selected-summary" id="crmCalendarSelectedSummary">
+                  <p>Select an event or add a new one.</p>
+                </div>
+                <div class="field-grid">
+                  <label>
+                    File
+                    <select id="crmCalendarFile"></select>
+                  </label>
+                  <label>
+                    Event Type
+                    <select id="crmCalendarType">
+                      <option value="inspection">Inspection</option>
+                      <option value="followUp">Follow-Up</option>
+                      <option value="start">Job Start</option>
+                      <option value="completion">Completion</option>
+                    </select>
+                  </label>
+                  <label>
+                    Color
+                    <select id="crmCalendarColor">
+                      <option value="">Default</option>
+                      <option value="blue">Blue</option>
+                      <option value="green">Green</option>
+                      <option value="purple">Purple</option>
+                      <option value="red">Red</option>
+                      <option value="gold">Gold</option>
+                      <option value="slate">Slate</option>
+                    </select>
+                  </label>
+                  <label>
+                    Date
+                    <input id="crmCalendarDate" type="date">
+                  </label>
+                  <label>
+                    Time
+                    <input id="crmCalendarTime" type="time">
+                  </label>
+                  <label class="wide">
+                    Notes
+                    <textarea id="crmCalendarNotes" rows="4" placeholder="Optional calendar note"></textarea>
+                  </label>
+                </div>
+                <div class="crm-calendar-actions">
+                  <button type="button" id="crmSaveCalendarEvent">Save to CRM</button>
+                  <button type="button" id="crmSaveAndSyncCalendarEvent">Save + Sync</button>
+                </div>
+              </section>
+            </aside>
+          </section>
+        </section>
+
+        <section class="crm-revenue-view" id="crmRevenueView" hidden>
+          <section class="crm-command-panel crm-revenue-hero">
+            <div class="crm-command-copy">
+              <h2>Revenue</h2>
+            </div>
+          </section>
+          <section class="crm-revenue-summary">
+            <div><span>Gross</span><strong id="crmRevenueGross">$0.00</strong></div>
+            <div><span>Expenses</span><strong id="crmRevenueExpenses">$0.00</strong></div>
+            <div><span>Labor</span><strong id="crmRevenueLabor">$0.00</strong></div>
+            <div><span>Profit</span><strong id="crmRevenueProfit">$0.00</strong></div>
+          </section>
+
+          <section class="crm-layout crm-revenue-layout">
+            <section class="panel crm-detail-card crm-revenue-table-card">
+              <div class="panel-header">
+                <div>
+                  <p class="eyebrow">Revenue Log</p>
+                  <h2>Working Revenue Sheet</h2>
+                </div>
+                <div class="crm-panel-actions">
+                  <label class="crm-inline-control">
+                    <span>Year</span>
+                    <select id="crmRevenueYearFilter">
+                      <option value="all">All Years</option>
+                    </select>
+                  </label>
+                  <label class="crm-inline-control">
+                    <span>Sort</span>
+                    <select id="crmRevenueDateSort">
+                      <option value="newest">Newest first</option>
+                      <option value="oldest">Oldest first</option>
+                    </select>
+                  </label>
+                  <button type="button" id="crmUpdateRevenue">Update Revenue</button>
+                  <button type="button" id="crmUploadEstimateFile">Upload Estimate File</button>
+                  <button type="button" id="crmAddRevenueRow">Add Revenue Row</button>
+                </div>
+                <input id="crmEstimateFileUpload" type="file" accept=".d2estimate,.json,.txt,application/json,text/plain" hidden>
+              </div>
+              <div class="crm-revenue-table-wrap">
+                <table class="crm-revenue-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Client / Job</th>
+                      <th>Gross</th>
+                      <th>Expenses</th>
+                      <th>Labor</th>
+                      <th>Profit</th>
+                      <th>Expenses</th>
+                      <th>Payroll</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody id="crmRevenueRows"></tbody>
+                </table>
+              </div>
+            </section>
+
+            <aside class="crm-revenue-side">
+              <section class="panel crm-detail-card">
+                <div class="panel-header">
+                  <h2>Expense Detail</h2>
+                </div>
+                <div id="crmExpenseDetail" class="crm-expense-detail"></div>
+              </section>
+
+              <section class="panel crm-detail-card">
+                <div class="panel-header">
+                  <h2>Import From Sheet</h2>
+                  <button type="button" id="crmImportRevenue">Import</button>
+                </div>
+                <p class="crm-helper-text">Paste rows from Google Sheets using this order: Date, Client / Job, Amount Charged, Expenses, Labor, Profit, Receipt Notes, Labor Assigns.</p>
+                <textarea id="crmRevenueImport" rows="7" placeholder="Paste copied spreadsheet rows here"></textarea>
+              </section>
+            </aside>
+          </section>
+        </section>
+
+        <section class="crm-revenue-view" id="crmPayrollView" hidden>
+          <section class="crm-command-panel crm-revenue-hero">
+            <div class="crm-command-copy">
+              <h2>Payroll</h2>
+              <p>Track labor by file, employee, hours, rate, and payment status.</p>
+            </div>
+          </section>
+          <section class="crm-revenue-summary">
+            <div><span>Total Hours</span><strong id="crmPayrollHours">0</strong></div>
+            <div><span>Gross Payroll</span><strong id="crmPayrollGross">$0.00</strong></div>
+            <div><span>Paid</span><strong id="crmPayrollPaid">$0.00</strong></div>
+            <div><span>Pending</span><strong id="crmPayrollPending">$0.00</strong></div>
+          </section>
+
+          <section class="crm-layout crm-revenue-layout">
+            <section class="panel crm-detail-card crm-revenue-table-card">
+              <div class="panel-header">
+                <div>
+                  <p class="eyebrow">Labor Log</p>
+                  <h2>Payroll Worksheet</h2>
+                </div>
+                <div class="crm-panel-actions">
+                  <label class="crm-inline-control">
+                    <span>Year</span>
+                    <select id="crmPayrollYearFilter">
+                      <option value="all">All Years</option>
+                    </select>
+                  </label>
+                  <label class="crm-inline-control">
+                    <span>Status</span>
+                    <select id="crmPayrollStatusFilter">
+                      <option value="all">All Statuses</option>
+                      <option value="Pending">Pending</option>
+                      <option value="Paid">Paid</option>
+                    </select>
+                  </label>
+                  <button type="button" id="crmUpdatePayroll">Update Payroll</button>
+                  <button type="button" id="crmAddPayrollRow">Add Payroll Row</button>
+                </div>
+              </div>
+              <div class="crm-revenue-table-wrap">
+                <table class="crm-revenue-table crm-payroll-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>File / Job</th>
+                      <th>Employee</th>
+                      <th>Role</th>
+                      <th>Hours</th>
+                      <th>Rate</th>
+                      <th>Total</th>
+                      <th>Status</th>
+                      <th>Notes</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody id="crmPayrollRows"></tbody>
+                </table>
+              </div>
+            </section>
+
+            <aside class="crm-revenue-side">
+              <section class="panel crm-detail-card">
+                <div class="panel-header">
+                  <h2>Payroll Detail</h2>
+                </div>
+                <div id="crmPayrollDetail" class="crm-expense-detail"></div>
+              </section>
+            </aside>
+          </section>
+        </section>
+
+        <section class="crm-revenue-view" id="crmInvoiceView" hidden>
+          <section class="crm-command-panel crm-revenue-hero">
+            <div class="crm-command-copy">
+              <h2>Invoice</h2>
+            </div>
+            <div class="crm-invoice-controls">
+              <button type="button" id="crmTogglePaidStamp">Add Paid Stamp</button>
+              <button type="button" id="crmSaveInvoiceStatus">Save Invoice</button>
+              <button type="button" id="crmAddInvoiceLine">Add Line</button>
+              <button type="button" id="crmSaveInvoicePdf">Save PDF</button>
+              <button type="button" id="crmEmailInvoice">Email</button>
+            </div>
+          </section>
+
+          <section class="crm-invoice-stage">
+            <article class="estimate-sheet crm-invoice-paper" id="crmInvoicePaper"></article>
+          </section>
+        </section>
+
+        <section class="crm-revenue-view" id="crmExpensesView" hidden>
+          <section class="crm-command-panel crm-revenue-hero">
+            <div class="crm-command-copy">
+              <h2>Expenses</h2>
+              <p id="crmExpensesFileTitle">Select a file to track expenses.</p>
+            </div>
+            <div class="crm-invoice-controls">
+              <button type="button" id="crmAddFileExpense">Add Expense</button>
+              <label class="icon-button primary-action crm-receipt-upload">
+                Scan Receipt
+                <input id="crmReceiptUpload" type="file" accept="image/*" capture="environment" multiple hidden>
+              </label>
+            </div>
+          </section>
+
+          <section class="crm-layout crm-expenses-layout">
+            <section class="panel crm-detail-card crm-file-expenses-panel">
+              <div class="panel-header">
+                <div>
+                  <p class="eyebrow">Manual / Saved Expenses</p>
+                  <h2 id="crmExpensesHeading">No file selected</h2>
+                </div>
+                <strong id="crmFileExpenseTotal">$0.00</strong>
+              </div>
+              <div class="crm-expense-table-wrap">
+                <table class="crm-expense-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Category</th>
+                      <th>Vendor / Store</th>
+                      <th>Items / Notes</th>
+                      <th>Price</th>
+                      <th>Tax</th>
+                      <th>Total</th>
+                      <th>Receipt</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody id="crmFileExpenseRows"></tbody>
+                </table>
+              </div>
+            </section>
+
+            <aside class="panel crm-detail-card crm-file-receipt-panel">
+              <div class="panel-header">
+                <h2>Receipt Details</h2>
+              </div>
+              <p class="crm-helper-text">Take a receipt photo, review what ANIMUS reads, then save it to this file.</p>
+              <div class="crm-file-receipt-review" id="crmFileReceiptReview" hidden>
+                <div class="crm-file-receipt-top">
+                  <div id="crmReceiptPreview" class="crm-receipt-preview"></div>
+                  <div class="field-grid two crm-file-receipt-fields">
+                    <label>
+                      Date
+                      <input id="crmFileReceiptDate" type="date">
+                    </label>
+                    <label>
+                      Vendor
+                      <input id="crmFileReceiptVendor" placeholder="Home Depot">
+                    </label>
+                    <label>
+                      Category
+                      <select id="crmFileReceiptCategory">
+                        <option>Supplies</option>
+                        <option>Materials</option>
+                        <option>Fuel</option>
+                        <option>Equipment</option>
+                        <option>Other</option>
+                      </select>
+                    </label>
+                    <label id="crmFileReceiptOtherCategoryWrap" hidden>
+                      One-Time Label
+                      <input id="crmFileReceiptOtherCategory" placeholder="Custom category">
+                    </label>
+                    <label>
+                      Receipt Total
+                      <input id="crmFileReceiptAmount" inputmode="decimal" placeholder="0.00">
+                    </label>
+                    <label>
+                      Paid By
+                      <select id="crmFileReceiptPayment">
+                        <option value="">Select</option>
+                        <option>Cash</option>
+                        <option>Credit</option>
+                      </select>
+                    </label>
+                    <label id="crmFileReceiptCardWrap" hidden>
+                      Card
+                      <select id="crmFileReceiptCard">
+                        <option value="">Select card</option>
+                        <option>Chase Business</option>
+                        <option>Bank of America</option>
+                        <option>Chase Personal</option>
+                      </select>
+                    </label>
+                    <label class="crm-file-receipt-wide">
+                      Image Title
+                      <input id="crmFileReceiptImageTitle" placeholder="Receipt image title">
+                    </label>
+                    <label class="crm-file-receipt-wide">
+                      Manual Notes
+                      <textarea id="crmFileReceiptNotes" rows="4" placeholder="Receipt notes, reason, or anything to remember"></textarea>
+                    </label>
+                  </div>
+                </div>
+                <div class="crm-file-receipt-lines">
+                  <div class="crm-file-receipt-lines-heading">
+                    <h3>Receipt Details</h3>
+                    <strong id="crmFileReceiptLinesTotal">$0.00</strong>
+                  </div>
+                  <div class="crm-file-receipt-lines-wrap">
+                    <table class="crm-file-receipt-lines-table">
+                      <thead>
+                        <tr>
+                          <th>Use</th>
+                          <th>Description</th>
+                          <th>Category</th>
+                          <th>Price</th>
+                          <th>Tax</th>
+                          <th>Total</th>
+                          <th></th>
+                        </tr>
+                      </thead>
+                      <tbody id="crmFileReceiptLineRows"></tbody>
+                    </table>
+                  </div>
+                  <button type="button" id="crmAddReceiptExpenseLine">Add Line</button>
+                </div>
+                <label>
+                  Paste Receipt Text
+                  <textarea id="crmFileReceiptOcrText" rows="5" placeholder="Optional: paste receipt text here if the photo cannot be read yet."></textarea>
+                </label>
+                <div class="crm-receipt-review-actions">
+                  <button type="button" id="crmReadReceiptText">Read Text</button>
+                  <button type="button" id="crmImportReceiptToPrices">Import to Parts Database</button>
+                  <button type="button" class="primary-action" id="crmSaveScannedReceipt">Save Expense</button>
+                  <button type="button" id="crmClearScannedReceipt">Clear</button>
+                </div>
+                <p class="crm-helper-text" id="crmFileReceiptStatus">Review the receipt before saving.</p>
+              </div>
+            </aside>
+
+            <section class="panel crm-detail-card crm-bulk-receipts-panel" id="crmBulkReceiptPanel" hidden>
+              <div class="panel-header">
+                <div>
+                  <p class="eyebrow">Bulk Receipts</p>
+                  <h2>Receipts waiting to save</h2>
+                </div>
+                <strong id="crmBulkReceiptCount">0</strong>
+              </div>
+              <p class="crm-helper-text">Upload several receipts at once, let ANIMUS read them, then save the whole batch to this file.</p>
+              <div class="crm-bulk-receipt-list" id="crmBulkReceiptList"></div>
+              <div class="crm-receipt-review-actions">
+                <button type="button" class="primary-action" id="crmSaveAllReceipts">Save All Receipts</button>
+                <button type="button" id="crmClearBulkReceipts">Clear Batch</button>
+              </div>
+            </section>
+
+            <section class="panel crm-detail-card crm-receipt-history-panel">
+              <div class="panel-header">
+                <div>
+                  <p class="eyebrow">Receipt History</p>
+                  <h2>Saved receipts and expenses</h2>
+                </div>
+              </div>
+              <div class="crm-receipt-history-list" id="crmReceiptHistoryList"></div>
+            </section>
+          </section>
+        </section>
+
+        <section class="crm-revenue-view" id="crmPriceView" hidden>
+          <section class="crm-command-panel crm-revenue-hero">
+            <div class="crm-command-copy">
+              <h2>Price Database</h2>
+            </div>
+          </section>
+
+          <section class="crm-layout crm-revenue-layout">
+            <section class="panel crm-detail-card">
+              <div class="panel-header">
+                <div>
+                  <p class="eyebrow">Add Price Line</p>
+                  <h2>Material or supply item</h2>
+                </div>
+                <button type="button" id="crmAddPriceLine">Add to Database</button>
+              </div>
+              <div class="field-grid three">
+                <label>
+                  Item Name
+                  <input id="crmPriceProduct" placeholder="Blum slide, plywood, paint brush">
+                </label>
+                <label>
+                  Price
+                  <input id="crmPriceAmount" type="number" min="0" step="0.01">
+                </label>
+                <label>
+                  Unit
+                  <input id="crmPriceUnit" placeholder="each, sheet, pack">
+                </label>
+                <label>
+                  Category
+                  <input id="crmPriceCategory" placeholder="Hardware, plywood, finishing">
+                </label>
+                <label class="wide">
+                  Source / Vendor
+                  <input id="crmPriceVendor" placeholder="Home Depot, IMECA, Amazon">
+                </label>
+              </div>
+            </section>
+            <section class="panel crm-detail-card">
+              <div class="panel-header">
+                <h2>Current Prices</h2>
+              </div>
+              <div class="crm-price-tools">
+                <input id="crmPriceSearch" type="search" placeholder="Search item, category, vendor, or unit">
+                <select id="crmPriceSort" aria-label="Sort price database">
+                  <option value="name">Sort by Name</option>
+                  <option value="price">Sort by Price</option>
+                  <option value="category">Sort by Category</option>
+                  <option value="vendor">Sort by Vendor</option>
+                </select>
+              </div>
+              <div class="crm-price-list" id="crmPriceList"></div>
+            </section>
+          </section>
+        </section>
+      </section>
+      <div class="crm-hidden-cloud-tools" hidden>
+        <button type="button" class="icon-button" id="crmLoadCloud">Restore from Cloud</button>
+      </div>
+    </main>
+    <div class="crm-modal-backdrop" id="crmEstimateChoiceModal" hidden>
+      <section class="crm-choice-modal" role="dialog" aria-modal="true" aria-labelledby="crmEstimateChoiceTitle">
+        <button type="button" class="crm-modal-close" id="crmEstimateChoiceClose" aria-label="Close">×</button>
+        <p class="eyebrow">Estimate Options</p>
+        <h2 id="crmEstimateChoiceTitle">Estimate</h2>
+        <p id="crmEstimateChoiceStatus" class="crm-choice-status"></p>
+        <div class="crm-choice-actions">
+          <button type="button" class="icon-button primary-action" id="crmEstimateChoiceCreate">Create New Estimate</button>
+          <button type="button" class="icon-button" id="crmEstimateChoiceUpload">Upload Current Estimate</button>
+          <button type="button" class="icon-button" id="crmEstimateChoiceView">View Current Estimate</button>
+        </div>
+      </section>
+    </div>
+    <div class="crm-modal-backdrop" id="crmPartsImportModal" hidden>
+      <section class="crm-choice-modal crm-parts-import-modal" role="dialog" aria-modal="true" aria-labelledby="crmPartsImportTitle">
+        <button type="button" class="crm-modal-close" id="crmPartsImportClose" aria-label="Close">×</button>
+        <p class="eyebrow">Parts Database</p>
+        <h2 id="crmPartsImportTitle">Choose Items to Import</h2>
+        <p class="crm-helper-text" id="crmPartsImportSummary">Review the receipt lines before adding them.</p>
+        <div class="crm-parts-import-list" id="crmPartsImportList"></div>
+        <div class="crm-choice-actions">
+          <button type="button" class="icon-button primary-action" id="crmPartsImportConfirm">Import Checked Items</button>
+        </div>
+      </section>
+    </div>
+    <div class="crm-modal-backdrop" id="crmExpenseNoteModal" hidden>
+      <section class="crm-choice-modal crm-expense-note-modal" role="dialog" aria-modal="true" aria-labelledby="crmExpenseNoteTitle">
+        <button type="button" class="crm-modal-close" id="crmExpenseNoteClose" aria-label="Close">×</button>
+        <p class="eyebrow">Expense Detail</p>
+        <h2 id="crmExpenseNoteTitle">Items / Notes</h2>
+        <textarea id="crmExpenseNoteText" rows="10" placeholder="Exact receipt item name or notes"></textarea>
+        <div class="crm-choice-actions">
+          <button type="button" class="icon-button primary-action" id="crmExpenseNoteSave">Save Notes</button>
+        </div>
+      </section>
+    </div>
+    <div class="crm-modal-backdrop crm-loading-backdrop" id="crmReceiptLoadingModal" hidden>
+      <section class="crm-choice-modal crm-loading-modal" role="status" aria-live="polite" aria-label="Reading receipt photo">
+        <div class="crm-loading-spinner" aria-hidden="true"></div>
+        <p class="eyebrow">Receipt Reader</p>
+        <h2 id="crmReceiptLoadingTitle">Reading receipt photo...</h2>
+        <p id="crmReceiptLoadingMessage">ANIMUS is reviewing the image and preparing the expense lines.</p>
+      </section>
+    </div>
+    <script src="materials-database.js?v=20260804-price-update-2"></script>
+    <script src="dashboard-restore-data.js?v=20260806-fresh-estimator-date-pdf"></script>
+    <script src="financial-data.js?v=20260814-expense-repair-safe"></script>
+    <script src="vendor/jspdf.umd.min.js"></script>
+    <script src="vendor/html2canvas.min.js"></script>
+    <script>
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.getRegistrations().then((registrations) => {
+          registrations.forEach((registration) => registration.unregister());
+        });
+      }
+      if ("caches" in window) {
+        caches.keys().then((keys) => keys.forEach((key) => caches.delete(key)));
+      }
+    </script>
+    <script src="crm.js?v=20260814-expense-history-fix"></script>
+    <script src="calendar-upgrade.js?v=20260808-calendar-popups"></script>
+  </body>
+</html>
