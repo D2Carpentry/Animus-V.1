@@ -6625,6 +6625,30 @@ document.querySelectorAll("input, select, textarea").forEach((element) => {
   });
 });
 
+document.addEventListener("click", (event) => {
+  const button = event.target.closest?.("button");
+  if (!button) return;
+  const expenseActions = {
+    crmAddFileExpense: freshExpenseAddManualDraft,
+    crmSaveScannedReceipt: freshExpenseSave,
+    crmClearScannedReceipt: freshExpenseClearDraft,
+    crmAddReceiptExpenseLine: freshExpenseAddReceiptLine,
+    crmSaveAllReceipts: freshExpenseSaveBatch,
+  };
+  const action = expenseActions[button.id];
+  if (!action) return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  action();
+}, true);
+
+document.addEventListener("change", (event) => {
+  if (event.target?.id !== "crmReceiptUpload") return;
+  event.stopImmediatePropagation();
+  freshExpenseAttachReceipt(event.target.files);
+  event.target.value = "";
+}, true);
+
 persistRestoredDashboardIfNeeded();
 switchCrmView(initialDashboardView());
 applyInitialFileRoute();
