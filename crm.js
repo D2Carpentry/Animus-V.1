@@ -3435,7 +3435,8 @@ function renderFileReceiptDraft() {
   const preview = $("crmReceiptPreview");
   const review = $("crmFileReceiptReview");
   if (!preview || !review) return;
-  if (!fileReceiptDraft.imageDataUrl && !fileReceiptDraft.vendor && !fileReceiptDraft.amount) {
+  const hasDraftLines = Array.isArray(fileReceiptDraft.lines) && fileReceiptDraft.lines.length > 0;
+  if (!fileReceiptDraft.imageDataUrl && !fileReceiptDraft.vendor && !fileReceiptDraft.amount && !hasDraftLines) {
     preview.innerHTML = `<p class="crm-empty-state">No receipt photo attached yet.</p>`;
     review.hidden = true;
     return;
@@ -4326,7 +4327,7 @@ function freshExpenseAddManualDraft() {
     ...blankFileReceiptDraft(),
     date: todayIso(0),
     category: "Supplies",
-    lines: [blankFileReceiptLine({ category: "Supplies", addTax: false })],
+    lines: [blankFileReceiptLine({ category: "Supplies", addTax: true })],
     status: "Add the expense details, then click Save Expense.",
     aiAvailable: false,
   };
@@ -4381,7 +4382,7 @@ async function freshExpenseAttachReceipt(uploadFiles = []) {
 function freshExpenseAddReceiptLine() {
   freshExpenseCaptureDraft();
   fileReceiptDraft.lines = Array.isArray(fileReceiptDraft.lines) ? fileReceiptDraft.lines : [];
-  fileReceiptDraft.lines.push(blankFileReceiptLine({ category: fileReceiptDraft.category || "Supplies", addTax: false }));
+  fileReceiptDraft.lines.push(blankFileReceiptLine({ category: fileReceiptDraft.category || "Supplies", addTax: true }));
   renderFileReceiptLineRows();
 }
 
