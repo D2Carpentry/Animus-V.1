@@ -4374,6 +4374,51 @@ body[data-copy-mode="team"] .estimate-sheet td:first-child {
   overflow-x: auto;
 }
 
+.crm-manual-expense-cards {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.crm-manual-expense-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  border: 1px solid #d7dce5;
+  border-radius: 8px;
+  background: #f8fafc;
+  padding: 12px 14px;
+}
+
+.crm-manual-expense-card strong,
+.crm-manual-expense-card b {
+  color: var(--blue);
+  font-weight: 900;
+}
+
+.crm-manual-expense-card span,
+.crm-manual-expense-card p {
+  display: block;
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.crm-manual-expense-card p {
+  color: var(--ink);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.crm-manual-expense-card > div:last-child {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+}
+
 .crm-manual-expense-table {
   width: 100%;
   min-width: 860px;
@@ -4506,5 +4551,13 @@ body[data-copy-mode="team"] .estimate-sheet td:first-child {
 
   .crm-expense-panel-v1 {
     padding: 14px;
+  }
+
+  .crm-manual-expense-card {
+    grid-template-columns: 1fr;
+  }
+
+  .crm-manual-expense-card > div:last-child {
+    justify-items: start;
   }
 }

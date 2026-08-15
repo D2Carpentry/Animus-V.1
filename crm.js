@@ -3085,7 +3085,11 @@ function syncFileExpensesToRevenue(file) {
 
 function syncAllFileExpensesToRevenue() {
   crmFiles.forEach((file) => {
-    if ((Array.isArray(file.freshExpenseReceipts) && file.freshExpenseReceipts.length) || (Array.isArray(file.expenseLines) && file.expenseLines.length)) {
+    if (
+      (Array.isArray(file.animusManualExpenses) && file.animusManualExpenses.length)
+      || (Array.isArray(file.freshExpenseReceipts) && file.freshExpenseReceipts.length)
+      || (Array.isArray(file.expenseLines) && file.expenseLines.length)
+    ) {
       syncFileExpensesToRevenue(file);
     }
   });
@@ -7012,11 +7016,13 @@ function renderManualExpenses() {
   const heading = $("crmManualExpenseHeading");
   const total = $("crmManualExpenseTotal");
   const rows = $("crmManualExpenseRows");
+  const cards = $("crmManualExpenseCards");
   if (!rows) return;
   if (!file) {
     if (title) title.textContent = "Select a file to track expenses.";
     if (heading) heading.textContent = "No file selected";
     if (total) total.textContent = crmCurrency.format(0);
+    if (cards) cards.innerHTML = `<p class="crm-empty-state">Select a file before adding expenses.</p>`;
     rows.innerHTML = `<tr><td colspan="7">Select a file before adding expenses.</td></tr>`;
     return;
   }
@@ -7025,6 +7031,23 @@ function renderManualExpenses() {
   if (title) title.textContent = `${file.fileNumber || "Project"} · ${file.clientName || "Unnamed Client"}`;
   if (heading) heading.textContent = `${file.clientName || "Unnamed Client"} Expenses`;
   if (total) total.textContent = crmCurrency.format(manualExpenseTotal(file));
+  if (cards) {
+    cards.innerHTML = expenses.length
+      ? expenses.map((expense) => `
+        <article class="crm-manual-expense-card">
+          <div>
+            <strong>${escapeHtml(expense.vendor || "No vendor")}</strong>
+            <span>${escapeHtml(formatDateForDisplay(expense.date) || expense.date)} · ${escapeHtml(expense.category || "Supplies")}${expense.paymentType ? ` · ${escapeHtml(expense.paymentType)}` : ""}</span>
+            ${expense.notes ? `<p>${escapeHtml(expense.notes)}</p>` : ""}
+          </div>
+          <div>
+            <b>${crmCurrency.format(parseMoney(expense.amount))}</b>
+            <button type="button" class="danger-link" data-manual-expense-delete="${escapeHtml(expense.id)}">Delete</button>
+          </div>
+        </article>
+      `).join("")
+      : `<p class="crm-empty-state">No expenses saved for this file yet.</p>`;
+  }
   rows.innerHTML = expenses.length
     ? expenses.map((expense) => `
       <tr>
