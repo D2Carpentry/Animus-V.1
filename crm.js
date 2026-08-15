@@ -6993,6 +6993,14 @@ function manualExpenseTotal(file) {
   return manualExpensesForFile(file).reduce((sum, expense) => sum + parseMoney(expense.amount), 0);
 }
 
+function manualExpenseDisplayDate(dateValue) {
+  const value = String(dateValue || "").trim();
+  if (!value) return "";
+  const parts = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (parts) return `${parts[2]}/${parts[3]}/${parts[1]}`;
+  return value;
+}
+
 function clearManualExpenseForm() {
   if ($("crmManualExpenseDate")) $("crmManualExpenseDate").value = todayIso(0);
   if ($("crmManualExpenseVendor")) $("crmManualExpenseVendor").value = "";
@@ -7037,7 +7045,7 @@ function renderManualExpenses() {
         <article class="crm-manual-expense-card">
           <div>
             <strong>${escapeHtml(expense.vendor || "No vendor")}</strong>
-            <span>${escapeHtml(formatDateForDisplay(expense.date) || expense.date)} · ${escapeHtml(expense.category || "Supplies")}${expense.paymentType ? ` · ${escapeHtml(expense.paymentType)}` : ""}</span>
+            <span>${escapeHtml(manualExpenseDisplayDate(expense.date))} · ${escapeHtml(expense.category || "Supplies")}${expense.paymentType ? ` · ${escapeHtml(expense.paymentType)}` : ""}</span>
             ${expense.notes ? `<p>${escapeHtml(expense.notes)}</p>` : ""}
           </div>
           <div>
@@ -7051,7 +7059,7 @@ function renderManualExpenses() {
   rows.innerHTML = expenses.length
     ? expenses.map((expense) => `
       <tr>
-        <td>${escapeHtml(formatDateForDisplay(expense.date) || expense.date)}</td>
+        <td>${escapeHtml(manualExpenseDisplayDate(expense.date))}</td>
         <td>${escapeHtml(expense.vendor || "No vendor")}</td>
         <td>${escapeHtml(expense.category || "Supplies")}</td>
         <td>${escapeHtml(expense.paymentType || "")}</td>
@@ -7090,6 +7098,7 @@ function saveManualExpense() {
   saveRevenueRows();
   clearManualExpenseForm();
   renderManualExpenses();
+  renderRevenue();
   saveExpenseChangeToCloud("Expense saved to Cloudflare.");
   setManualExpenseStatus("Expense saved to this file.", "good");
 }
@@ -7106,6 +7115,7 @@ function deleteManualExpense(expenseId) {
   saveCrmFiles();
   saveRevenueRows();
   renderManualExpenses();
+  renderRevenue();
   saveExpenseChangeToCloud("Expense deleted and saved to Cloudflare.");
   setManualExpenseStatus("Expense deleted.", "good");
 }
