@@ -3880,10 +3880,18 @@ function saveExpenseNoteModal() {
   const line = file?.expenseLines?.find((entry) => entry.id === editingExpenseNoteLineId);
   if (!line) return closeExpenseNoteModal();
   line.note = $("crmExpenseNoteText").value.trim();
+  const manualExpense = Array.isArray(file.animusManualExpenses)
+    ? file.animusManualExpenses.find((expense) => expense.id === editingExpenseNoteLineId)
+    : null;
+  if (manualExpense) {
+    manualExpense.notes = line.note;
+    manualExpense.updatedAt = new Date().toISOString();
+  }
   refreshReceiptHistoryGroup(file, line.receiptGroupId || line.id);
   syncFileExpensesToRevenue(file);
   saveCrmFiles();
   closeExpenseNoteModal();
+  renderManualExpenses();
   renderFileExpenses();
 }
 
@@ -5364,6 +5372,7 @@ function importLinesToPriceDatabase(lines = [], options = {}) {
       price: line.price || line.baseAmount || line.amount || "",
       category: line.category || options.category || "Supplies",
       unit: line.unit || "each",
+      vendor: line.vendor || options.vendor || "",
       use: line.use,
     }))
     .filter((line) => line.use !== false && line.product && parseMoney(line.price) > 0);
@@ -5372,13 +5381,13 @@ function importLinesToPriceDatabase(lines = [], options = {}) {
     return { updatedCount: 0, addedCount: 0 };
   }
   const today = options.date || todayIso(0);
-  const vendor = options.vendor || "";
   let updatedCount = 0;
   let addedCount = 0;
   usableLines.forEach((line) => {
     const productKey = normalizeReceiptProduct(line.product);
     const existing = priceDatabaseRows().find((row) => normalizeReceiptProduct(row.product || row.name) === productKey);
     const price = parseMoney(line.price);
+    const vendor = line.vendor || options.vendor || "";
     const updated = {
       ...(existing && !existing.readonly ? existing : {}),
       id: existing?.readonly ? `custom-${makeCrmId("price")}` : (existing?.id || `custom-${makeCrmId("price")}`),
@@ -5451,13 +5460,16 @@ function openPartsImportModal(lines = []) {
   if (!list || !summary) return;
   summary.textContent = `${lines.length} receipt detail${lines.length === 1 ? "" : "s"} ready. Uncheck anything you do not want in the Parts Database.`;
   list.innerHTML = lines.map((line) => `
-    <label class="crm-parts-import-row">
+    <div class="crm-parts-import-row">
       <input type="checkbox" data-parts-import-id="${escapeHtml(line.id)}" checked>
       <span>
-        <strong>${escapeHtml(line.product)}</strong>
-        <small>${escapeHtml(line.importStatus)} · ${escapeHtml(line.vendor || "No vendor")} · ${escapeHtml(line.category || "Supplies")} · ${crmCurrency.format(parseMoney(line.price || line.amount || line.baseAmount))}${line.existingPrice ? ` · Current ${crmCurrency.format(parseMoney(line.existingPrice))}` : ""}</small>
+        <strong>${escapeHtml(line.importStatus || "New item")}${line.existingPrice ? ` · Current ${crmCurrency.format(parseMoney(line.existingPrice))}` : ""}</strong>
+        <input data-parts-import-field="product" data-parts-import-id="${escapeHtml(line.id)}" value="${escapeHtml(line.product)}" placeholder="Item name">
+        <input data-parts-import-field="price" data-parts-import-id="${escapeHtml(line.id)}" inputmode="decimal" value="${escapeHtml(parseMoney(line.price || line.amount || line.baseAmount) || "")}" placeholder="Price">
+        <input data-parts-import-field="category" data-parts-import-id="${escapeHtml(line.id)}" value="${escapeHtml(line.category || "Supplies")}" placeholder="Category">
+        <input data-parts-import-field="vendor" data-parts-import-id="${escapeHtml(line.id)}" value="${escapeHtml(line.vendor || "")}" placeholder="Vendor">
       </span>
-    </label>
+    </div>
   `).join("");
   $("crmPartsImportModal").hidden = false;
 }
@@ -5471,14 +5483,27 @@ function confirmPartsImportModal() {
   const selectedIds = new Set([...document.querySelectorAll("[data-parts-import-id]")]
     .filter((checkbox) => checkbox.checked)
     .map((checkbox) => checkbox.dataset.partsImportId));
-  const selectedLines = pendingPartsImportLines.filter((line) => selectedIds.has(line.id));
+  const selectedLines = pendingPartsImportLines
+    .filter((line) => selectedIds.has(line.id))
+    .map((line) => {
+      const field = (name) => document.querySelector(`[data-parts-import-id="${cssIdentifier(line.id)}"][data-parts-import-field="${name}"]`)?.value.trim() || "";
+      return {
+        ...line,
+        product: field("product") || line.product,
+        description: field("product") || line.product,
+        price: field("price") || line.price,
+        category: field("category") || line.category,
+        vendor: field("vendor") || line.vendor,
+      };
+    });
   const { updatedCount, addedCount } = importLinesToPriceDatabase(selectedLines, {
-    vendor: fileReceiptDraft.vendor,
-    date: fileReceiptDraft.date,
-    category: selectedFileReceiptCategory(),
+    vendor: selectedLines[0]?.vendor || fileReceiptDraft.vendor,
+    date: $("crmManualExpenseDate")?.value || fileReceiptDraft.date,
+    category: selectedLines[0]?.category || selectedFileReceiptCategory(),
   });
   closePartsImportModal();
   setFileReceiptStatus(`${updatedCount} updated, ${addedCount} added to the Parts Database.`, "good");
+  setManualExpenseStatus?.(`${updatedCount} updated, ${addedCount} added to the Price Database.`, "good");
 }
 
 function invoiceLineItemsFromEstimate(file) {
@@ -6946,6 +6971,9 @@ freshExpenseSaveBatch = function freshExpenseSaveBatchV3() {
 };
 
 // Expenses v1: rebuild from a clean manual expense list.
+let manualExpenseEditingId = "";
+let manualExpenseDraftItems = [];
+
 function cleanManualExpense(expense = {}) {
   return {
     id: expense.id || makeCrmId("manual-expense"),
@@ -6953,10 +6981,22 @@ function cleanManualExpense(expense = {}) {
     updatedAt: expense.updatedAt || expense.createdAt || new Date().toISOString(),
     date: expense.date || todayIso(0),
     vendor: expense.vendor || "",
+    title: expense.title || expense.imageTitle || "",
     category: expense.category || "Supplies",
     paymentType: expense.paymentType || "",
     amount: parseMoney(expense.amount),
     notes: expense.notes || "",
+    imageDataUrl: expense.imageDataUrl || "",
+    imageTitle: expense.imageTitle || expense.title || "",
+    items: Array.isArray(expense.items)
+      ? expense.items.map((item) => ({
+        id: item.id || makeCrmId("manual-item"),
+        use: item.use !== false,
+        description: item.description || item.product || item.name || "",
+        category: item.category || expense.category || "Supplies",
+        price: parseMoney(item.price || item.amount || item.total),
+      }))
+      : [],
   };
 }
 
@@ -6980,8 +7020,8 @@ function syncManualExpensesForFile(file) {
     tax: 0,
     addTax: false,
     paymentType: expense.paymentType,
-    receiptFileName: "",
-    receiptDataUrl: "",
+    receiptFileName: expense.imageTitle || expense.title || "",
+    receiptDataUrl: expense.imageDataUrl || "",
     receiptSource: "ANIMUS manual expense",
   }));
   file.expenseReceipts = [];
@@ -7002,8 +7042,11 @@ function manualExpenseDisplayDate(dateValue) {
 }
 
 function clearManualExpenseForm() {
+  manualExpenseEditingId = "";
+  manualExpenseDraftItems = [];
   if ($("crmManualExpenseDate")) $("crmManualExpenseDate").value = todayIso(0);
   if ($("crmManualExpenseVendor")) $("crmManualExpenseVendor").value = "";
+  if ($("crmManualExpenseTitle")) $("crmManualExpenseTitle").value = "";
   if ($("crmManualExpenseCategory")) $("crmManualExpenseCategory").value = "Supplies";
   if ($("crmManualExpensePayment")) $("crmManualExpensePayment").value = "";
   if ($("crmManualExpenseAmount")) $("crmManualExpenseAmount").value = "";
@@ -7013,6 +7056,7 @@ function clearManualExpenseForm() {
     preview.hidden = false;
     preview.innerHTML = `<div class="crm-receipt-preview-empty">No receipt photo selected yet.</div>`;
   }
+  renderManualExpenseItems();
 }
 
 function setManualExpenseStatus(message = "", kind = "") {
@@ -7058,15 +7102,85 @@ function manualExpenseNotesFromDraft(draft = {}) {
   return [draft.notes || "", lineNotes].filter(Boolean).join("\n").trim();
 }
 
+function cleanManualExpenseItem(item = {}) {
+  return {
+    id: item.id || makeCrmId("manual-item"),
+    use: item.use !== false,
+    description: item.description || item.product || item.name || "",
+    category: manualExpenseSelectOptionValue("crmManualExpenseCategory", item.category) || item.category || "Supplies",
+    price: parseMoney(item.price || item.amount || item.total),
+  };
+}
+
+function manualExpenseItemTotal() {
+  return manualExpenseDraftItems.reduce((sum, item) => item.use === false ? sum : sum + parseMoney(item.price), 0);
+}
+
+function renderManualExpenseItems() {
+  const rows = $("crmManualExpenseItemRows");
+  const total = $("crmManualExpenseItemsTotal");
+  if (total) total.textContent = crmCurrency.format(manualExpenseItemTotal());
+  if (!rows) return;
+  rows.innerHTML = manualExpenseDraftItems.length
+    ? manualExpenseDraftItems.map((item) => `
+      <tr>
+        <td><input type="checkbox" data-manual-expense-item-field="use" data-manual-expense-item-id="${escapeHtml(item.id)}" ${item.use === false ? "" : "checked"}></td>
+        <td><input data-manual-expense-item-field="description" data-manual-expense-item-id="${escapeHtml(item.id)}" value="${escapeHtml(item.description || "")}" placeholder="Item name"></td>
+        <td>
+          <select data-manual-expense-item-field="category" data-manual-expense-item-id="${escapeHtml(item.id)}">
+            ${["Supplies", "Materials", "Fuel", "Equipment", "Labor", "Other"].map((category) => `<option${(item.category || "Supplies") === category ? " selected" : ""}>${category}</option>`).join("")}
+          </select>
+        </td>
+        <td><input data-manual-expense-item-field="price" data-manual-expense-item-id="${escapeHtml(item.id)}" inputmode="decimal" value="${escapeHtml(item.price ? String(item.price) : "")}" placeholder="0.00"></td>
+        <td>${crmCurrency.format(parseMoney(item.price))}</td>
+        <td><button type="button" class="danger-link" data-manual-expense-item-delete="${escapeHtml(item.id)}">Delete</button></td>
+      </tr>
+    `).join("")
+    : `<tr><td colspan="6">AI receipt items will appear here. You can also add a line manually.</td></tr>`;
+}
+
+function captureManualExpenseItems() {
+  const rows = $("crmManualExpenseItemRows");
+  if (!rows) return;
+  manualExpenseDraftItems = manualExpenseDraftItems.map((item) => {
+    const valueFor = (field) => rows.querySelector(`[data-manual-expense-item-id="${cssIdentifier(item.id)}"][data-manual-expense-item-field="${field}"]`);
+    return cleanManualExpenseItem({
+      ...item,
+      use: valueFor("use") ? valueFor("use").checked : item.use,
+      description: valueFor("description")?.value || "",
+      category: valueFor("category")?.value || "Supplies",
+      price: valueFor("price")?.value || "",
+    });
+  }).filter((item) => item.description || parseMoney(item.price));
+  renderManualExpenseItems();
+}
+
+function addManualExpenseItem(item = {}) {
+  captureManualExpenseItems();
+  manualExpenseDraftItems.push(cleanManualExpenseItem({
+    category: $("crmManualExpenseCategory")?.value || "Supplies",
+    ...item,
+  }));
+  renderManualExpenseItems();
+}
+
+function deleteManualExpenseItem(itemId) {
+  manualExpenseDraftItems = manualExpenseDraftItems.filter((item) => item.id !== itemId);
+  renderManualExpenseItems();
+}
+
 function fillManualExpenseFromReceiptDraft(draft = {}, uploadFile = null, imageDataUrl = "") {
   const category = manualExpenseSelectOptionValue("crmManualExpenseCategory", draft.category) || "Supplies";
   const payment = manualExpensePaymentFromReceipt(draft.paymentType);
   if ($("crmManualExpenseDate")) $("crmManualExpenseDate").value = draft.date || todayIso(0);
   if ($("crmManualExpenseVendor")) $("crmManualExpenseVendor").value = draft.vendor || "";
+  if ($("crmManualExpenseTitle")) $("crmManualExpenseTitle").value = draft.imageTitle || draft.fileName || draft.vendor || "";
   if ($("crmManualExpenseCategory")) $("crmManualExpenseCategory").value = category;
   if ($("crmManualExpensePayment")) $("crmManualExpensePayment").value = payment;
   if ($("crmManualExpenseAmount")) $("crmManualExpenseAmount").value = draft.amount ? String(draft.amount) : "";
   if ($("crmManualExpenseNotes")) $("crmManualExpenseNotes").value = manualExpenseNotesFromDraft(draft) || uploadFile?.name || "";
+  manualExpenseDraftItems = Array.isArray(draft.lines) ? draft.lines.map(cleanManualExpenseItem).filter((item) => item.description || parseMoney(item.price)) : [];
+  renderManualExpenseItems();
   const preview = $("crmAiReceiptPreview");
   if (preview) {
     preview.hidden = false;
@@ -7117,7 +7231,7 @@ function renderManualExpenses() {
     if (heading) heading.textContent = "No file selected";
     if (total) total.textContent = crmCurrency.format(0);
     if (cards) cards.innerHTML = `<p class="crm-empty-state">Select a file before adding expenses.</p>`;
-    rows.innerHTML = `<tr><td colspan="7">Select a file before adding expenses.</td></tr>`;
+    rows.innerHTML = `<tr><td colspan="8">Select a file before adding expenses.</td></tr>`;
     return;
   }
   const expenses = manualExpensesForFile(file);
@@ -7128,16 +7242,15 @@ function renderManualExpenses() {
   if (cards) {
     cards.innerHTML = expenses.length
       ? expenses.map((expense) => `
-        <article class="crm-manual-expense-card">
-          <div>
-            <strong>${escapeHtml(expense.vendor || "No vendor")}</strong>
-            <span>${escapeHtml(manualExpenseDisplayDate(expense.date))} · ${escapeHtml(expense.category || "Supplies")}${expense.paymentType ? ` · ${escapeHtml(expense.paymentType)}` : ""}</span>
-            ${expense.notes ? `<p>${escapeHtml(expense.notes)}</p>` : ""}
-          </div>
-          <div>
+        <article class="crm-manual-expense-card crm-receipt-history-item" data-manual-expense-open="${escapeHtml(expense.id)}">
+          <span>
+            <strong>${escapeHtml(expense.title || expense.vendor || "No vendor")}</strong>
+            <small>${escapeHtml(manualExpenseDisplayDate(expense.date) || "No date")}</small>
+          </span>
+          <span class="crm-receipt-history-amount">
             <b>${crmCurrency.format(parseMoney(expense.amount))}</b>
-            <button type="button" class="danger-link" data-manual-expense-delete="${escapeHtml(expense.id)}">Delete</button>
-          </div>
+            <button type="button" class="danger-link" data-manual-expense-delete="${escapeHtml(expense.id)}" aria-label="Delete expense">Delete</button>
+          </span>
         </article>
       `).join("")
       : `<p class="crm-empty-state">No expenses saved for this file yet.</p>`;
@@ -7146,15 +7259,67 @@ function renderManualExpenses() {
     ? expenses.map((expense) => `
       <tr>
         <td>${escapeHtml(manualExpenseDisplayDate(expense.date))}</td>
+        <td>${escapeHtml(expense.title || "")}</td>
         <td>${escapeHtml(expense.vendor || "No vendor")}</td>
         <td>${escapeHtml(expense.category || "Supplies")}</td>
         <td>${escapeHtml(expense.paymentType || "")}</td>
-        <td>${escapeHtml(expense.notes || "")}</td>
+        <td><button type="button" class="crm-expense-note-button" data-file-expense-note="${escapeHtml(expense.id)}"><span>${escapeHtml(expense.notes ? "View notes" : "No notes")}</span></button></td>
         <td>${crmCurrency.format(parseMoney(expense.amount))}</td>
         <td><button type="button" class="danger-link" data-manual-expense-delete="${escapeHtml(expense.id)}">Delete</button></td>
       </tr>
     `).join("")
-    : `<tr><td colspan="7">No expenses saved for this file yet.</td></tr>`;
+    : `<tr><td colspan="8">No expenses saved for this file yet.</td></tr>`;
+}
+
+function openManualExpense(expenseId) {
+  const file = normalizeCrmFile(activeFile());
+  const expense = manualExpensesForFile(file).find((entry) => entry.id === expenseId);
+  if (!expense) return;
+  manualExpenseEditingId = expense.id;
+  manualExpenseDraftItems = Array.isArray(expense.items) ? expense.items.map(cleanManualExpenseItem) : [];
+  if ($("crmManualExpenseDate")) $("crmManualExpenseDate").value = expense.date || todayIso(0);
+  if ($("crmManualExpenseVendor")) $("crmManualExpenseVendor").value = expense.vendor || "";
+  if ($("crmManualExpenseTitle")) $("crmManualExpenseTitle").value = expense.title || "";
+  if ($("crmManualExpenseCategory")) $("crmManualExpenseCategory").value = manualExpenseSelectOptionValue("crmManualExpenseCategory", expense.category) || "Supplies";
+  if ($("crmManualExpensePayment")) $("crmManualExpensePayment").value = manualExpenseSelectOptionValue("crmManualExpensePayment", expense.paymentType) || "";
+  if ($("crmManualExpenseAmount")) $("crmManualExpenseAmount").value = expense.amount ? String(expense.amount) : "";
+  if ($("crmManualExpenseNotes")) $("crmManualExpenseNotes").value = expense.notes || "";
+  const preview = $("crmAiReceiptPreview");
+  if (preview) {
+    preview.hidden = false;
+    preview.innerHTML = expense.imageDataUrl
+      ? `<img src="${escapeHtml(expense.imageDataUrl)}" alt="Receipt preview"><p>${escapeHtml(expense.title || expense.vendor || "Receipt photo")}</p>`
+      : `<div class="crm-receipt-preview-empty">No receipt photo saved for this expense.</div>`;
+  }
+  renderManualExpenseItems();
+  setManualExpenseStatus("Expense loaded for editing. Make changes, then click Save Expense.", "good");
+  $("crmManualExpenseDate")?.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function importManualExpenseItemsToPrices() {
+  captureManualExpenseItems();
+  const vendor = $("crmManualExpenseVendor")?.value.trim() || "";
+  const category = $("crmManualExpenseCategory")?.value || "Supplies";
+  const lines = manualExpenseDraftItems
+    .filter((line) => line.use !== false)
+    .filter((line) => line.description && parseMoney(line.price) > 0)
+    .map((line) => {
+      const existing = priceDatabaseRows().find((row) => normalizeReceiptProduct(row.product || row.name) === normalizeReceiptProduct(line.description));
+      return {
+        ...line,
+        product: line.description,
+        vendor,
+        category: line.category || category,
+        existingId: existing?.id || "",
+        existingPrice: existing?.defaultPrice || existing?.priceLow || existing?.price || "",
+        importStatus: existing ? "Update existing" : "New item",
+      };
+    });
+  if (!lines.length) {
+    setManualExpenseStatus("Add at least one item name and price before importing to the Price Database.", "warn");
+    return;
+  }
+  openPartsImportModal(lines);
 }
 
 function saveManualExpense() {
@@ -7168,17 +7333,24 @@ function saveManualExpense() {
     setManualExpenseStatus("Add an amount before saving.", "warn");
     return;
   }
+  captureManualExpenseItems();
   const expense = cleanManualExpense({
+    id: manualExpenseEditingId || undefined,
     date: $("crmManualExpenseDate")?.value || todayIso(0),
     vendor: $("crmManualExpenseVendor")?.value.trim() || "",
+    title: $("crmManualExpenseTitle")?.value.trim() || "",
     category: $("crmManualExpenseCategory")?.value || "Supplies",
     paymentType: $("crmManualExpensePayment")?.value || "",
     amount,
     notes: $("crmManualExpenseNotes")?.value.trim() || "",
+    imageDataUrl: $("crmAiReceiptPreview")?.querySelector("img")?.src || "",
+    imageTitle: $("crmManualExpenseTitle")?.value.trim() || "",
+    items: manualExpenseDraftItems,
   });
-  file.animusManualExpenses = [expense, ...manualExpensesForFile(file)];
+  const existingExpenses = manualExpensesForFile(file).filter((entry) => entry.id !== expense.id);
+  file.animusManualExpenses = [expense, ...existingExpenses];
   syncManualExpensesForFile(file);
-  addSystemNote(file, `Expense saved${expense.vendor ? ` from ${expense.vendor}` : ""} for ${crmCurrency.format(expense.amount)}.`);
+  addSystemNote(file, `Expense ${manualExpenseEditingId ? "updated" : "saved"}${expense.vendor ? ` from ${expense.vendor}` : ""} for ${crmCurrency.format(expense.amount)}.`);
   syncFileExpensesToRevenue(file);
   saveCrmFiles();
   saveRevenueRows();
@@ -7427,12 +7599,38 @@ $("crmAddManualExpense")?.addEventListener("click", () => {
   clearManualExpenseForm();
   setManualExpenseStatus("Ready for a new expense.");
 });
+$("crmManualAddExpenseItem")?.addEventListener("click", () => addManualExpenseItem());
+$("crmManualImportItemsToPrices")?.addEventListener("click", importManualExpenseItemsToPrices);
 $("crmScanReceiptExpense")?.addEventListener("click", () => {
   $("crmAiReceiptUpload")?.click();
 });
 $("crmAiReceiptUpload")?.addEventListener("change", (event) => {
   scanManualExpenseReceipt(event.target.files);
   event.target.value = "";
+});
+document.addEventListener("click", (event) => {
+  const openExpense = event.target.closest("[data-manual-expense-open]");
+  if (openExpense && !event.target.closest("[data-manual-expense-delete]")) {
+    openManualExpense(openExpense.dataset.manualExpenseOpen);
+    return;
+  }
+  const itemDelete = event.target.closest("[data-manual-expense-item-delete]");
+  if (itemDelete) {
+    deleteManualExpenseItem(itemDelete.dataset.manualExpenseItemDelete);
+    return;
+  }
+  const noteButton = event.target.closest("[data-file-expense-note]");
+  if (noteButton) {
+    openExpenseNoteModal(noteButton.dataset.fileExpenseNote);
+    return;
+  }
+  const deleteExpense = event.target.closest("[data-manual-expense-delete]");
+  if (deleteExpense) {
+    deleteManualExpense(deleteExpense.dataset.manualExpenseDelete);
+  }
+});
+document.addEventListener("change", (event) => {
+  if (event.target.closest("[data-manual-expense-item-field]")) captureManualExpenseItems();
 });
 [
   "crmFileReceiptVendor",
@@ -7494,13 +7692,6 @@ document.addEventListener("click", (event) => {
   if (!button) return;
   const expenseOpenId = button.dataset.animusExpenseOpen || button.dataset.freshExpenseOpen;
   const expenseDeleteId = button.dataset.animusExpenseDelete || button.dataset.freshExpenseDelete;
-  const manualExpenseDeleteId = button.dataset.manualExpenseDelete;
-  if (manualExpenseDeleteId) {
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    deleteManualExpense(manualExpenseDeleteId);
-    return;
-  }
   if (expenseOpenId) {
     event.preventDefault();
     event.stopImmediatePropagation();

@@ -689,17 +689,6 @@
           </section>
 
           <section class="crm-expenses-clean crm-expenses-v1">
-            <section class="panel crm-detail-card crm-receipt-history-panel">
-              <div class="panel-header">
-                <div>
-                  <p class="eyebrow">Receipt History</p>
-                  <h2 id="crmManualExpenseHeading">No file selected</h2>
-                </div>
-                <strong id="crmManualExpenseTotal">$0.00</strong>
-              </div>
-              <div class="crm-manual-expense-cards crm-receipt-history-list" id="crmManualExpenseCards"></div>
-            </section>
-
             <section class="panel crm-detail-card crm-file-receipt-panel">
               <div class="panel-header">
                 <div>
@@ -721,6 +710,10 @@
                     <label>
                       Vendor
                       <input id="crmManualExpenseVendor" placeholder="Home Depot">
+                    </label>
+                    <label>
+                      Title
+                      <input id="crmManualExpenseTitle" placeholder="Cabinet hardware, paint supplies, fuel">
                     </label>
                     <label>
                       Category
@@ -754,11 +747,48 @@
                   </div>
                 </div>
 
+                <div class="crm-file-receipt-lines crm-manual-expense-items">
+                  <div class="crm-file-receipt-lines-heading">
+                    <h3>Expense Items</h3>
+                    <strong id="crmManualExpenseItemsTotal">$0.00</strong>
+                  </div>
+                  <div class="crm-file-receipt-lines-wrap">
+                    <table class="crm-file-receipt-lines-table">
+                      <thead>
+                        <tr>
+                          <th>Use</th>
+                          <th>Item Name</th>
+                          <th>Category</th>
+                          <th>Price</th>
+                          <th>Total</th>
+                          <th></th>
+                        </tr>
+                      </thead>
+                      <tbody id="crmManualExpenseItemRows"></tbody>
+                    </table>
+                  </div>
+                  <div class="crm-receipt-review-actions">
+                    <button type="button" id="crmManualAddExpenseItem">Add Item Line</button>
+                    <button type="button" id="crmManualImportItemsToPrices">Import to Price Database</button>
+                  </div>
+                </div>
+
                 <div class="crm-receipt-review-actions">
                   <button type="button" class="primary-action" id="crmSaveManualExpense">Save Expense</button>
                   <button type="button" id="crmClearManualExpense">Clear</button>
                 </div>
               </div>
+            </section>
+
+            <section class="panel crm-detail-card crm-receipt-history-panel">
+              <div class="panel-header">
+                <div>
+                  <p class="eyebrow">Receipt History</p>
+                  <h2 id="crmManualExpenseHeading">No file selected</h2>
+                </div>
+                <strong id="crmManualExpenseTotal">$0.00</strong>
+              </div>
+              <div class="crm-manual-expense-cards crm-receipt-history-list" id="crmManualExpenseCards"></div>
             </section>
 
             <section class="panel crm-detail-card crm-file-expenses-panel">
@@ -773,6 +803,7 @@
                   <thead>
                     <tr>
                       <th>Date</th>
+                      <th>Title</th>
                       <th>Vendor</th>
                       <th>Category</th>
                       <th>Paid By</th>
@@ -908,7 +939,7 @@
         caches.keys().then((keys) => keys.forEach((key) => caches.delete(key)));
       }
     </script>
-    <script src="crm.js?v=20260814-expense-og-ui"></script>
+    <script src="crm.js?v=20260814-expense-reorg-items"></script>
     <script src="calendar-upgrade.js?v=20260808-calendar-popups"></script>
   </body>
 </html>
