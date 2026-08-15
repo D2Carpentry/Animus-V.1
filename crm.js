@@ -616,6 +616,10 @@ function mergeFileReceiptStores(file) {
 
 function syncExpenseFileForStorage(file) {
   if (!file) return;
+  if (Array.isArray(file.animusManualExpenses) && file.animusManualExpenses.length) {
+    syncManualExpensesForFile(file);
+    return;
+  }
   const receipts = mergeFileReceiptStores(file);
   if (receipts.length) {
     file.freshExpenseReceipts = receipts;
@@ -1127,6 +1131,7 @@ function normalizeCrmFile(file) {
   if (!Array.isArray(file.receiptHistory)) file.receiptHistory = [];
   if (!Array.isArray(file.expenseReceipts)) file.expenseReceipts = [];
   if (!Array.isArray(file.freshExpenseReceipts)) file.freshExpenseReceipts = [];
+  if (!Array.isArray(file.animusManualExpenses)) file.animusManualExpenses = [];
   syncExpenseFileForStorage(file);
   file.projectStage = file.projectStage || inferProjectStage(file.fileStatus);
   file.projectType = normalizeProjectType(file.projectType);
@@ -6936,17 +6941,188 @@ freshExpenseSaveBatch = function freshExpenseSaveBatchV3() {
   window.alert("Upload and save one receipt at a time while the new expense page is active.");
 };
 
-// Final expense reset override: keep the old expense system dormant until the rebuild begins.
-renderFileExpenses = renderExpenseRebuildPlaceholder;
-freshExpenseAddManualDraft = function inactiveFreshExpenseAddManualDraftFinal() {
-  window.alert("The old expense system has been removed. We will rebuild this from scratch.");
+// Expenses v1: rebuild from a clean manual expense list.
+function cleanManualExpense(expense = {}) {
+  return {
+    id: expense.id || makeCrmId("manual-expense"),
+    createdAt: expense.createdAt || new Date().toISOString(),
+    updatedAt: expense.updatedAt || expense.createdAt || new Date().toISOString(),
+    date: expense.date || todayIso(0),
+    vendor: expense.vendor || "",
+    category: expense.category || "Supplies",
+    paymentType: expense.paymentType || "",
+    amount: parseMoney(expense.amount),
+    notes: expense.notes || "",
+  };
+}
+
+function manualExpensesForFile(file) {
+  if (!file) return [];
+  const expenses = Array.isArray(file.animusManualExpenses) ? file.animusManualExpenses : [];
+  file.animusManualExpenses = expenses.map(cleanManualExpense);
+  return file.animusManualExpenses;
+}
+
+function syncManualExpensesForFile(file) {
+  const expenses = manualExpensesForFile(file);
+  file.expenseLines = expenses.map((expense) => ({
+    id: expense.id,
+    date: expense.date,
+    vendor: expense.vendor,
+    category: expense.category,
+    note: expense.notes,
+    amount: expense.amount,
+    baseAmount: expense.amount,
+    tax: 0,
+    addTax: false,
+    paymentType: expense.paymentType,
+    receiptFileName: "",
+    receiptDataUrl: "",
+    receiptSource: "ANIMUS manual expense",
+  }));
+  file.expenseReceipts = [];
+  file.freshExpenseReceipts = [];
+  file.receiptHistory = [];
+}
+
+function manualExpenseTotal(file) {
+  return manualExpensesForFile(file).reduce((sum, expense) => sum + parseMoney(expense.amount), 0);
+}
+
+function clearManualExpenseForm() {
+  if ($("crmManualExpenseDate")) $("crmManualExpenseDate").value = todayIso(0);
+  if ($("crmManualExpenseVendor")) $("crmManualExpenseVendor").value = "";
+  if ($("crmManualExpenseCategory")) $("crmManualExpenseCategory").value = "Supplies";
+  if ($("crmManualExpensePayment")) $("crmManualExpensePayment").value = "";
+  if ($("crmManualExpenseAmount")) $("crmManualExpenseAmount").value = "";
+  if ($("crmManualExpenseNotes")) $("crmManualExpenseNotes").value = "";
+}
+
+function setManualExpenseStatus(message = "", kind = "") {
+  const status = $("crmManualExpenseStatus");
+  if (!status) return;
+  status.textContent = message || "Manual expenses only for this first rebuild step.";
+  status.classList.toggle("good", kind === "good");
+  status.classList.toggle("warn", kind === "warn");
+}
+
+function renderManualExpenses() {
+  const file = normalizeCrmFile(activeFile());
+  const title = $("crmExpensesFileTitle");
+  const heading = $("crmManualExpenseHeading");
+  const total = $("crmManualExpenseTotal");
+  const rows = $("crmManualExpenseRows");
+  if (!rows) return;
+  if (!file) {
+    if (title) title.textContent = "Select a file to track expenses.";
+    if (heading) heading.textContent = "No file selected";
+    if (total) total.textContent = crmCurrency.format(0);
+    rows.innerHTML = `<tr><td colspan="7">Select a file before adding expenses.</td></tr>`;
+    return;
+  }
+  const expenses = manualExpensesForFile(file);
+  syncManualExpensesForFile(file);
+  if (title) title.textContent = `${file.fileNumber || "Project"} · ${file.clientName || "Unnamed Client"}`;
+  if (heading) heading.textContent = `${file.clientName || "Unnamed Client"} Expenses`;
+  if (total) total.textContent = crmCurrency.format(manualExpenseTotal(file));
+  rows.innerHTML = expenses.length
+    ? expenses.map((expense) => `
+      <tr>
+        <td>${escapeHtml(formatDateForDisplay(expense.date) || expense.date)}</td>
+        <td>${escapeHtml(expense.vendor || "No vendor")}</td>
+        <td>${escapeHtml(expense.category || "Supplies")}</td>
+        <td>${escapeHtml(expense.paymentType || "")}</td>
+        <td>${escapeHtml(expense.notes || "")}</td>
+        <td>${crmCurrency.format(parseMoney(expense.amount))}</td>
+        <td><button type="button" class="danger-link" data-manual-expense-delete="${escapeHtml(expense.id)}">Delete</button></td>
+      </tr>
+    `).join("")
+    : `<tr><td colspan="7">No expenses saved for this file yet.</td></tr>`;
+}
+
+function saveManualExpense() {
+  const file = normalizeCrmFile(activeFile());
+  if (!file) {
+    setManualExpenseStatus("Select a file before saving an expense.", "warn");
+    return;
+  }
+  const amount = parseMoney($("crmManualExpenseAmount")?.value || 0);
+  if (!amount) {
+    setManualExpenseStatus("Add an amount before saving.", "warn");
+    return;
+  }
+  const expense = cleanManualExpense({
+    date: $("crmManualExpenseDate")?.value || todayIso(0),
+    vendor: $("crmManualExpenseVendor")?.value.trim() || "",
+    category: $("crmManualExpenseCategory")?.value || "Supplies",
+    paymentType: $("crmManualExpensePayment")?.value || "",
+    amount,
+    notes: $("crmManualExpenseNotes")?.value.trim() || "",
+  });
+  file.animusManualExpenses = [expense, ...manualExpensesForFile(file)];
+  syncManualExpensesForFile(file);
+  addSystemNote(file, `Expense saved${expense.vendor ? ` from ${expense.vendor}` : ""} for ${crmCurrency.format(expense.amount)}.`);
+  syncFileExpensesToRevenue(file);
+  saveCrmFiles();
+  saveRevenueRows();
+  clearManualExpenseForm();
+  renderManualExpenses();
+  saveExpenseChangeToCloud("Expense saved to Cloudflare.");
+  setManualExpenseStatus("Expense saved to this file.", "good");
+}
+
+function deleteManualExpense(expenseId) {
+  const file = normalizeCrmFile(activeFile());
+  if (!file || !expenseId) return;
+  const before = manualExpensesForFile(file).length;
+  file.animusManualExpenses = manualExpensesForFile(file).filter((expense) => expense.id !== expenseId);
+  if (file.animusManualExpenses.length === before) return;
+  syncManualExpensesForFile(file);
+  addSystemNote(file, "Expense deleted.");
+  syncFileExpensesToRevenue(file);
+  saveCrmFiles();
+  saveRevenueRows();
+  renderManualExpenses();
+  saveExpenseChangeToCloud("Expense deleted and saved to Cloudflare.");
+  setManualExpenseStatus("Expense deleted.", "good");
+}
+
+fileExpenseTotal = function fileExpenseTotalManual(file) {
+  if (Array.isArray(file?.animusManualExpenses) && file.animusManualExpenses.length) {
+    syncManualExpensesForFile(file);
+  } else if (Array.isArray(file?.freshExpenseReceipts) && file.freshExpenseReceipts.length) {
+    rebuildFreshFileExpenses(file);
+  } else {
+    restoreExpenseLinesFromReceiptHistory(file);
+  }
+  return (Array.isArray(file?.expenseLines) ? file.expenseLines : []).reduce((sum, line) => sum + receiptExpenseLineAmount(line), 0);
 };
-freshExpenseAttachReceipt = function inactiveFreshExpenseAttachReceiptFinal() {
-  window.alert("The old receipt scanner has been removed. We will rebuild this from scratch.");
+
+syncFileExpensesToRevenue = function syncFileExpensesToRevenueManual(file) {
+  if (!file) return;
+  if (Array.isArray(file.animusManualExpenses) && file.animusManualExpenses.length) {
+    syncManualExpensesForFile(file);
+  } else if (Array.isArray(file.freshExpenseReceipts) && file.freshExpenseReceipts.length) {
+    rebuildFreshFileExpenses(file);
+  } else {
+    restoreExpenseLinesFromReceiptHistory(file);
+    syncReceiptHistoryFromExpenseLines(file);
+  }
+  const row = ensureExpenseRevenueRowForFile(file);
+  if (!row) return;
+  row.dashboardFileId = file.id || row.dashboardFileId || "";
+  row.fileNumber = file.fileNumber || row.fileNumber || "";
+  if (!row.clientJob || row.clientJob === "Unnamed Client") row.clientJob = revenueLabelForFile(file);
+  row.expenses = fileExpenseTotal(file);
+  row.expenseLines = Array.isArray(file.expenseLines) ? file.expenseLines.map((line) => ({ ...line })) : [];
+  syncRevenueExpenseTotal(row);
+  saveRevenueRows();
 };
-freshExpenseSave = function inactiveFreshExpenseSaveFinal() {
-  window.alert("The old Save Expense button has been removed. We will rebuild this from scratch.");
-};
+
+renderFileExpenses = renderManualExpenses;
+freshExpenseAddManualDraft = function inactiveFreshExpenseAddManualDraftFinal() {};
+freshExpenseAttachReceipt = function inactiveFreshExpenseAttachReceiptFinal() {};
+freshExpenseSave = function inactiveFreshExpenseSaveFinal() {};
 freshExpenseClearDraft = function inactiveFreshExpenseClearDraftFinal() {};
 freshExpenseAddReceiptLine = function inactiveFreshExpenseAddReceiptLineFinal() {};
 freshExpenseSaveBatch = function inactiveFreshExpenseSaveBatchFinal() {};
@@ -7123,6 +7299,11 @@ $("crmClearScannedReceipt")?.addEventListener("click", freshExpenseClearDraft);
 $("crmAddReceiptExpenseLine")?.addEventListener("click", freshExpenseAddReceiptLine);
 $("crmSaveAllReceipts")?.addEventListener("click", freshExpenseSaveBatch);
 $("crmClearBulkReceipts")?.addEventListener("click", clearBulkReceiptDrafts);
+$("crmSaveManualExpense")?.addEventListener("click", saveManualExpense);
+$("crmClearManualExpense")?.addEventListener("click", () => {
+  clearManualExpenseForm();
+  setManualExpenseStatus("Manual expense cleared.");
+});
 [
   "crmFileReceiptVendor",
   "crmFileReceiptDate",
@@ -7183,6 +7364,13 @@ document.addEventListener("click", (event) => {
   if (!button) return;
   const expenseOpenId = button.dataset.animusExpenseOpen || button.dataset.freshExpenseOpen;
   const expenseDeleteId = button.dataset.animusExpenseDelete || button.dataset.freshExpenseDelete;
+  const manualExpenseDeleteId = button.dataset.manualExpenseDelete;
+  if (manualExpenseDeleteId) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    deleteManualExpense(manualExpenseDeleteId);
+    return;
+  }
   if (expenseOpenId) {
     event.preventDefault();
     event.stopImmediatePropagation();

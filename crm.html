@@ -679,22 +679,88 @@
           <section class="crm-command-panel crm-revenue-hero">
             <div class="crm-command-copy">
               <h2>Expenses</h2>
-              <p id="crmExpensesFileTitle">Clean rebuild started. The old receipt system has been removed from this page.</p>
+              <p id="crmExpensesFileTitle">Select a file to track expenses.</p>
             </div>
           </section>
 
-          <section class="crm-expense-rebuild-empty">
+          <section class="crm-expenses-v1">
             <section class="panel crm-detail-card">
               <div class="panel-header">
                 <div>
-                  <p class="eyebrow">Fresh Start</p>
-                  <h2>Expense System Removed</h2>
+                  <p class="eyebrow">Add Expense</p>
+                  <h2>Manual expense entry</h2>
+                </div>
+                <strong id="crmManualExpenseTotal">$0.00</strong>
+              </div>
+              <div class="field-grid three">
+                <label>
+                  Date
+                  <input id="crmManualExpenseDate" type="date">
+                </label>
+                <label>
+                  Vendor
+                  <input id="crmManualExpenseVendor" placeholder="Home Depot">
+                </label>
+                <label>
+                  Category
+                  <select id="crmManualExpenseCategory">
+                    <option>Supplies</option>
+                    <option>Materials</option>
+                    <option>Fuel</option>
+                    <option>Equipment</option>
+                    <option>Labor</option>
+                    <option>Other</option>
+                  </select>
+                </label>
+                <label>
+                  Paid By
+                  <select id="crmManualExpensePayment">
+                    <option value="">Select</option>
+                    <option>Cash</option>
+                    <option>Credit - Chase Business</option>
+                    <option>Credit - Bank of America</option>
+                    <option>Credit - Chase Personal</option>
+                  </select>
+                </label>
+                <label>
+                  Amount
+                  <input id="crmManualExpenseAmount" inputmode="decimal" placeholder="0.00">
+                </label>
+                <label class="crm-manual-expense-wide">
+                  Notes
+                  <textarea id="crmManualExpenseNotes" rows="3" placeholder="What was purchased or why this expense was added"></textarea>
+                </label>
+              </div>
+              <div class="crm-receipt-review-actions">
+                <button type="button" class="primary-action" id="crmSaveManualExpense">Save Expense</button>
+                <button type="button" id="crmClearManualExpense">Clear</button>
+              </div>
+              <p class="crm-helper-text" id="crmManualExpenseStatus">Manual expenses only for this first rebuild step.</p>
+            </section>
+
+            <section class="panel crm-detail-card">
+              <div class="panel-header">
+                <div>
+                  <p class="eyebrow">Saved Expenses</p>
+                  <h2 id="crmManualExpenseHeading">No file selected</h2>
                 </div>
               </div>
-              <p class="crm-empty-state">
-                We will rebuild this section step by step with a new cloud-backed expense flow.
-                The previous receipt history, scanner, save expense button, and batch upload controls are no longer active here.
-              </p>
+              <div class="crm-expense-table-wrap">
+                <table class="crm-expense-table crm-manual-expense-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Vendor</th>
+                      <th>Category</th>
+                      <th>Paid By</th>
+                      <th>Notes</th>
+                      <th>Amount</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody id="crmManualExpenseRows"></tbody>
+                </table>
+              </div>
             </section>
           </section>
         </section>
@@ -819,7 +885,7 @@
         caches.keys().then((keys) => keys.forEach((key) => caches.delete(key)));
       }
     </script>
-    <script src="crm.js?v=20260814-expense-reset"></script>
+    <script src="crm.js?v=20260814-expense-v1"></script>
     <script src="calendar-upgrade.js?v=20260808-calendar-popups"></script>
   </body>
 </html>

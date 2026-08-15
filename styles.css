@@ -4347,6 +4347,81 @@ body[data-copy-mode="team"] .estimate-sheet td:first-child {
   white-space: pre-wrap;
 }
 
+.crm-expenses-v1 {
+  display: grid;
+  gap: 18px;
+}
+
+.crm-expense-panel-v1 {
+  border: 1px solid #d7dce5;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 18px;
+}
+
+.crm-expense-panel-v1 .panel-header {
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.crm-expense-panel-v1 .panel-header strong {
+  color: var(--blue);
+  font-size: 1.35rem;
+  font-weight: 900;
+}
+
+.crm-manual-expense-table-wrap {
+  overflow-x: auto;
+}
+
+.crm-manual-expense-table {
+  width: 100%;
+  min-width: 860px;
+  border-collapse: collapse;
+}
+
+.crm-manual-expense-table th,
+.crm-manual-expense-table td {
+  border-bottom: 1px solid #e3e8f0;
+  padding: 12px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.crm-manual-expense-table th {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.crm-manual-expense-table td {
+  color: var(--ink);
+  font-size: 0.93rem;
+  font-weight: 800;
+}
+
+.crm-manual-expense-table td:nth-child(5) {
+  max-width: 360px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.crm-manual-expense-table td:nth-child(6) {
+  color: var(--blue);
+  font-weight: 900;
+  text-align: right;
+}
+
+.crm-helper-text.good {
+  color: #166534;
+}
+
+.crm-helper-text.warn {
+  color: #b45309;
+}
+
 .crm-timeline {
   display: grid;
   gap: 8px;
@@ -4427,5 +4502,9 @@ body[data-copy-mode="team"] .estimate-sheet td:first-child {
   .crm-add-expense,
   .crm-expense-line {
     grid-template-columns: 1fr;
+  }
+
+  .crm-expense-panel-v1 {
+    padding: 14px;
   }
 }
