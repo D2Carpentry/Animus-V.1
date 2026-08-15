@@ -6449,9 +6449,9 @@ function switchCrmView(view) {
   $("crmExpensesView").hidden = !showExpenses;
   $("crmPriceView").hidden = !showPrices;
   $("crmEstimatorView").hidden = !showEstimator;
-  document.querySelectorAll("[data-crm-view]").forEach((button) => {
-    button.classList.toggle("active", button.dataset.crmView === view);
-  });
+document.querySelectorAll("[data-crm-view]").forEach((button) => {
+  button.classList.toggle("active", button.dataset.crmView === view);
+});
   if (showPayroll) renderPayroll();
   if (showInvoice) renderInvoiceView();
   if (showCalendar) renderCalendar();
@@ -6473,6 +6473,31 @@ function escapeHtml(value) {
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
 }
+
+// Expenses page reset: old receipt and expense tools are intentionally inactive.
+function renderExpenseRebuildPlaceholder() {
+  const title = $("crmExpensesFileTitle");
+  const file = activeFile();
+  if (title) {
+    title.textContent = file
+      ? `${file.fileNumber || "Project"} · ${file.clientName || "Unnamed Client"} · Expense rebuild ready`
+      : "Select a file when we rebuild expenses.";
+  }
+}
+
+renderFileExpenses = renderExpenseRebuildPlaceholder;
+freshExpenseAddManualDraft = function inactiveFreshExpenseAddManualDraft() {
+  window.alert("The old expense system has been removed. We will rebuild this from scratch.");
+};
+freshExpenseAttachReceipt = function inactiveFreshExpenseAttachReceipt() {
+  window.alert("The old receipt scanner has been removed. We will rebuild this from scratch.");
+};
+freshExpenseSave = function inactiveFreshExpenseSave() {
+  window.alert("The old Save Expense button has been removed. We will rebuild this from scratch.");
+};
+freshExpenseClearDraft = function inactiveFreshExpenseClearDraft() {};
+freshExpenseAddReceiptLine = function inactiveFreshExpenseAddReceiptLine() {};
+freshExpenseSaveBatch = function inactiveFreshExpenseSaveBatch() {};
 
 // ANIMUS Expenses v3: one receipt list is the source of truth.
 function animusExpenseLineTotal(line = {}) {
@@ -6911,6 +6936,21 @@ freshExpenseSaveBatch = function freshExpenseSaveBatchV3() {
   window.alert("Upload and save one receipt at a time while the new expense page is active.");
 };
 
+// Final expense reset override: keep the old expense system dormant until the rebuild begins.
+renderFileExpenses = renderExpenseRebuildPlaceholder;
+freshExpenseAddManualDraft = function inactiveFreshExpenseAddManualDraftFinal() {
+  window.alert("The old expense system has been removed. We will rebuild this from scratch.");
+};
+freshExpenseAttachReceipt = function inactiveFreshExpenseAttachReceiptFinal() {
+  window.alert("The old receipt scanner has been removed. We will rebuild this from scratch.");
+};
+freshExpenseSave = function inactiveFreshExpenseSaveFinal() {
+  window.alert("The old Save Expense button has been removed. We will rebuild this from scratch.");
+};
+freshExpenseClearDraft = function inactiveFreshExpenseClearDraftFinal() {};
+freshExpenseAddReceiptLine = function inactiveFreshExpenseAddReceiptLineFinal() {};
+freshExpenseSaveBatch = function inactiveFreshExpenseSaveBatchFinal() {};
+
 document.querySelectorAll("[data-crm-filter]").forEach((button) => {
   button.addEventListener("click", () => {
     activateCrmFilter(button.dataset.crmFilter);
@@ -7071,18 +7111,18 @@ $("crmPayrollStatusFilter").addEventListener("change", (event) => {
   crmPayrollStatusFilter = event.target.value;
   renderPayroll();
 });
-$("crmAddFileExpense").addEventListener("click", freshExpenseAddManualDraft);
-$("crmReceiptUpload").addEventListener("change", (event) => {
+$("crmAddFileExpense")?.addEventListener("click", freshExpenseAddManualDraft);
+$("crmReceiptUpload")?.addEventListener("change", (event) => {
   freshExpenseAttachReceipt(event.target.files);
   event.target.value = "";
 });
-$("crmReadReceiptText").addEventListener("click", readPastedReceiptTextForFile);
-$("crmImportReceiptToPrices").addEventListener("click", importFileReceiptToPriceDatabase);
-$("crmSaveScannedReceipt").addEventListener("click", freshExpenseSave);
-$("crmClearScannedReceipt").addEventListener("click", freshExpenseClearDraft);
-$("crmAddReceiptExpenseLine").addEventListener("click", freshExpenseAddReceiptLine);
-$("crmSaveAllReceipts").addEventListener("click", freshExpenseSaveBatch);
-$("crmClearBulkReceipts").addEventListener("click", clearBulkReceiptDrafts);
+$("crmReadReceiptText")?.addEventListener("click", readPastedReceiptTextForFile);
+$("crmImportReceiptToPrices")?.addEventListener("click", importFileReceiptToPriceDatabase);
+$("crmSaveScannedReceipt")?.addEventListener("click", freshExpenseSave);
+$("crmClearScannedReceipt")?.addEventListener("click", freshExpenseClearDraft);
+$("crmAddReceiptExpenseLine")?.addEventListener("click", freshExpenseAddReceiptLine);
+$("crmSaveAllReceipts")?.addEventListener("click", freshExpenseSaveBatch);
+$("crmClearBulkReceipts")?.addEventListener("click", clearBulkReceiptDrafts);
 [
   "crmFileReceiptVendor",
   "crmFileReceiptDate",
