@@ -2509,6 +2509,15 @@ body[data-copy-mode="team"] .estimate-sheet td:first-child {
   grid-template-columns: minmax(0, 1fr);
 }
 
+.crm-expenses-clean {
+  display: grid;
+  gap: 18px;
+}
+
+.crm-expenses-clean .crm-detail-card {
+  width: 100%;
+}
+
 .crm-file-receipt-panel {
   order: 1;
 }
@@ -2666,9 +2675,73 @@ body[data-copy-mode="team"] .estimate-sheet td:first-child {
   cursor: pointer;
 }
 
+.crm-receipt-history-list {
+  display: grid;
+  gap: 10px;
+}
+
+.crm-receipt-history-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  width: 100%;
+  border: 1px solid #dce3ee;
+  border-radius: 10px;
+  padding: 12px 14px;
+  color: var(--ink);
+  text-align: left;
+  background: #fff;
+  cursor: pointer;
+}
+
+.crm-receipt-history-item:hover {
+  border-color: rgba(13, 74, 145, 0.38);
+  background: #f7f9fc;
+}
+
+.crm-receipt-history-item span {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.crm-receipt-history-item strong,
+.crm-receipt-history-item small {
+  overflow-wrap: anywhere;
+}
+
+.crm-receipt-history-item strong {
+  color: var(--ink);
+  font-size: 16px;
+}
+
+.crm-receipt-history-item small {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.crm-receipt-history-item b {
+  color: var(--blue);
+  white-space: nowrap;
+}
+
 .crm-receipt-preview {
   display: grid;
   gap: 10px;
+}
+
+.crm-receipt-preview-empty {
+  display: grid;
+  min-height: 220px;
+  place-items: center;
+  border: 1px dashed #cfd7e3;
+  border-radius: 8px;
+  padding: 18px;
+  color: var(--muted);
+  font-weight: 900;
+  text-align: center;
+  background: #f8fafc;
 }
 
 .crm-receipt-preview img {

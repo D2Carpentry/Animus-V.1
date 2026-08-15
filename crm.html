@@ -685,45 +685,30 @@
               <button type="button" id="crmAddFileExpense">Add Expense</button>
               <label class="icon-button primary-action crm-receipt-upload">
                 Scan Receipt
-                <input id="crmReceiptUpload" type="file" accept="image/*" capture="environment" multiple hidden>
+                <input id="crmReceiptUpload" type="file" accept="image/*" capture="environment" hidden>
               </label>
             </div>
           </section>
 
-          <section class="crm-layout crm-expenses-layout">
-            <section class="panel crm-detail-card crm-file-expenses-panel">
+          <section class="crm-expenses-clean">
+            <section class="panel crm-detail-card crm-receipt-history-panel">
               <div class="panel-header">
                 <div>
-                  <p class="eyebrow">Manual / Saved Expenses</p>
-                  <h2 id="crmExpensesHeading">No file selected</h2>
+                  <p class="eyebrow">Receipt History</p>
+                  <h2>Saved receipts and expenses</h2>
                 </div>
-                <strong id="crmFileExpenseTotal">$0.00</strong>
               </div>
-              <div class="crm-expense-table-wrap">
-                <table class="crm-expense-table">
-                  <thead>
-                    <tr>
-                      <th>Date</th>
-                      <th>Category</th>
-                      <th>Vendor / Store</th>
-                      <th>Items / Notes</th>
-                      <th>Price</th>
-                      <th>Tax</th>
-                      <th>Total</th>
-                      <th>Receipt</th>
-                      <th></th>
-                    </tr>
-                  </thead>
-                  <tbody id="crmFileExpenseRows"></tbody>
-                </table>
-              </div>
+              <div class="crm-receipt-history-list" id="crmReceiptHistoryList"></div>
             </section>
 
-            <aside class="panel crm-detail-card crm-file-receipt-panel">
+            <section class="panel crm-detail-card crm-file-receipt-panel">
               <div class="panel-header">
-                <h2>Receipt Details</h2>
+                <div>
+                  <p class="eyebrow">New / Edit Expense</p>
+                  <h2>Receipt Details</h2>
+                </div>
+                <p class="crm-helper-text" id="crmFileReceiptStatus">Use Add Expense or Scan Receipt to start.</p>
               </div>
-              <p class="crm-helper-text">Take a receipt photo, review what ANIMUS reads, then save it to this file.</p>
               <div class="crm-file-receipt-review" id="crmFileReceiptReview" hidden>
                 <div class="crm-file-receipt-top">
                   <div id="crmReceiptPreview" class="crm-receipt-preview"></div>
@@ -781,9 +766,10 @@
                     </label>
                   </div>
                 </div>
+
                 <div class="crm-file-receipt-lines">
                   <div class="crm-file-receipt-lines-heading">
-                    <h3>Receipt Details</h3>
+                    <h3>Expense Lines</h3>
                     <strong id="crmFileReceiptLinesTotal">$0.00</strong>
                   </div>
                   <div class="crm-file-receipt-lines-wrap">
@@ -804,9 +790,10 @@
                   </div>
                   <button type="button" id="crmAddReceiptExpenseLine">Add Line</button>
                 </div>
+
                 <label>
                   Paste Receipt Text
-                  <textarea id="crmFileReceiptOcrText" rows="5" placeholder="Optional: paste receipt text here if the photo cannot be read yet."></textarea>
+                  <textarea id="crmFileReceiptOcrText" rows="4" placeholder="Optional: paste receipt text here if the photo cannot be read yet."></textarea>
                 </label>
                 <div class="crm-receipt-review-actions">
                   <button type="button" id="crmReadReceiptText">Read Text</button>
@@ -814,34 +801,42 @@
                   <button type="button" class="primary-action" id="crmSaveScannedReceipt">Save Expense</button>
                   <button type="button" id="crmClearScannedReceipt">Clear</button>
                 </div>
-                <p class="crm-helper-text" id="crmFileReceiptStatus">Review the receipt before saving.</p>
-              </div>
-            </aside>
-
-            <section class="panel crm-detail-card crm-bulk-receipts-panel" id="crmBulkReceiptPanel" hidden>
-              <div class="panel-header">
-                <div>
-                  <p class="eyebrow">Bulk Receipts</p>
-                  <h2>Receipts waiting to save</h2>
-                </div>
-                <strong id="crmBulkReceiptCount">0</strong>
-              </div>
-              <p class="crm-helper-text">Upload several receipts at once, let ANIMUS read them, then save the whole batch to this file.</p>
-              <div class="crm-bulk-receipt-list" id="crmBulkReceiptList"></div>
-              <div class="crm-receipt-review-actions">
-                <button type="button" class="primary-action" id="crmSaveAllReceipts">Save All Receipts</button>
-                <button type="button" id="crmClearBulkReceipts">Clear Batch</button>
               </div>
             </section>
 
-            <section class="panel crm-detail-card crm-receipt-history-panel">
+            <section class="panel crm-detail-card crm-file-expenses-panel">
               <div class="panel-header">
                 <div>
-                  <p class="eyebrow">Receipt History</p>
-                  <h2>Saved receipts and expenses</h2>
+                  <p class="eyebrow">File Expenses</p>
+                  <h2 id="crmExpensesHeading">No file selected</h2>
                 </div>
+                <strong id="crmFileExpenseTotal">$0.00</strong>
               </div>
-              <div class="crm-receipt-history-list" id="crmReceiptHistoryList"></div>
+              <div class="crm-expense-table-wrap">
+                <table class="crm-expense-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Category</th>
+                      <th>Vendor / Store</th>
+                      <th>Items / Notes</th>
+                      <th>Price</th>
+                      <th>Tax</th>
+                      <th>Total</th>
+                      <th>Receipt</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody id="crmFileExpenseRows"></tbody>
+                </table>
+              </div>
+            </section>
+
+            <section class="panel crm-detail-card crm-bulk-receipts-panel" id="crmBulkReceiptPanel" hidden>
+              <strong id="crmBulkReceiptCount">0</strong>
+              <div class="crm-bulk-receipt-list" id="crmBulkReceiptList"></div>
+              <button type="button" id="crmSaveAllReceipts">Save All Receipts</button>
+              <button type="button" id="crmClearBulkReceipts">Clear Batch</button>
             </section>
           </section>
         </section>
