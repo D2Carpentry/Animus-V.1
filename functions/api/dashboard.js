@@ -152,6 +152,7 @@ function mergeFiles(existing = [], incoming = []) {
       expenseLines: mergeExpenseLines(prior.expenseLines, file.expenseLines),
       receiptHistory: mergeReceiptHistory(prior.receiptHistory, file.receiptHistory),
       animusManualExpenses: mergeManualExpenses(prior.animusManualExpenses, file.animusManualExpenses),
+      animusExpenseLedgerV4: mergeManualExpenses(prior.animusExpenseLedgerV4, file.animusExpenseLedgerV4),
     });
   });
   return [...merged.values()];

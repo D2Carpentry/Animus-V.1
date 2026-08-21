@@ -320,6 +320,7 @@ function mergeDashboardFileRecords(primaryFile = {}, secondaryFile = {}) {
     expenseLines: mergeExpenseLineArrays(primaryFile.expenseLines, secondaryFile.expenseLines),
     receiptHistory: mergeReceiptHistoryArrays(primaryFile.receiptHistory, secondaryFile.receiptHistory),
     animusManualExpenses: mergeManualExpenseArrays(primaryFile.animusManualExpenses, secondaryFile.animusManualExpenses),
+    animusExpenseLedgerV4: mergeManualExpenseArrays(primaryFile.animusExpenseLedgerV4, secondaryFile.animusExpenseLedgerV4),
   };
 }
 
@@ -7892,6 +7893,176 @@ document.addEventListener("click", (event) => {
   event.preventDefault();
   event.stopImmediatePropagation();
   action();
+}, true);
+
+// Expenses v4 has one source of truth. Earlier receipt systems are deliberately
+// ignored once this ledger is created for a file.
+let expenseLedgerV4EditingId = "";
+
+function cleanExpenseLedgerV4Entry(entry = {}) {
+  const items = Array.isArray(entry.items) ? entry.items.map(cleanManualExpenseItem) : [];
+  const itemTotal = items.reduce((sum, item) => item.use === false ? sum : sum + parseMoney(item.price), 0);
+  return {
+    id: entry.id || makeCrmId("expense-v4"),
+    createdAt: entry.createdAt || new Date().toISOString(),
+    updatedAt: entry.updatedAt || entry.createdAt || new Date().toISOString(),
+    date: entry.date || todayIso(0), vendor: entry.vendor || "", title: entry.title || "",
+    category: entry.category || "Supplies", paymentType: entry.paymentType || "",
+    amount: parseMoney(entry.amount) || itemTotal, notes: entry.notes || "",
+    imageDataUrl: entry.imageDataUrl || "", imageTitle: entry.imageTitle || entry.title || "", items,
+  };
+}
+
+function expenseLedgerV4ForFile(file) {
+  if (!file) return [];
+  file.animusExpenseLedgerV4 = Array.isArray(file.animusExpenseLedgerV4)
+    ? file.animusExpenseLedgerV4.map(cleanExpenseLedgerV4Entry) : [];
+  return file.animusExpenseLedgerV4;
+}
+
+function syncExpenseLedgerV4(file) {
+  if (!file) return;
+  const entries = expenseLedgerV4ForFile(file);
+  file.expenseLines = entries.map((entry) => ({
+    id: entry.id, receiptGroupId: entry.id, date: entry.date, vendor: entry.vendor,
+    category: entry.category, note: entry.notes || entry.title || "Expense", baseAmount: entry.amount,
+    amount: entry.amount, tax: 0, addTax: false, paymentType: entry.paymentType,
+    receiptFileName: entry.imageTitle || entry.title || "", receiptDataUrl: entry.imageDataUrl || "",
+    receiptSource: "ANIMUS expense ledger",
+  }));
+  file.animusManualExpenses = [];
+  file.freshExpenseReceipts = [];
+  file.expenseReceipts = [];
+  file.receiptHistory = [];
+}
+
+const legacySyncExpenseFileForStorage = syncExpenseFileForStorage;
+syncExpenseFileForStorage = function syncExpenseFileForStorageV4(file) {
+  if (file && Array.isArray(file.animusExpenseLedgerV4)) return syncExpenseLedgerV4(file);
+  return legacySyncExpenseFileForStorage(file);
+};
+
+function expenseLedgerV4Total(file) {
+  return expenseLedgerV4ForFile(file).reduce((sum, entry) => sum + parseMoney(entry.amount), 0);
+}
+
+fileExpenseTotal = function fileExpenseTotalV4(file) {
+  if (file && Array.isArray(file.animusExpenseLedgerV4)) {
+    syncExpenseLedgerV4(file);
+    return expenseLedgerV4Total(file);
+  }
+  return (file?.expenseLines || []).reduce((sum, line) => sum + receiptExpenseLineAmount(line), 0);
+};
+
+syncFileExpensesToRevenue = function syncFileExpensesToRevenueV4(file) {
+  if (!file) return;
+  if (Array.isArray(file.animusExpenseLedgerV4)) syncExpenseLedgerV4(file);
+  const row = ensureExpenseRevenueRowForFile(file);
+  if (!row) return;
+  row.dashboardFileId = file.id || row.dashboardFileId || "";
+  row.fileNumber = file.fileNumber || row.fileNumber || "";
+  if (!row.clientJob || row.clientJob === "Unnamed Client") row.clientJob = revenueLabelForFile(file);
+  row.expenses = fileExpenseTotal(file);
+  row.expenseLines = (file.expenseLines || []).map((line) => ({ ...line }));
+  syncRevenueExpenseTotal(row);
+  saveRevenueRows();
+};
+
+function renderExpenseLedgerV4() {
+  const file = normalizeCrmFile(activeFile());
+  const title = $("crmExpensesFileTitle"), heading = $("crmManualExpenseHeading"), total = $("crmManualExpenseTotal");
+  const rows = $("crmManualExpenseRows"), cards = $("crmManualExpenseCards");
+  if (!rows) return;
+  if (!file) {
+    if (title) title.textContent = "Select a file to track expenses.";
+    if (heading) heading.textContent = "No file selected";
+    if (total) total.textContent = crmCurrency.format(0);
+    if (cards) cards.innerHTML = `<p class="crm-empty-state">Select a file before adding expenses.</p>`;
+    rows.innerHTML = `<tr><td colspan="8">Select a file before adding expenses.</td></tr>`;
+    return;
+  }
+  const entries = expenseLedgerV4ForFile(file).slice().sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
+  syncExpenseLedgerV4(file);
+  if (title) title.textContent = `${file.fileNumber || "Project"} · ${file.clientName || "Unnamed Client"}`;
+  if (heading) heading.textContent = `${file.clientName || "Unnamed Client"} Expenses`;
+  if (total) total.textContent = crmCurrency.format(expenseLedgerV4Total(file));
+  if (cards) cards.innerHTML = entries.length ? entries.map((entry) => `
+    <article class="crm-manual-expense-card crm-receipt-history-item" data-expense-v4-open="${escapeHtml(entry.id)}">
+      <span><strong>${escapeHtml(entry.title || entry.vendor || "Untitled expense")}</strong><small>${escapeHtml(manualExpenseDisplayDate(entry.date) || "No date")}</small></span>
+      <span class="crm-receipt-history-amount"><b>${crmCurrency.format(entry.amount)}</b><button type="button" class="danger-link" data-expense-v4-delete="${escapeHtml(entry.id)}">Delete</button></span>
+    </article>`).join("") : `<p class="crm-empty-state">No expenses saved for this file yet.</p>`;
+  rows.innerHTML = entries.length ? entries.map((entry) => `<tr><td>${escapeHtml(manualExpenseDisplayDate(entry.date))}</td><td>${escapeHtml(entry.title || "")}</td><td>${escapeHtml(entry.vendor || "No vendor")}</td><td>${escapeHtml(entry.category || "Supplies")}</td><td>${escapeHtml(entry.paymentType || "")}</td><td><button type="button" class="crm-expense-note-button" data-expense-v4-open="${escapeHtml(entry.id)}"><span>${entry.notes ? "View notes" : "No notes"}</span></button></td><td>${crmCurrency.format(entry.amount)}</td><td><button type="button" class="danger-link" data-expense-v4-delete="${escapeHtml(entry.id)}">Delete</button></td></tr>`).join("") : `<tr><td colspan="8">No expenses saved for this file yet.</td></tr>`;
+}
+
+function clearExpenseLedgerV4Form() {
+  expenseLedgerV4EditingId = "";
+  clearManualExpenseForm();
+  setManualExpenseStatus("Ready for a new expense.");
+}
+
+function openExpenseLedgerV4Entry(entryId) {
+  const file = normalizeCrmFile(activeFile());
+  const entry = expenseLedgerV4ForFile(file).find((item) => item.id === entryId);
+  if (!entry) return;
+  expenseLedgerV4EditingId = entry.id;
+  manualExpenseDraftItems = entry.items.map(cleanManualExpenseItem);
+  $("crmManualExpenseDate").value = entry.date || todayIso(0);
+  $("crmManualExpenseVendor").value = entry.vendor || "";
+  $("crmManualExpenseTitle").value = entry.title || "";
+  $("crmManualExpenseCategory").value = manualExpenseSelectOptionValue("crmManualExpenseCategory", entry.category) || "Supplies";
+  $("crmManualExpensePayment").value = manualExpenseSelectOptionValue("crmManualExpensePayment", entry.paymentType) || "";
+  $("crmManualExpenseAmount").value = entry.amount ? String(entry.amount) : "";
+  $("crmManualExpenseNotes").value = entry.notes || "";
+  $("crmAiReceiptPreview").innerHTML = entry.imageDataUrl ? `<img src="${escapeHtml(entry.imageDataUrl)}" alt="Receipt preview"><p>${escapeHtml(entry.imageTitle || entry.title || "Receipt")}</p>` : `<div class="crm-receipt-preview-empty">No receipt photo saved for this expense.</div>`;
+  renderManualExpenseItems();
+  setManualExpenseStatus("Expense loaded for editing. Save Expense will update this entry.", "good");
+}
+
+function saveExpenseLedgerV4() {
+  const file = normalizeCrmFile(activeFile());
+  if (!file) return setManualExpenseStatus("Select a file before saving an expense.", "warn");
+  captureManualExpenseItems();
+  const amount = parseMoney($("crmManualExpenseAmount")?.value || 0) || manualExpenseItemTotal();
+  if (!amount) return setManualExpenseStatus("Add a receipt total or one priced item before saving.", "warn");
+  const entry = cleanExpenseLedgerV4Entry({
+    id: expenseLedgerV4EditingId || undefined,
+    date: $("crmManualExpenseDate").value || todayIso(0), vendor: $("crmManualExpenseVendor").value.trim(),
+    title: $("crmManualExpenseTitle").value.trim(), category: $("crmManualExpenseCategory").value || "Supplies",
+    paymentType: $("crmManualExpensePayment").value || "", amount, notes: $("crmManualExpenseNotes").value.trim(),
+    imageDataUrl: $("crmAiReceiptPreview")?.querySelector("img")?.src || "", imageTitle: $("crmManualExpenseTitle").value.trim(), items: manualExpenseDraftItems,
+  });
+  const previous = expenseLedgerV4ForFile(file).filter((item) => item.id !== entry.id);
+  file.animusExpenseLedgerV4 = [{ ...entry, updatedAt: new Date().toISOString() }, ...previous];
+  syncExpenseLedgerV4(file);
+  addSystemNote(file, `Expense ${expenseLedgerV4EditingId ? "updated" : "saved"}${entry.vendor ? ` from ${entry.vendor}` : ""} for ${crmCurrency.format(entry.amount)}.`);
+  expenseLedgerV4EditingId = "";
+  clearManualExpenseForm();
+  syncFileExpensesToRevenue(file);
+  saveCrmFiles(); saveRevenueRows(); renderExpenseLedgerV4(); renderRevenue();
+  saveExpenseChangeToCloud("Expense saved to Cloudflare.");
+  setManualExpenseStatus("Expense saved to this file.", "good");
+}
+
+function deleteExpenseLedgerV4(entryId) {
+  const file = normalizeCrmFile(activeFile());
+  if (!file) return;
+  file.animusExpenseLedgerV4 = expenseLedgerV4ForFile(file).filter((entry) => entry.id !== entryId);
+  syncExpenseLedgerV4(file);
+  addSystemNote(file, "Expense deleted.");
+  syncFileExpensesToRevenue(file);
+  saveCrmFiles(); saveRevenueRows(); renderExpenseLedgerV4(); renderRevenue();
+  saveExpenseChangeToCloud("Expense deleted and saved to Cloudflare.");
+}
+
+renderFileExpenses = renderExpenseLedgerV4;
+document.addEventListener("click", (event) => {
+  const button = event.target.closest?.("button");
+  if (!button) return;
+  const openId = button.dataset.expenseV4Open, deleteId = button.dataset.expenseV4Delete;
+  if (openId) { event.preventDefault(); event.stopImmediatePropagation(); openExpenseLedgerV4Entry(openId); return; }
+  if (deleteId) { event.preventDefault(); event.stopImmediatePropagation(); deleteExpenseLedgerV4(deleteId); return; }
+  if (button.id === "crmSaveManualExpense") { event.preventDefault(); event.stopImmediatePropagation(); saveExpenseLedgerV4(); }
+  if (button.id === "crmClearManualExpense" || button.id === "crmAddManualExpense") { event.preventDefault(); event.stopImmediatePropagation(); clearExpenseLedgerV4Form(); }
 }, true);
 
 persistRestoredDashboardIfNeeded();
