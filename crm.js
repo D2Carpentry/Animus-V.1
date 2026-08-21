@@ -856,7 +856,7 @@ async function fetchDashboardFromCloudflare() {
 }
 
 async function fetchDashboardBackupsFromCloudflare() {
-  const response = await fetch(`${CLOUDFLARE_DASHBOARD_API}?backups=list&t=${Date.now()}`, {
+  const response = await fetch(`${CLOUDFLARE_DASHBOARD_API}?backups=list&limit=40&t=${Date.now()}`, {
     method: "GET",
     cache: "no-store",
   });
@@ -865,6 +865,18 @@ async function fetchDashboardBackupsFromCloudflare() {
     throw new Error(result.error || `Cloudflare backup list failed with status ${response.status}.`);
   }
   return Array.isArray(result.backups) ? result.backups : [];
+}
+
+async function fetchDashboardBackupSummaryFromCloudflare(key) {
+  const response = await fetch(`${CLOUDFLARE_DASHBOARD_API}?summary=${encodeURIComponent(key)}&t=${Date.now()}`, {
+    method: "GET",
+    cache: "no-store",
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || result.ok === false) {
+    throw new Error(result.error || `Cloudflare backup summary failed with status ${response.status}.`);
+  }
+  return result.summary || null;
 }
 
 async function fetchDashboardBackupFromCloudflare(key) {
@@ -1140,8 +1152,23 @@ async function loadDashboardFromGoogle() {
   const button = $("crmLoadCloud");
   if (button) button.textContent = "Checking...";
   try {
-    const backups = await fetchDashboardBackupsFromCloudflare();
-    const candidates = backups
+    const backupObjects = await fetchDashboardBackupsFromCloudflare();
+    if (!backupObjects.length) {
+      window.alert("No Cloudflare backup snapshots were found yet.");
+      return;
+    }
+    showDashboardSaveStatus(`Checking ${Math.min(backupObjects.length, 20)} Cloudflare backups...`);
+    const summaries = [];
+    for (const backup of backupObjects.slice(0, 20)) {
+      if (!backup?.key) continue;
+      try {
+        const summary = await fetchDashboardBackupSummaryFromCloudflare(backup.key);
+        if (summary) summaries.push({ ...backup, ...summary });
+      } catch (error) {
+        summaries.push({ ...backup, error: error.message || "Could not inspect backup." });
+      }
+    }
+    const candidates = summaries
       .filter((backup) => backup && backup.key && backup.totalFiles)
       .sort((a, b) => {
         const closedDelta = (b.counts?.archive || 0) - (a.counts?.archive || 0);
@@ -1152,7 +1179,7 @@ async function loadDashboardFromGoogle() {
       })
       .slice(0, 10);
     if (!candidates.length) {
-      window.alert("No Cloudflare backup snapshots were found yet.");
+      window.alert("Cloudflare backup snapshots were found, but none could be inspected. Try again in a moment.");
       return;
     }
     const menu = candidates.map((backup, index) => {
@@ -1179,7 +1206,7 @@ async function loadDashboardFromGoogle() {
     const files = Array.isArray(dashboard.dashboardFiles) ? dashboard.dashboardFiles : [];
     window.alert(`Command Center restored from Cloudflare backup. ${files.length} files. ${dashboardCloudCountSummary(files)}.`);
   } finally {
-    if (button) button.textContent = "Restore from Cloud";
+    if (button) button.textContent = "Restore Backup";
   }
 }
 
@@ -7565,7 +7592,9 @@ $("crmSaveDemo").addEventListener("click", () => {
   saveDashboardToGoogle();
 });
 $("crmLoadCloud").addEventListener("click", () => {
-  loadDashboardFromGoogle().catch(() => window.alert("Command Center could not be restored from Cloudflare. Confirm the Cloudflare R2 binding is connected."));
+  loadDashboardFromGoogle().catch((error) => {
+    window.alert(error?.message || "Command Center could not be restored from Cloudflare.");
+  });
 });
 $("crmCalendarFilter").addEventListener("change", (event) => {
   crmCalendarFilter = event.target.value;

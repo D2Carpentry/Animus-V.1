@@ -221,6 +221,10 @@ async function handleGet(context) {
   if (url.searchParams.get("backups") === "list") {
     return handleBackupList(context);
   }
+  const summary = url.searchParams.get("summary");
+  if (summary) {
+    return handleBackupSummary(context, summary);
+  }
   const backup = url.searchParams.get("backup");
   if (backup) {
     return handleBackupGet(context, backup);
@@ -236,31 +240,31 @@ async function handleGet(context) {
 
 async function handleBackupList(context) {
   const { env } = context;
-  const listed = await env.ANIMUS_BUCKET.list({ prefix: BACKUP_PREFIX, limit: 1000 });
+  const url = new URL(context.request.url);
+  const limit = Math.min(Math.max(Number(url.searchParams.get("limit")) || 30, 1), 100);
+  const listed = await env.ANIMUS_BUCKET.list({ prefix: BACKUP_PREFIX, limit });
   const objects = (listed.objects || [])
     .filter((object) => object.key.endsWith(".json"))
     .sort((a, b) => String(b.uploaded || "").localeCompare(String(a.uploaded || "")));
-  const backups = [];
-  for (const objectInfo of objects.slice(0, 75)) {
-    const object = await env.ANIMUS_BUCKET.get(objectInfo.key);
-    if (!object) continue;
-    try {
-      const dashboard = await object.json();
-      backups.push({
-        ...dashboardSummary(dashboard, objectInfo.key),
-        uploaded: objectInfo.uploaded || "",
-        size: objectInfo.size || 0,
-      });
-    } catch (error) {
-      backups.push({
-        key: objectInfo.key,
-        uploaded: objectInfo.uploaded || "",
-        size: objectInfo.size || 0,
-        error: "Could not read backup.",
-      });
-    }
-  }
+  const backups = objects.map((objectInfo) => ({
+    key: objectInfo.key,
+    uploaded: objectInfo.uploaded || "",
+    size: objectInfo.size || 0,
+  }));
   return jsonResponse({ ok: true, backups });
+}
+
+async function handleBackupSummary(context, key) {
+  const { env } = context;
+  if (!key.startsWith(BACKUP_PREFIX) || !key.endsWith(".json")) {
+    return jsonResponse({ ok: false, error: "Invalid backup key." }, 400);
+  }
+  const object = await env.ANIMUS_BUCKET.get(key);
+  if (!object) {
+    return jsonResponse({ ok: false, error: "Backup was not found." }, 404);
+  }
+  const dashboard = await object.json();
+  return jsonResponse({ ok: true, summary: dashboardSummary(dashboard, key) });
 }
 
 async function handleBackupGet(context, key) {
