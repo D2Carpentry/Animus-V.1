@@ -1267,25 +1267,27 @@ async function importDashboardBackupFile(file) {
 
 function shouldAutoRestoreFromCloud() {
   const params = new URLSearchParams(window.location.search);
-  if (params.has("skipCloud")) return false;
-  return params.get("cloudRestore") === "latest";
+  // Cloudflare is the source of truth for ANIMUS. Browser storage is only a
+  // temporary fallback if the connection cannot reach the Command Center API.
+  // `skipCloud` remains available for an intentional offline troubleshooting run.
+  return !params.has("skipCloud");
 }
 
 async function autoRestoreDashboardFromCloud() {
   if (!shouldAutoRestoreFromCloud()) return;
-  showDashboardSaveStatus("Checking Cloudflare for latest Command Center...");
+  showDashboardSaveStatus("Loading the current Command Center from Cloudflare...");
   try {
     const dashboard = await fetchDashboardFromCloudflare();
     const files = Array.isArray(dashboard?.dashboardFiles) ? dashboard.dashboardFiles : [];
     if (!dashboard || !files.length) {
-      showDashboardSaveStatus("No Cloudflare backup found yet.", true);
+      showDashboardSaveStatus("Cloudflare does not have a saved Command Center yet. Showing this browser's temporary copy.", true);
       return;
     }
     applyDashboardBackup(dashboard);
     renderCrm();
-    showDashboardSaveStatus(`Loaded ${files.length} files from Cloudflare. ${dashboardCloudCountSummary(files)}.`);
+    showDashboardSaveStatus(`Loaded the current cloud copy: ${files.length} files. ${dashboardCloudCountSummary(files)}.`);
   } catch (error) {
-    showDashboardSaveStatus("Cloudflare backup could not load. Use Save once the connection is steady.", true);
+    showDashboardSaveStatus("Cloudflare could not be reached. Showing this browser's temporary copy only.", true);
   }
 }
 
