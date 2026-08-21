@@ -1,4 +1,5 @@
 const DASHBOARD_KEY = "dashboard/latest.json";
+const BACKUP_PREFIX = "dashboard/backups/";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -18,7 +19,7 @@ function jsonResponse(body, status = 200) {
 }
 
 function backupKey() {
-  return `dashboard/backups/${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
+  return `${BACKUP_PREFIX}${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
 }
 
 function missingBucketResponse() {
@@ -34,6 +35,41 @@ function fileMergeKey(file = {}) {
 
 function rowMergeKey(row = {}) {
   return String(row.id || row.dashboardFileId || row.fileNumber || row.clientJob || "").trim().toLowerCase();
+}
+
+function fileCategory(file = {}) {
+  const status = file.fileStatus || "";
+  const detail = file.statusDetail || "";
+  const estimateStatus = file.estimateStatus || "";
+  if (["Job Lost / Closed", "Closed / Paid"].includes(status)) return "archive";
+  if (status === "In Negotiation") return "negotiation";
+  if (["Job Won", "In Progress", "Work Completed"].includes(status)) return "active";
+  if (
+    status === "Inspection Completed" ||
+    ["Inspection Pending", "Inspection Date Set", "Estimate Attached", "Estimate Pending", "Estimate Sent"].includes(detail) ||
+    ["Pending", "Sent", "Approved"].includes(estimateStatus)
+  ) return "estimate";
+  if (["Contact Established", "Contact Attempted"].includes(status)) return "contact";
+  return "new";
+}
+
+function fileCounts(files = []) {
+  const counts = { new: 0, contact: 0, estimate: 0, negotiation: 0, active: 0, archive: 0 };
+  files.forEach((file) => {
+    const category = fileCategory(file);
+    if (Object.prototype.hasOwnProperty.call(counts, category)) counts[category] += 1;
+  });
+  return counts;
+}
+
+function dashboardSummary(dashboard = {}, key = "") {
+  const files = Array.isArray(dashboard.dashboardFiles) ? dashboard.dashboardFiles : [];
+  return {
+    key,
+    syncedAt: dashboard.syncedAt || "",
+    totalFiles: files.length,
+    counts: fileCounts(files),
+  };
 }
 
 function lineGroupKey(line = {}) {
@@ -181,12 +217,63 @@ async function handleGet(context) {
     return missingBucketResponse();
   }
 
+  const url = new URL(context.request.url);
+  if (url.searchParams.get("backups") === "list") {
+    return handleBackupList(context);
+  }
+  const backup = url.searchParams.get("backup");
+  if (backup) {
+    return handleBackupGet(context, backup);
+  }
+
   const object = await env.ANIMUS_BUCKET.get(DASHBOARD_KEY);
   if (!object) {
     return jsonResponse({ ok: true, dashboard: null });
   }
   const dashboard = await object.json();
   return jsonResponse({ ok: true, dashboard });
+}
+
+async function handleBackupList(context) {
+  const { env } = context;
+  const listed = await env.ANIMUS_BUCKET.list({ prefix: BACKUP_PREFIX, limit: 1000 });
+  const objects = (listed.objects || [])
+    .filter((object) => object.key.endsWith(".json"))
+    .sort((a, b) => String(b.uploaded || "").localeCompare(String(a.uploaded || "")));
+  const backups = [];
+  for (const objectInfo of objects.slice(0, 75)) {
+    const object = await env.ANIMUS_BUCKET.get(objectInfo.key);
+    if (!object) continue;
+    try {
+      const dashboard = await object.json();
+      backups.push({
+        ...dashboardSummary(dashboard, objectInfo.key),
+        uploaded: objectInfo.uploaded || "",
+        size: objectInfo.size || 0,
+      });
+    } catch (error) {
+      backups.push({
+        key: objectInfo.key,
+        uploaded: objectInfo.uploaded || "",
+        size: objectInfo.size || 0,
+        error: "Could not read backup.",
+      });
+    }
+  }
+  return jsonResponse({ ok: true, backups });
+}
+
+async function handleBackupGet(context, key) {
+  const { env } = context;
+  if (!key.startsWith(BACKUP_PREFIX) || !key.endsWith(".json")) {
+    return jsonResponse({ ok: false, error: "Invalid backup key." }, 400);
+  }
+  const object = await env.ANIMUS_BUCKET.get(key);
+  if (!object) {
+    return jsonResponse({ ok: false, error: "Backup was not found." }, 404);
+  }
+  const dashboard = await object.json();
+  return jsonResponse({ ok: true, dashboard, summary: dashboardSummary(dashboard, key) });
 }
 
 async function handlePost(context) {

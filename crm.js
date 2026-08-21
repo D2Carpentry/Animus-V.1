@@ -16,6 +16,7 @@ const CRM_REVENUE_DELETED_KEY = "d2CrmRevenueDeletedIds";
 const CRM_PRICE_BACKUP_KEY = "d2PriceDatabaseBackup";
 const CRM_RECEIPT_DRAFT_KEY = "d2ReceiptScannerDraft";
 const CRM_RESTORE_VERSION_KEY = "d2CrmRestoreVersion";
+const CRM_CLOUD_SYNC_AT_KEY = "d2CrmCloudSyncAt";
 const DEFAULT_GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzZkie1W4LplkKwFoMq19suIHWsamKYNUwCt9xjnihTdy_dN271ou3lscTgq09bAGIG2w/exec";
 const OLD_GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxFBQzWViCApvF-c95kAyT0oSNImMgzhf30gP10H2WJT_S5XkejFctq5bT7IjCALMi5Qg/exec";
 const GOOGLE_SCRIPT_URL_STORAGE_KEY = "d2GoogleScriptUrl";
@@ -243,6 +244,14 @@ function markDashboardRestoreApplied() {
   if (!version) return;
   try {
     localStorage.setItem(CRM_RESTORE_VERSION_KEY, version);
+  } catch (error) {
+    // Local storage can be blocked in some browser privacy modes.
+  }
+}
+
+function rememberCloudSync(dashboard = {}) {
+  try {
+    localStorage.setItem(CRM_CLOUD_SYNC_AT_KEY, dashboard.syncedAt || new Date().toISOString());
   } catch (error) {
     // Local storage can be blocked in some browser privacy modes.
   }
@@ -846,6 +855,30 @@ async function fetchDashboardFromCloudflare() {
   return result.dashboard || null;
 }
 
+async function fetchDashboardBackupsFromCloudflare() {
+  const response = await fetch(`${CLOUDFLARE_DASHBOARD_API}?backups=list&t=${Date.now()}`, {
+    method: "GET",
+    cache: "no-store",
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || result.ok === false) {
+    throw new Error(result.error || `Cloudflare backup list failed with status ${response.status}.`);
+  }
+  return Array.isArray(result.backups) ? result.backups : [];
+}
+
+async function fetchDashboardBackupFromCloudflare(key) {
+  const response = await fetch(`${CLOUDFLARE_DASHBOARD_API}?backup=${encodeURIComponent(key)}&t=${Date.now()}`, {
+    method: "GET",
+    cache: "no-store",
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || result.ok === false) {
+    throw new Error(result.error || `Cloudflare backup load failed with status ${response.status}.`);
+  }
+  return result.dashboard || null;
+}
+
 function saveExpenseChangeToCloud(message = "Expense saved to Cloudflare.") {
   saveCrmFiles();
   saveRevenueRows();
@@ -1067,6 +1100,7 @@ async function saveDashboardToGoogle() {
     saveButton.textContent = "Saved";
     renderCrm();
     const savedFiles = Array.isArray(saved.dashboard?.dashboardFiles) ? saved.dashboard.dashboardFiles : payload.dashboardFiles;
+    rememberCloudSync(saved.dashboard || payload);
     showDashboardSaveStatus(`Saved ${savedFiles.length} files to Cloudflare. ${dashboardCloudCountSummary(savedFiles)}.`);
     window.setTimeout(() => {
       saveButton.textContent = "Save";
@@ -1078,44 +1112,98 @@ async function saveDashboardToGoogle() {
   }
 }
 
+function applyDashboardBackup(dashboard = {}) {
+  const files = Array.isArray(dashboard.dashboardFiles) ? dashboard.dashboardFiles : [];
+  const revenueRows = Array.isArray(dashboard.revenueRows) ? dashboard.revenueRows : [];
+  const payrollRows = Array.isArray(dashboard.payrollRows) ? dashboard.payrollRows : [];
+  const priceRows = Array.isArray(dashboard.priceRows) ? dashboard.priceRows : [];
+  const deletedPriceIds = Array.isArray(dashboard.deletedPriceIds) ? dashboard.deletedPriceIds : [];
+  crmFiles = repairCrmFileCategories(files.map((file) => normalizeCrmFile({ ...file })));
+  crmRevenueRows = dedupeRevenueRows(revenueRows.map((row) => ({ ...row })));
+  crmPayrollRows = payrollRows.map((row) => normalizePayrollRow(row));
+  crmPriceRows = priceRows.map((row) => normalizedPriceRow(row));
+  crmDeletedPriceIds = deletedPriceIds;
+  activeFileId = crmFiles[0] ? crmFiles[0].id : null;
+  activeRevenueId = crmRevenueRows[0] ? crmRevenueRows[0].id : null;
+  activePayrollId = crmPayrollRows[0] ? crmPayrollRows[0].id : null;
+  saveCrmFiles();
+  saveRevenueRows();
+  savePayrollRows();
+  savePriceRows();
+  saveDeletedPriceIds();
+  rememberCloudSync(dashboard);
+}
+
 async function loadDashboardFromGoogle() {
-  const confirmed = window.confirm("Restore the latest Command Center backup from Cloudflare? This will replace the data currently shown in this browser.");
+  const confirmed = window.confirm("Review Cloudflare backups and choose one to restore? This will replace the data currently shown in this browser only after you choose a backup.");
   if (!confirmed) return;
   const button = $("crmLoadCloud");
-  if (button) button.textContent = "Loading...";
+  if (button) button.textContent = "Checking...";
   try {
-    let dashboard = null;
-    try {
-      dashboard = await fetchDashboardFromCloudflare();
-    } catch (error) {
-      dashboard = await fetchDashboardFromGoogle();
-    }
-    if (!dashboard) {
-      window.alert("No cloud Command Center backup was found yet. Use Save first after the Cloudflare connection is live.");
+    const backups = await fetchDashboardBackupsFromCloudflare();
+    const candidates = backups
+      .filter((backup) => backup && backup.key && backup.totalFiles)
+      .sort((a, b) => {
+        const closedDelta = (b.counts?.archive || 0) - (a.counts?.archive || 0);
+        if (closedDelta) return closedDelta;
+        const totalDelta = (b.totalFiles || 0) - (a.totalFiles || 0);
+        if (totalDelta) return totalDelta;
+        return String(b.syncedAt || b.uploaded || "").localeCompare(String(a.syncedAt || a.uploaded || ""));
+      })
+      .slice(0, 10);
+    if (!candidates.length) {
+      window.alert("No Cloudflare backup snapshots were found yet.");
       return;
     }
-    const files = Array.isArray(dashboard.dashboardFiles) ? dashboard.dashboardFiles : [];
-    const revenueRows = Array.isArray(dashboard.revenueRows) ? dashboard.revenueRows : [];
-    const payrollRows = Array.isArray(dashboard.payrollRows) ? dashboard.payrollRows : [];
-    const priceRows = Array.isArray(dashboard.priceRows) ? dashboard.priceRows : [];
-    const deletedPriceIds = Array.isArray(dashboard.deletedPriceIds) ? dashboard.deletedPriceIds : [];
-    crmFiles = repairCrmFileCategories(files.map((file) => normalizeCrmFile({ ...file })));
-    crmRevenueRows = dedupeRevenueRows(revenueRows.map((row) => ({ ...row })));
-    crmPayrollRows = payrollRows.map((row) => normalizePayrollRow(row));
-    crmPriceRows = priceRows.map((row) => normalizedPriceRow(row));
-    crmDeletedPriceIds = deletedPriceIds;
-    activeFileId = crmFiles[0] ? crmFiles[0].id : null;
-    activeRevenueId = crmRevenueRows[0] ? crmRevenueRows[0].id : null;
-    activePayrollId = crmPayrollRows[0] ? crmPayrollRows[0].id : null;
-    saveCrmFiles();
-    saveRevenueRows();
-    savePayrollRows();
-    savePriceRows();
-    saveDeletedPriceIds();
+    const menu = candidates.map((backup, index) => {
+      const counts = backup.counts || {};
+      const savedAt = backup.syncedAt || backup.uploaded || "Unknown time";
+      return `${index + 1}. ${backup.totalFiles} files | Closed ${counts.archive || 0} | Pending Estimates ${counts.estimate || 0} | In Negotiation ${counts.negotiation || 0} | Active ${counts.active || 0} | ${savedAt}`;
+    }).join("\n");
+    const choice = window.prompt(`Choose the Cloudflare backup to restore by number:\n\n${menu}`, "1");
+    if (!choice) return;
+    const index = Number(choice) - 1;
+    const selected = candidates[index];
+    if (!selected) {
+      window.alert("That backup number was not found. Try Restore from Cloud again.");
+      return;
+    }
+    if (button) button.textContent = "Restoring...";
+    const dashboard = await fetchDashboardBackupFromCloudflare(selected.key);
+    if (!dashboard) {
+      window.alert("That Cloudflare backup could not be opened.");
+      return;
+    }
+    applyDashboardBackup(dashboard);
     renderCrm();
-    window.alert("Command Center restored from Cloudflare.");
+    const files = Array.isArray(dashboard.dashboardFiles) ? dashboard.dashboardFiles : [];
+    window.alert(`Command Center restored from Cloudflare backup. ${files.length} files. ${dashboardCloudCountSummary(files)}.`);
   } finally {
     if (button) button.textContent = "Restore from Cloud";
+  }
+}
+
+function shouldAutoRestoreFromCloud() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.has("skipCloud")) return false;
+  return params.get("cloudRestore") === "latest";
+}
+
+async function autoRestoreDashboardFromCloud() {
+  if (!shouldAutoRestoreFromCloud()) return;
+  showDashboardSaveStatus("Checking Cloudflare for latest Command Center...");
+  try {
+    const dashboard = await fetchDashboardFromCloudflare();
+    const files = Array.isArray(dashboard?.dashboardFiles) ? dashboard.dashboardFiles : [];
+    if (!dashboard || !files.length) {
+      showDashboardSaveStatus("No Cloudflare backup found yet.", true);
+      return;
+    }
+    applyDashboardBackup(dashboard);
+    renderCrm();
+    showDashboardSaveStatus(`Loaded ${files.length} files from Cloudflare. ${dashboardCloudCountSummary(files)}.`);
+  } catch (error) {
+    showDashboardSaveStatus("Cloudflare backup could not load. Use Save once the connection is steady.", true);
   }
 }
 
@@ -7722,3 +7810,4 @@ persistRestoredDashboardIfNeeded();
 switchCrmView(initialDashboardView());
 applyInitialFileRoute();
 renderCrm();
+autoRestoreDashboardFromCloud();
