@@ -24,6 +24,8 @@
           <button type="button" id="crmSearchFile">Search</button>
           <button class="icon-button header-save-button" type="button" id="crmSaveDemo">Save</button>
           <button class="icon-button header-restore-button" type="button" id="crmLoadCloud">Restore Backup</button>
+          <button class="icon-button header-restore-button" type="button" id="crmImportBackupFile">Import Backup File</button>
+          <input id="crmBackupFileUpload" type="file" accept=".json,application/json,text/json" hidden>
           <span class="crm-save-status" id="crmSaveStatus" aria-live="polite"></span>
         </div>
       </header>
@@ -937,7 +939,7 @@
         caches.keys().then((keys) => keys.forEach((key) => caches.delete(key)));
       }
     </script>
-    <script src="crm.js?v=20260820-light-backup-picker"></script>
+    <script src="crm.js?v=20260820-receipt-history-fix"></script>
     <script src="calendar-upgrade.js?v=20260808-calendar-popups"></script>
   </body>
 </html>

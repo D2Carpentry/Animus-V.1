@@ -293,6 +293,24 @@ function mergeReceiptHistoryArrays(primary = [], secondary = []) {
   return [...merged.values()];
 }
 
+function mergeManualExpenseArrays(primary = [], secondary = []) {
+  const merged = new Map();
+  [...primary, ...secondary].forEach((expense) => {
+    if (!expense) return;
+    const key = String(expense.id || "").trim();
+    if (!key) return;
+    const prior = merged.get(key) || {};
+    const priorStamp = Date.parse(prior.updatedAt || prior.createdAt || "") || 0;
+    const nextStamp = Date.parse(expense.updatedAt || expense.createdAt || "") || 0;
+    merged.set(key, nextStamp >= priorStamp ? { ...prior, ...expense } : { ...expense, ...prior });
+  });
+  return [...merged.values()].sort((a, b) => {
+    const aStamp = Date.parse(a.updatedAt || a.createdAt || "") || 0;
+    const bStamp = Date.parse(b.updatedAt || b.createdAt || "") || 0;
+    return bStamp - aStamp;
+  });
+}
+
 function mergeDashboardFileRecords(primaryFile = {}, secondaryFile = {}) {
   return {
     ...primaryFile,
@@ -301,6 +319,7 @@ function mergeDashboardFileRecords(primaryFile = {}, secondaryFile = {}) {
     expenseReceipts: mergeReceiptHistoryArrays(primaryFile.expenseReceipts, secondaryFile.expenseReceipts),
     expenseLines: mergeExpenseLineArrays(primaryFile.expenseLines, secondaryFile.expenseLines),
     receiptHistory: mergeReceiptHistoryArrays(primaryFile.receiptHistory, secondaryFile.receiptHistory),
+    animusManualExpenses: mergeManualExpenseArrays(primaryFile.animusManualExpenses, secondaryFile.animusManualExpenses),
   };
 }
 
@@ -896,7 +915,20 @@ function saveExpenseChangeToCloud(message = "Expense saved to Cloudflare.") {
   saveRevenueRows();
   const payload = buildDashboardSyncPayload();
   postPayloadToCloudflare(payload)
-    .then(() => showDashboardSaveStatus(message))
+    .then((result) => {
+      // The Worker returns the merged copy it just stored. Keep this browser on
+      // that same copy so the receipt history cannot fall back to an older list.
+      if (result?.dashboard?.dashboardFiles) {
+        crmFiles = mergeDashboardFiles(crmFiles, result.dashboard.dashboardFiles)
+          .map((file) => normalizeCrmFile(file));
+        if (Array.isArray(result.dashboard.revenueRows)) {
+          crmRevenueRows = mergeRevenueRows(crmRevenueRows, result.dashboard.revenueRows);
+        }
+        saveCrmFiles();
+        saveRevenueRows();
+      }
+      showDashboardSaveStatus(message);
+    })
     .catch(() => showDashboardSaveStatus("Expense saved in this browser, but cloud save did not finish. Click Save when the connection is steady.", true));
 }
 
@@ -1208,6 +1240,28 @@ async function loadDashboardFromGoogle() {
   } finally {
     if (button) button.textContent = "Restore Backup";
   }
+}
+
+async function importDashboardBackupFile(file) {
+  if (!file) return;
+  let dashboard;
+  try {
+    dashboard = JSON.parse(await file.text());
+  } catch (error) {
+    window.alert("That backup file could not be read. Please choose a Cloudflare dashboard JSON backup.");
+    return;
+  }
+  const files = Array.isArray(dashboard.dashboardFiles) ? dashboard.dashboardFiles : [];
+  if (!files.length) {
+    window.alert("That backup does not contain Command Center files.");
+    return;
+  }
+  const summary = dashboardCloudCountSummary(files);
+  const confirmed = window.confirm(`Import this backup file?\n\n${files.length} files\n${summary}\n\nThis will replace the data currently shown in this browser.`);
+  if (!confirmed) return;
+  applyDashboardBackup(dashboard);
+  renderCrm();
+  window.alert(`Backup file imported. ${files.length} files. ${summary}.\n\nDo not click Save until you confirm this is the correct version.`);
 }
 
 function shouldAutoRestoreFromCloud() {
@@ -7595,6 +7649,11 @@ $("crmLoadCloud").addEventListener("click", () => {
   loadDashboardFromGoogle().catch((error) => {
     window.alert(error?.message || "Command Center could not be restored from Cloudflare.");
   });
+});
+$("crmImportBackupFile")?.addEventListener("click", () => $("crmBackupFileUpload")?.click());
+$("crmBackupFileUpload")?.addEventListener("change", (event) => {
+  importDashboardBackupFile(event.target.files?.[0]);
+  event.target.value = "";
 });
 $("crmCalendarFilter").addEventListener("change", (event) => {
   crmCalendarFilter = event.target.value;

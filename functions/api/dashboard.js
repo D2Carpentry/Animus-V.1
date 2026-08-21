@@ -110,6 +110,30 @@ function mergeExpenseLines(existing = [], incoming = []) {
   return [...groups.values()].flat();
 }
 
+// Receipts are the authoritative expense records. Keep each receipt by its own
+// id so a save from another device cannot replace the rest of a file's history.
+function manualExpenseKey(expense = {}) {
+  return String(expense.id || "").trim();
+}
+
+function mergeManualExpenses(existing = [], incoming = []) {
+  const merged = new Map();
+  [...existing, ...incoming].forEach((expense) => {
+    if (!expense) return;
+    const key = manualExpenseKey(expense);
+    if (!key) return;
+    const prior = merged.get(key) || {};
+    const priorStamp = Date.parse(prior.updatedAt || prior.createdAt || "") || 0;
+    const nextStamp = Date.parse(expense.updatedAt || expense.createdAt || "") || 0;
+    merged.set(key, nextStamp >= priorStamp ? { ...prior, ...expense } : { ...expense, ...prior });
+  });
+  return [...merged.values()].sort((a, b) => {
+    const aStamp = Date.parse(a.updatedAt || a.createdAt || "") || 0;
+    const bStamp = Date.parse(b.updatedAt || b.createdAt || "") || 0;
+    return bStamp - aStamp;
+  });
+}
+
 function mergeFiles(existing = [], incoming = []) {
   const merged = new Map();
   existing.forEach((file) => {
@@ -127,6 +151,7 @@ function mergeFiles(existing = [], incoming = []) {
       expenseReceipts: mergeReceiptHistory(prior.expenseReceipts, file.expenseReceipts),
       expenseLines: mergeExpenseLines(prior.expenseLines, file.expenseLines),
       receiptHistory: mergeReceiptHistory(prior.receiptHistory, file.receiptHistory),
+      animusManualExpenses: mergeManualExpenses(prior.animusManualExpenses, file.animusManualExpenses),
     });
   });
   return [...merged.values()];
