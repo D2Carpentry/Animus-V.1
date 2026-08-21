@@ -6,7 +6,7 @@
     <title>D2 Command Center</title>
     <meta name="theme-color" content="#0d4a91">
     <link rel="icon" href="icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=20260814-payroll-tab">
+    <link rel="stylesheet" href="styles.css?v=20260820-restore-backup">
     <link rel="stylesheet" href="calendar-upgrade.css?v=20260808-calendar-popups">
   </head>
   <body class="crm-body">
@@ -23,6 +23,7 @@
           <input id="crmFileSearch" type="search" placeholder="Search name, phone, or file #">
           <button type="button" id="crmSearchFile">Search</button>
           <button class="icon-button header-save-button" type="button" id="crmSaveDemo">Save</button>
+          <button class="icon-button header-restore-button" type="button" id="crmLoadCloud">Restore Backup</button>
           <span class="crm-save-status" id="crmSaveStatus" aria-live="polite"></span>
         </div>
       </header>
@@ -876,9 +877,6 @@
           </section>
         </section>
       </section>
-      <div class="crm-hidden-cloud-tools" hidden>
-        <button type="button" class="icon-button" id="crmLoadCloud">Restore from Cloud</button>
-      </div>
     </main>
     <div class="crm-modal-backdrop" id="crmEstimateChoiceModal" hidden>
       <section class="crm-choice-modal" role="dialog" aria-modal="true" aria-labelledby="crmEstimateChoiceTitle">
@@ -939,7 +937,7 @@
         caches.keys().then((keys) => keys.forEach((key) => caches.delete(key)));
       }
     </script>
-    <script src="crm.js?v=20260820-cloud-autoload"></script>
+    <script src="crm.js?v=20260820-cloud-backup-picker"></script>
     <script src="calendar-upgrade.js?v=20260808-calendar-popups"></script>
   </body>
 </html>

@@ -301,6 +301,18 @@ body.embedded-estimator .dashboard-top-link {
   opacity: 0.78;
 }
 
+.header-restore-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 142px;
+  height: 42px;
+  border-color: rgba(13, 74, 145, 0.28);
+  background: #ffffff;
+  color: var(--blue);
+  font-weight: 900;
+}
+
 .crm-save-status {
   display: inline-flex;
   align-items: center;
