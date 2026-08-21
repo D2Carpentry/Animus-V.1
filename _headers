@@ -1,0 +1,11 @@
+/crm
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+
+/crm.html
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+
+/crm.js
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+
+/service-worker.js
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
