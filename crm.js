@@ -2009,7 +2009,10 @@ function openEstimatorInCommandCenter(url) {
     window.location.href = url;
     return;
   }
-  frame.src = url;
+  const estimatorUrl = new URL(url, window.location.href);
+  estimatorUrl.searchParams.set("embedded", "1");
+  estimatorUrl.searchParams.set("open", Date.now().toString());
+  frame.src = estimatorUrl.toString();
   switchCrmView("estimator");
   $("crmEstimatorView")?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
@@ -6766,17 +6769,18 @@ document.querySelectorAll("[data-crm-view]").forEach((button) => {
   if (showBusiness && typeof window.renderBusinessPerformance === "function") window.renderBusinessPerformance();
   if (showEstimator) {
     const frame = $("crmEstimatorFrame");
-    const currentSrc = frame.getAttribute("src") || "";
+    const currentSrc = frame?.getAttribute("src") || "";
     const file = activeFile();
     const needsFileEstimate = Boolean(file?.editableEstimate) && (!currentSrc || currentSrc.includes("new=1"));
     if (needsFileEstimate) {
       sendEstimateToEstimator(file.editableEstimate);
       return;
     }
-    if (!currentSrc) {
+    if (frame && (!currentSrc || currentSrc === "about:blank")) {
       const estimatorUrl = new URL("index.html", window.location.href);
       estimatorUrl.searchParams.set("new", "1");
       estimatorUrl.searchParams.set("embedded", "1");
+      estimatorUrl.searchParams.set("open", Date.now().toString());
       frame.src = estimatorUrl.toString();
     }
   }
