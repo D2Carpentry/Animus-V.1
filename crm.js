@@ -1411,9 +1411,25 @@ function filesInCategory(category) {
 
 function visibleFiles() {
   const filter = $("crmFileFilter").value;
-  if (filter === "all") return crmFiles;
-  if (CRM_FILE_CATEGORY_RULES[filter]) return filesInCategory(filter);
-  return crmFiles.filter(isOpenCrmFile);
+  const search = String($("animusWorkFileSearch")?.value || "").trim().toLowerCase();
+  const sort = $("animusWorkFileSort")?.value || "updated";
+  let files = filter === "all" ? [...crmFiles] : CRM_FILE_CATEGORY_RULES[filter] ? filesInCategory(filter) : crmFiles.filter(isOpenCrmFile);
+  if (search) {
+    files = files.filter((file) => [file.clientName, file.fileNumber, file.projectAddress, file.clientPhone, file.clientEmail]
+      .some((value) => String(value || "").toLowerCase().includes(search)));
+  }
+  const timestamp = (file) => {
+    const timeline = Array.isArray(file.timeline) ? file.timeline[file.timeline.length - 1] : null;
+    const note = Array.isArray(file.notes) ? file.notes[file.notes.length - 1] : null;
+    const raw = file.updatedAt || file.createdAt || timeline?.at || note?.editedAt || note?.at || "";
+    const value = new Date(raw).getTime();
+    return Number.isFinite(value) ? value : 0;
+  };
+  return files.sort((left, right) => {
+    if (sort === "name") return String(left.clientName || "").localeCompare(String(right.clientName || ""));
+    if (sort === "number") return String(left.fileNumber || "").localeCompare(String(right.fileNumber || ""), undefined, { numeric: true });
+    return timestamp(right) - timestamp(left);
+  });
 }
 
 function renderCounts() {
@@ -1429,19 +1445,60 @@ function renderCounts() {
 function renderFileList() {
   const files = visibleFiles();
   $("crmListTitle").textContent = $("crmFileFilter").selectedOptions[0].textContent;
+  const tabs = [
+    ["all", "All", crmFiles.length],
+    ["new", "Leads", filesInCategory("new").length],
+    ["estimate", "Estimates", filesInCategory("estimate").length],
+    ["active", "Jobs", filesInCategory("active").length],
+    ["archive", "Closed", filesInCategory("archive").length],
+  ];
+  const tabHost = $("animusWorkFileTabs");
+  if (tabHost) {
+    tabHost.innerHTML = tabs.map(([value, label, count]) => `<button type="button" class="animus-work-file-tab ${$("crmFileFilter").value === value ? "active" : ""}" data-animus-file-filter="${value}">${label} <b>${count}</b></button>`).join("");
+  }
+  const statusTone = (file) => {
+    if (["Closed / Paid", "Job Lost / Closed"].includes(file.fileStatus)) return "closed";
+    if (["In Progress", "Job Won", "Work Completed"].includes(file.fileStatus)) return "active";
+    if (["In Negotiation", "Contact Attempted"].includes(file.fileStatus)) return "warning";
+    return "open";
+  };
+  const initials = (name) => String(name || "?").split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
+  const location = (file) => String(file.projectAddress || "").split(",").slice(-2).join(",").trim() || "Location not added";
+  const lastUpdated = (file) => {
+    const note = Array.isArray(file.notes) ? file.notes[file.notes.length - 1] : null;
+    const timeline = Array.isArray(file.timeline) ? file.timeline[file.timeline.length - 1] : null;
+    const raw = file.updatedAt || note?.editedAt || note?.at || timeline?.at || "";
+    const value = new Date(raw).getTime();
+    if (!Number.isFinite(value)) return "";
+    const hours = Math.max(0, Math.round((Date.now() - value) / 3600000));
+    return hours < 1 ? "Updated now" : hours < 24 ? `Updated ${hours}h ago` : `Updated ${Math.round(hours / 24)}d ago`;
+  };
   $("crmFileList").innerHTML = files.map((file) => `
     <button type="button" class="crm-file-card ${file.id === activeFileId ? "active" : ""}" data-file-id="${file.id}">
-      <span>${escapeHtml(file.fileNumber)}</span>
-      <strong>${escapeHtml(file.clientName || "Unnamed Client")}</strong>
-      <small>${escapeHtml(file.fileStatus)} · ${escapeHtml(file.projectType)} · ${escapeHtml(file.estimateStatus || "Not Started")}</small>
-      <em>${escapeHtml(file.nextAction || "No next action set")}</em>
+      <span class="animus-file-avatar">${escapeHtml(initials(file.clientName))}</span>
+      <span class="animus-file-card-copy">
+        <strong>${escapeHtml(file.clientName || "Unnamed Client")}</strong>
+        <small>${escapeHtml(file.fileNumber || "No file number")}</small>
+        <em>⌖ ${escapeHtml(location(file))}</em>
+      </span>
+      <span class="animus-file-card-meta">
+        <span class="animus-file-status ${statusTone(file)}">${escapeHtml(file.fileStatus || "New Lead")}</span>
+        <small>${escapeHtml(lastUpdated(file))}</small>
+      </span>
+      <span class="animus-file-chevron" aria-hidden="true">›</span>
     </button>
-  `).join("") || `<p class="crm-empty-state">No files in this view yet.</p>`;
+  `).join("") || `<p class="crm-empty-state">No files match this view yet.</p>`;
 
   document.querySelectorAll("[data-file-id]").forEach((button) => {
     button.addEventListener("click", () => {
       saveActiveFile();
       activeFileId = button.dataset.fileId;
+      renderCrm();
+    });
+  });
+  document.querySelectorAll("[data-animus-file-filter]").forEach((button) => {
+    button.addEventListener("click", () => {
+      activateCrmFilter(button.dataset.animusFileFilter);
       renderCrm();
     });
   });
@@ -7722,6 +7779,9 @@ $("crmFileFilter").addEventListener("change", () => {
   activateCrmFilter($("crmFileFilter").value);
   renderCrm();
 });
+$("animusWorkFileSearch")?.addEventListener("input", renderCrm);
+$("animusWorkFileSearchButton")?.addEventListener("click", renderCrm);
+$("animusWorkFileSort")?.addEventListener("change", renderCrm);
 $("crmSearchFile").addEventListener("click", searchCrmFile);
 $("crmFileSearch").addEventListener("keydown", (event) => {
   if (event.key === "Enter") {

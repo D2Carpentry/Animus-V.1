@@ -1,5 +1,8 @@
-Upload all four files in this folder to the root of the ANIMUS GitHub repository, replacing the existing files:
+Upload all five files in this folder to the root of the ANIMUS GitHub repository, replacing the matching files.
+
+This bundle includes the Work Files interface update plus the related Estimate and Work File rendering repairs:
 crm.html
-animus-dashboard.js
-animus-work-file.js
+crm.js
 animus-work-file.css
+animus-work-file.js
+animus-dashboard.js

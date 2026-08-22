@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="expenses-v6.css?v=20260822-expense-center">
     <link rel="stylesheet" href="animus-shell.css?v=20260822-unified-ui">
     <link rel="stylesheet" href="animus-dashboard.css?v=20260822-command-center-home">
-    <link rel="stylesheet" href="animus-work-file.css?v=20260822-work-file-render-repair">
+    <link rel="stylesheet" href="animus-work-file.css?v=20260822-work-files-rail-ui">
     <link rel="stylesheet" href="animus-operations.css?v=20260822-operations-layout">
   </head>
   <body class="crm-body">
@@ -93,14 +93,14 @@
           </section>
         </section>
 
-        <section class="crm-layout crm-dashboard-view">
+        <section class="crm-layout crm-dashboard-view animus-work-files-layout">
           <aside class="crm-file-list-panel">
             <div class="crm-panel-heading">
               <div>
                 <p class="eyebrow">Files</p>
                 <h2 id="crmListTitle">All Work Files</h2>
               </div>
-              <select id="crmFileFilter" aria-label="File filter">
+              <select id="crmFileFilter" class="animus-work-file-filter" aria-label="File filter">
                 <option value="all" selected>All Work Files</option>
                 <option value="new">New Leads</option>
                 <option value="contact">Pending Contact</option>
@@ -108,6 +108,17 @@
                 <option value="negotiation">In Negotiation</option>
                 <option value="active">Active Jobs</option>
                 <option value="archive">Closed Files</option>
+              </select>
+            </div>
+            <div class="animus-work-file-tabs" id="animusWorkFileTabs" aria-label="Work file filters"></div>
+            <div class="animus-work-file-tools">
+              <label class="sr-only" for="animusWorkFileSearch">Search work files</label>
+              <input id="animusWorkFileSearch" type="search" placeholder="Search files...">
+              <button type="button" class="animus-file-search-button" id="animusWorkFileSearchButton" aria-label="Search files">⌕</button>
+              <select id="animusWorkFileSort" aria-label="Sort work files">
+                <option value="updated">Newest</option>
+                <option value="name">Name</option>
+                <option value="number">File number</option>
               </select>
             </div>
             <div class="crm-file-list" id="crmFileList"></div>
@@ -965,7 +976,7 @@
         caches.keys().then((keys) => keys.forEach((key) => caches.delete(key)));
       }
     </script>
-    <script src="crm.js?v=20260822-cloud-save-repair"></script>
+    <script src="crm.js?v=20260822-work-files-rail-ui"></script>
     <script src="calendar-upgrade.js?v=20260808-calendar-popups"></script>
     <script src="animus-shell.js?v=20260822-sidebar-supplements"></script>
     <script src="animus-dashboard.js?v=20260822-navigation-estimator-repair"></script>
