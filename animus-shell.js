@@ -2,15 +2,16 @@
 (() => {
   const views = [
     ["dashboard", "⌂", "Dashboard"], ["calendar", "□", "Calendar"], ["estimator", "▤", "Estimates"], ["files", "▱", "Work Files"],
-    ["revenue", "↗", "Revenue"], ["expenses", "▧", "Expenses"], ["payroll", "♙", "Payroll"], ["prices", "▦", "Price Database"],
+    ["revenue", "↗", "Revenue"], ["expenses", "▧", "Expenses"], ["payroll", "♙", "Payroll"], ["prices", "▦", "Price Database"], ["business", "◈", "Business Performance"],
   ];
-  const titles = { dashboard:"Command Center", files:"CRM / Files", calendar:"Calendar", revenue:"Revenue", expenses:"Expenses", payroll:"Payroll", prices:"Price Database", estimator:"Estimate Studio", invoice:"Invoice" };
+  const titles = { dashboard:"Command Center", files:"Work Files", calendar:"Calendar", revenue:"Revenue", expenses:"Expenses", payroll:"Payroll", prices:"Price Database", business:"Business Performance", estimator:"Estimate Studio", invoice:"Invoice" };
   function currentView() {
     if (!document.querySelector("#crmExpensesView")?.hidden) return "expenses";
     if (!document.querySelector("#crmRevenueView")?.hidden) return "revenue";
     if (!document.querySelector("#crmPayrollView")?.hidden) return "payroll";
     if (!document.querySelector("#crmCalendarView")?.hidden) return "calendar";
     if (!document.querySelector("#crmPriceView")?.hidden) return "prices";
+    if (!document.querySelector("#crmBusinessView")?.hidden) return "business";
     if (!document.querySelector("#crmEstimatorView")?.hidden) return "estimator";
     return document.body.dataset.animusView === "files" ? "files" : "dashboard";
   }
@@ -34,7 +35,7 @@
     document.querySelectorAll("[data-animus-shell-view]").forEach((button) => button.addEventListener("click", () => { const view = button.dataset.animusShellView; if (typeof switchCrmView === "function") switchCrmView(view); syncShell(); }));
     document.addEventListener("click", (event) => { if (event.target.closest?.("[data-crm-view]")) setTimeout(syncShell, 0); });
     const observer = new MutationObserver(syncShell);
-    ["crmExpensesView","crmRevenueView","crmPayrollView","crmCalendarView","crmPriceView","crmEstimatorView"].map((id) => document.getElementById(id)).filter(Boolean).forEach((element) => observer.observe(element, { attributes:true, attributeFilter:["hidden"] }));
+    ["crmExpensesView","crmRevenueView","crmPayrollView","crmCalendarView","crmPriceView","crmBusinessView","crmEstimatorView"].map((id) => document.getElementById(id)).filter(Boolean).forEach((element) => observer.observe(element, { attributes:true, attributeFilter:["hidden"] }));
     syncShell();
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", createShell); else createShell();

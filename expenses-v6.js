@@ -134,7 +134,13 @@
 
   async function scan(file) {
     if (!file) return;
-    state.draft = cleanDraft({ fileId: state.scope !== "all" ? state.scope : fileKey(typeof activeFile === "function" ? activeFile() : null), imageTitle:file.name });
+    const targetFileId = state.scope !== "all" ? state.scope : fileKey(typeof activeFile === "function" ? activeFile() : null);
+    if (!targetFileId || !findFile(targetFileId)) {
+      window.alert("Select the customer / job first. Every receipt must be saved to a work file.");
+      return;
+    }
+    state.scope = targetFileId;
+    state.draft = cleanDraft({ fileId: targetFileId, imageTitle:file.name });
     state.processStep = "Reading receipt"; render();
     if (typeof showReceiptLoading === "function") showReceiptLoading("Reading receipt photo with AI...");
     try {

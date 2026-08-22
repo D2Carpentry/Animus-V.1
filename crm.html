@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="animus-shell.css?v=20260822-unified-ui">
     <link rel="stylesheet" href="animus-dashboard.css?v=20260822-command-center-home">
     <link rel="stylesheet" href="animus-work-file.css?v=20260822-work-file-redesign">
+    <link rel="stylesheet" href="animus-operations.css?v=20260822-operations-layout">
   </head>
   <body class="crm-body">
     <main class="crm-shell">
@@ -82,7 +83,10 @@
               </div>
               <div>
                 <button type="button" class="icon-button" id="crmEstimatorOpenFile">Open Work File</button>
+                <button type="button" class="icon-button" id="crmEstimatorOpenEstimate">Open Estimate</button>
                 <button type="button" class="icon-button primary-action" id="crmEstimatorCreateSupplement">Create Supplement</button>
+                <button type="button" class="icon-button" id="crmEstimatorOpenInvoice">Invoice</button>
+                <button type="button" class="icon-button" id="crmEstimatorOpenAssignment">Work Order</button>
               </div>
             </div>
             <iframe id="crmEstimatorFrame" title="D2 Estimator"></iframe>
@@ -94,10 +98,11 @@
             <div class="crm-panel-heading">
               <div>
                 <p class="eyebrow">Files</p>
-                <h2 id="crmListTitle">New Leads</h2>
+                <h2 id="crmListTitle">All Work Files</h2>
               </div>
               <select id="crmFileFilter" aria-label="File filter">
-                <option value="new" selected>New Leads</option>
+                <option value="all" selected>All Work Files</option>
+                <option value="new">New Leads</option>
                 <option value="contact">Pending Contact</option>
                 <option value="estimate">Pending Estimates</option>
                 <option value="negotiation">In Negotiation</option>
@@ -407,6 +412,10 @@
               </section>
             </div>
           </section>
+        </section>
+
+        <section class="crm-revenue-view" id="crmBusinessView" hidden>
+          <div id="animusBusinessPerformance"></div>
         </section>
 
         <section class="crm-revenue-view" id="crmCalendarView" hidden>
@@ -846,14 +855,14 @@
             </div>
           </section>
 
-          <section class="crm-layout crm-revenue-layout">
-            <section class="panel crm-detail-card">
+          <section class="crm-layout crm-revenue-layout animus-price-layout">
+            <section class="panel crm-detail-card animus-price-entry">
               <div class="panel-header">
                 <div>
                   <p class="eyebrow">Add Price Line</p>
                   <h2>Material or supply item</h2>
                 </div>
-                <button type="button" id="crmAddPriceLine">Add to Database</button>
+                <button type="button" class="primary-action" id="crmAddPriceLine">Add to Database</button>
               </div>
               <div class="field-grid three">
                 <label>
@@ -878,7 +887,7 @@
                 </label>
               </div>
             </section>
-            <section class="panel crm-detail-card">
+            <section class="panel crm-detail-card animus-price-parts">
               <div class="panel-header">
                 <h2>Current Prices</h2>
               </div>
@@ -959,7 +968,9 @@
     <script src="crm.js?v=20260822-data-guard-estimate-repair"></script>
     <script src="calendar-upgrade.js?v=20260808-calendar-popups"></script>
     <script src="animus-shell.js?v=20260822-sidebar-supplements"></script>
-    <script src="animus-dashboard.js?v=20260822-command-center-home"></script>
+    <script src="animus-dashboard.js?v=20260822-command-center-operations"></script>
+    <link rel="stylesheet" href="animus-business-performance.css?v=20260822-business-performance">
+    <script src="animus-business-performance.js?v=20260822-business-performance"></script>
     <script src="expenses-v6.js?v=20260822-expense-center"></script>
     <link rel="stylesheet" href="animus-revenue.css?v=20260822-revenue-center">
     <script src="animus-revenue.js?v=20260822-revenue-center"></script>

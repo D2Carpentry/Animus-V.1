@@ -101,7 +101,7 @@
   }
 
   function projectCard(file) {
-    return `<section class="animus-info-card"><div class="animus-card-head"><h3><span class="card-mark">&#128193;</span> Project &amp; Source</h3><button class="animus-record-button small" data-animus-edit="project">Edit</button></div><dl class="animus-info-list"><div class="animus-info-row"><span class="item-icon">&#9881;</span><div><dt>Project Type</dt><dd>${escape(field(file, "projectType", "Other"))}</dd></div></div><div class="animus-info-row"><span class="item-icon">&#9830;</span><div><dt>Source</dt><dd>${escape(field(file, "leadSource", "Not added"))}</dd></div></div><div class="animus-info-row"><span class="item-icon">&#128172;</span><div><dt>Lead Source</dt><dd>${escape(field(file, "leadSource", "Not added"))}</dd></div></div></dl></section>`;
+    return `<section class="animus-info-card"><div class="animus-card-head"><h3><span class="card-mark">&#128193;</span> Project &amp; Source</h3><button class="animus-record-button small" data-animus-edit="project">Edit</button></div><dl class="animus-info-list"><div class="animus-info-row"><span class="item-icon">&#9881;</span><div><dt>Project Type</dt><dd>${escape(field(file, "projectType", "Other"))}</dd></div></div><div class="animus-info-row"><span class="item-icon">&#128172;</span><div><dt>Lead Source</dt><dd>${escape(field(file, "leadSource", "Not added"))}</dd></div></div></dl></section>`;
   }
 
   function nextActionCard(file) {
@@ -123,9 +123,9 @@
     const next = field(file, "nextAction") || "No action set";
     const nextDate = field(file, "nextActionDate") || field(file, "followUpDate");
     const cells = [
-      ["&#36;", "Estimate", money(estimate), ""], ["&#9638;", "Paid", money(paid), ""], ["&#128179;", "Balance", money(balance), "", "balance"], ["&#128197;", "Next Action", next, nextDate ? date(nextDate) : ""], ["&#128197;", "Start Date", field(file, "startDate") ? date(file.startDate) : "Not set", ""], ["&#9787;", "Assigned To", assignment(file), ""],
+      ["&#36;", "Estimate", money(estimate), "", "", "estimate"], ["&#9638;", "Paid", money(paid), ""], ["&#128179;", "Balance", money(balance), "", "balance"], ["&#128197;", "Next Action", next, nextDate ? date(nextDate) : "", "", "action"], ["&#128197;", "Start Date", field(file, "startDate") ? date(file.startDate) : "Not set", ""], ["&#9787;", "Assigned To", assignment(file), ""],
     ];
-    return `<div class="animus-summary-strip">${cells.map(([icon, label, value, sub, extra]) => `<div class="animus-summary-cell ${extra || ""}"><span class="animus-summary-icon">${icon}</span><div class="animus-summary-copy"><span>${escape(label)}</span><strong>${escape(value)}</strong>${sub ? `<small>${escape(sub)}</small>` : ""}</div></div>`).join("")}</div>`;
+    return `<div class="animus-summary-strip">${cells.map(([icon, label, value, sub, extra, action]) => `<button class="animus-summary-cell ${extra || ""} ${action ? "clickable" : ""}"${action ? ` data-animus-summary="${action}"` : ""}><span class="animus-summary-icon">${icon}</span><span class="animus-summary-copy"><span>${escape(label)}</span><strong>${escape(value)}</strong>${sub ? `<small>${escape(sub)}</small>` : ""}</span></button>`).join("")}</div>`;
   }
 
   function tabsMarkup() {
@@ -169,7 +169,12 @@
     let title = "Edit File", fields = "";
     if (state.editor === "customer") fields = input("clientName", "Name", field(file, "clientName")) + input("clientPhone", "Phone", field(file, "clientPhone")) + input("clientEmail", "Email", field(file, "clientEmail"), "email") + input("projectAddress", "Address", field(file, "projectAddress"), "text", "wide");
     if (state.editor === "project") fields = select("projectType", field(file, "projectType", "Other"), window.CRM_PROJECT_TYPES || ["Closet", "Pantry", "Cabinetry", "Refinishing", "Built-In", "Other"]) + select("leadSource", field(file, "leadSource", "Manual"), ["Manual", "Angi", "Website", "Phone", "Text", "Referral", "Repeat Customer", "Other"]);
-    if (state.editor === "progress") fields = select("fileStatus", field(file, "fileStatus", "New Lead"), Object.keys(window.CRM_STATUS_DETAILS || {})) + input("statusDetail", "Status Detail", field(file, "statusDetail"));
+    if (state.editor === "progress") {
+      const statuses = ["New Lead", "Contact Established", "Contact Attempted", "Inspection Completed", "In Negotiation", "Job Won", "In Progress", "Work Completed", "Closed / Paid", "Job Lost / Closed"];
+      const statusDetails = { "New Lead":["Needs Contact", "Contact Scheduled"], "Contact Established":["Inspection Date Set", "Inspection Pending"], "Contact Attempted":["Follow Up Tomorrow"], "Inspection Completed":["Estimate Pending", "Estimate Sent"], "In Negotiation":["Follow-Up Scheduled", "Waiting on Customer"], "Job Won":["Start Date Established", "Start Date Pending"], "In Progress":["On Schedule", "Completion Date Needed"], "Work Completed":["Closing Call Made", "Closing Call Needed"], "Closed / Paid":["Invoice Sent", "Invoice Not Sent"], "Job Lost / Closed":["Future Marketing Follow-Up"] };
+      const selectedStatus = field(file, "fileStatus", "New Lead");
+      fields = select("fileStatus", selectedStatus, statuses) + select("statusDetail", field(file, "statusDetail"), statusDetails[selectedStatus] || [field(file, "statusDetail")]);
+    }
     if (state.editor === "action") fields = input("nextAction", "Next Action", field(file, "nextAction"), "text", "wide") + input("nextActionDate", "Due Date", field(file, "nextActionDate") || field(file, "followUpDate"), "date") + input("assignedTo", "Assigned To", assignment(file));
     if (state.editor === "financials") fields = input("estimateTotal", "Estimate Amount", Number(file.estimateTotal) || "", "number") + input("materialTotal", "Materials", Number(file.materialTotal) || "", "number") + input("initialDeposit", "Initial Deposit", Number(file.initialDeposit) || "", "number") + input("midpointDeposit", "Midpoint Deposit", Number(file.midpointDeposit) || "", "number") + input("finalPaymentAmount", "Final Payment", Number(file.finalPaymentAmount) || "", "number");
     if (state.editor === "details") fields = input("inspectionDate", "Inspection Date", field(file, "inspectionDate"), "date") + input("inspectionTime", "Inspection Time", field(file, "inspectionTime"), "time") + input("startDate", "Start Date", field(file, "startDate"), "date") + input("followUpDate", "Follow-Up Date", field(file, "followUpDate"), "date") + input("anticipatedCompletionDate", "Anticipated Completion", field(file, "anticipatedCompletionDate"), "date") + select("arrivalWindow", field(file, "arrivalWindow", "Open"), ["Open", "7:00 AM", "8:00 AM", "9:00 AM", "10:00 AM", "Afternoon"]);
@@ -198,6 +203,9 @@
     const email = field(file, "clientEmail");
     const address = field(file, "projectAddress");
     root.innerHTML = `<button class="animus-record-back" data-animus-back>&larr; Back to CRM / Files</button>${editorMarkup(file)}<header class="animus-record-header"><div class="animus-record-person"><div class="animus-record-avatar">${escape(initials(file.clientName))}</div><div class="animus-record-title"><h2>${escape(file.clientName || "Unnamed Client")}</h2><p class="animus-record-file-number">Project # ${escape(file.fileNumber || "Not assigned")}</p><p class="animus-record-subtitle">${escape(field(file, "projectType", "Other"))} &bull; ${escape(address || "Location not added")}</p><span class="animus-status-badge animus-status-${statusTone(file.fileStatus)}">${escape(field(file, "fileStatus", "New Lead"))}</span></div></div><div class="animus-record-actions"><button class="animus-record-button" data-animus-edit="customer">Edit File</button><details class="animus-more-menu"><summary class="animus-record-button">More &#8964;</summary><div class="animus-more-menu-panel"><button class="animus-record-button" data-animus-open="estimate">Estimate</button><button class="animus-record-button" data-animus-open="supplement">Supplement</button><button class="animus-record-button" data-animus-open="assignment">Assignment</button><button class="animus-record-button" data-animus-open="invoice">Invoice</button><button class="animus-record-button" data-animus-open="archive">Archive</button><button class="animus-record-button danger" data-animus-open="delete">Delete File</button></div></details><button class="animus-record-button primary" data-animus-save>Save</button></div></header><div class="animus-contact-actions">${phone ? `<a class="animus-record-button" href="tel:${escape(phone)}">Call</a><a class="animus-record-button" href="sms:${escape(phone)}">Text</a>` : ""}${email ? `<a class="animus-record-button" href="mailto:${escape(email)}">Email</a>` : ""}${address ? `<a class="animus-record-button" href="https://www.google.com/maps/search/?api=1&amp;query=${encodeURIComponent(address)}" target="_blank" rel="noreferrer">Location</a>` : ""}</div>${summaryMarkup(file)}${tabsMarkup()}<main class="animus-tab-panel">${panel(file)}</main>`;
+    const editor = root.querySelector(".animus-inline-editor");
+    const panel = root.querySelector("main.animus-tab-panel");
+    if (editor && panel) panel.prepend(editor);
   }
 
   function saveEditor() {
@@ -224,12 +232,16 @@
 
   function openExisting(action) {
     const id = { estimate: "crmOpenEstimate", supplement: "crmCreateSupplement", assignment: "crmOpenAssignment", invoice: "crmOpenInvoice", archive: "crmArchiveFile", delete: "crmDeleteFile" }[action];
-    if (action === "expenses" && typeof window.switchCrmView === "function") { window.switchCrmView("expenses"); return; }
+    if (action === "expenses") {
+      if (typeof window.openFileExpenses === "function") window.openFileExpenses();
+      else if (typeof window.switchCrmView === "function") window.switchCrmView("expenses");
+      return;
+    }
     byId(id)?.click();
   }
 
   document.addEventListener("click", (event) => {
-    const target = event.target.closest("[data-animus-tab], [data-animus-edit], [data-animus-save], [data-animus-save-editor], [data-animus-cancel-editor], [data-animus-complete-action], [data-animus-open], [data-animus-add-note], [data-animus-back]");
+    const target = event.target.closest("[data-animus-tab], [data-animus-edit], [data-animus-save], [data-animus-save-editor], [data-animus-cancel-editor], [data-animus-complete-action], [data-animus-open], [data-animus-add-note], [data-animus-back], [data-animus-summary]");
     if (!target) return;
     if (target.dataset.animusTab) { state.tab = target.dataset.animusTab; state.editor = ""; renderWorkFile(); return; }
     if (target.dataset.animusEdit) { state.editor = target.dataset.animusEdit; renderWorkFile(); return; }
@@ -237,6 +249,11 @@
     if (target.hasAttribute("data-animus-cancel-editor")) { state.editor = ""; renderWorkFile(); return; }
     if (target.hasAttribute("data-animus-complete-action")) { completeNextAction(); return; }
     if (target.dataset.animusOpen) { openExisting(target.dataset.animusOpen); return; }
+    if (target.dataset.animusSummary) {
+      if (target.dataset.animusSummary === "estimate") openExisting("estimate");
+      else { state.editor = "action"; renderWorkFile(); }
+      return;
+    }
     if (target.hasAttribute("data-animus-add-note")) {
       const file = currentFile();
       const text = window.prompt("Add a note to this work file:");
@@ -250,7 +267,12 @@
       return;
     }
     if (target.hasAttribute("data-animus-save")) { if (typeof window.saveActiveFile === "function") window.saveActiveFile(); if (typeof window.saveDashboardToGoogle === "function") window.saveDashboardToGoogle(); renderWorkFile(); return; }
-    if (target.hasAttribute("data-animus-back")) { document.querySelector(".crm-file-list-panel")?.scrollIntoView({ behavior: "smooth", block: "start" }); }
+    if (target.hasAttribute("data-animus-back")) {
+      const filter = byId("crmFileFilter");
+      if (filter) filter.value = "all";
+      if (typeof window.renderCrm === "function") window.renderCrm();
+      document.querySelector(".crm-file-list-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
   });
 
   const originalRenderCrm = window.renderCrm;

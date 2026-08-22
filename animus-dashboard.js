@@ -26,7 +26,16 @@
   function todayEvents() { return (typeof allCrmCalendarEvents === "function" ? allCrmCalendarEvents() : []).filter((event) => String(event.date || "") === dayKey()).slice(0, 5); }
   function futureEvents() { return (typeof allCrmCalendarEvents === "function" ? allCrmCalendarEvents() : []).filter((event) => String(event.date || "") >= dayKey()).slice(0, 5); }
   function openFile(fileId) { const file = crmFiles.find((item) => item.id === fileId); if (!file) return; activeFileId = file.id; activateCrmFilter(filterForCrmFile(file)); switchCrmView("files"); renderCrm(); }
-  function openView(view) { switchCrmView(view); }
+  function openView(view) {
+    const route = String(view || "");
+    if (route.startsWith("files:")) {
+      activateCrmFilter(route.slice(6));
+      switchCrmView("files");
+      renderCrm();
+      return;
+    }
+    switchCrmView(route);
+  }
   function currentFinancials() {
     const rows = rowsForMonth();
     const revenue = rows.reduce((sum, row) => sum + (Number(row.gross) || 0), 0);
@@ -75,20 +84,18 @@
     return `<section class="animus-dashboard-home" id="animusDashboardHome">
       <header class="animus-home-header"><div><h1>${greeting()}, D2 Team <span aria-hidden="true">&#128075;</span></h1><p>Here's what's happening with your business today.</p></div><div class="animus-home-tools"><div class="animus-global-search"><span>⌕</span><input id="animusHomeSearch" placeholder="Search customers, jobs, invoices..."></div><div class="animus-quick-add"><button class="animus-home-primary" id="animusQuickAdd">+ New</button><div class="animus-quick-menu" id="animusQuickMenu" hidden><button data-animus-quick="file">New Customer File</button><button data-animus-quick="estimate">New Estimate</button><button data-animus-quick="expense">New Expense</button><button data-animus-quick="calendar">New Calendar Event</button></div></div><button class="animus-notification" id="animusNotifications" aria-label="Attention required">&#128276;${notificationCount ? `<b>${notificationCount}</b>` : ""}</button></div></header>
       <section class="animus-kpi-grid">
-        ${kpi("◉","New Leads",crmFiles.filter((file) => status(file) === "New Lead").length,"blue","Open customer inquiries","new")}
-        ${kpi("▤","Estimates Pending",pending.length,"amber","Awaiting customer action","estimate")}
-        ${kpi("↗","Pipeline Value",money(pipelineValue),"violet","Open opportunities","negotiation")}
-        ${kpi("▣","Active Jobs",active.length,"green","Won, in progress, or completed","active")}
-        ${kpi("$","Revenue",money(financial.revenue),"green","This month","revenue")}
-        ${kpi("◈","Profit",money(financial.profit),"violet","This month","revenue")}
+        ${kpi("◉","New Leads",crmFiles.filter((file) => status(file) === "New Lead").length,"blue","Open customer inquiries","files:new")}
+        ${kpi("☎","Pending Contact",crmFiles.filter((file) => ["Contact Established", "Contact Attempted"].includes(status(file))).length,"amber","Contact needs attention","files:contact")}
+        ${kpi("▤","Pending Estimates",crmFiles.filter((file) => status(file) === "Inspection Completed" || file?.statusDetail === "Estimate Pending").length,"violet","Estimate work to complete","files:estimate")}
+        ${kpi("↗","In Negotiation",crmFiles.filter((file) => status(file) === "In Negotiation").length,"amber","Customer decision pending","files:negotiation")}
+        ${kpi("▣","Active Jobs",active.length,"green","Won, in progress, or completed","files:active")}
+        ${kpi("✓","Closed Files",crmFiles.filter((file) => ["Closed / Paid", "Job Lost / Closed"].includes(status(file))).length,"blue","Archived work files","files:archive")}
       </section>
       <section class="animus-home-grid animus-major-grid">
         <article class="animus-home-card animus-attention-card"><div class="animus-card-heading"><h2>Attention Required ${alertList.length ? `<b>${alertList.length}</b>` : ""}</h2></div>${alertList.length ? `<div class="animus-alert-list">${alertList.map((item) => `<button class="animus-alert ${item.tone}" data-animus-file="${safe(item.file.id)}"><span class="animus-alert-icon">!</span><span><strong>${safe(item.title)}</strong><small>${safe(item.detail)}</small></span><em>${safe(item.action)}</em></button>`).join("")}</div>` : empty("You're all caught up.", "No items require attention today.")}<button class="animus-card-link" data-animus-open="files">View all alerts</button></article>
         <article class="animus-home-card"><div class="animus-card-heading"><h2>Today's Schedule</h2><span>${now.toLocaleDateString("en-US", { month:"short", day:"numeric" })}</span></div>${schedule.length ? `<div class="animus-timeline">${schedule.map((event) => `<button data-animus-file="${safe(event.fileId)}"><time>${safe(event.time || "All day")}</time><span><strong>${safe(event.title)}</strong><small>${safe(event.address || event.clientName || "ANIMUS calendar")}</small></span></button>`).join("")}</div>` : empty("No appointments today", "Your schedule is clear.")}<button class="animus-card-link" data-animus-open="calendar">View full calendar</button></article>
-        <article class="animus-home-card animus-pipeline-card"><div class="animus-card-heading"><h2>Sales Pipeline</h2><select aria-label="Pipeline period"><option>This Month</option></select></div><div class="animus-pipeline-list">${stages.map((stage) => `<button data-animus-stage="${safe(stage.name)}"><span class="animus-pipeline-dot ${stage.tone}"></span><strong>${stage.name}</strong><em>${stage.count}</em><b>${money(stage.total)}</b></button>`).join("")}</div><div class="animus-pipeline-total"><span>Total Pipeline Value</span><strong>${money(pipelineValue)}</strong></div></article>
       </section>
       <section class="animus-home-grid animus-bottom-grid">
-        <article class="animus-home-card animus-financial-card"><div class="animus-card-heading"><h2>Revenue vs Expenses</h2><select aria-label="Financial period"><option>This Month</option></select></div><div class="animus-financial-body"><div>${chart(financial)}<div class="animus-chart-legend"><span><i class="revenue"></i>Revenue</span><span><i class="expenses"></i>Expenses</span></div></div><dl><div><dt>Total Revenue</dt><dd>${money(financial.revenue)}</dd></div><div><dt>Total Expenses</dt><dd>${money(financial.expenses)}</dd></div><div><dt>Net Profit</dt><dd>${money(financial.profit)}</dd></div><div><dt>Profit Margin</dt><dd>${financial.revenue ? `${financial.margin.toFixed(1)}%` : "—"}</dd></div></dl></div><button class="animus-card-link" data-animus-open="revenue">View full report</button></article>
         <article class="animus-home-card"><div class="animus-card-heading"><h2>Upcoming Jobs</h2><button class="animus-card-link" data-animus-open="files">View all jobs</button></div>${upcoming.length ? `<div class="animus-upcoming-list">${upcoming.map(({file,date}) => { const value = new Date(`${date}T12:00:00`); return `<button data-animus-file="${safe(file.id)}"><time><b>${value.toLocaleDateString("en-US", { month:"short" })}</b><strong>${value.getDate()}</strong></time><span><strong>${safe(file.clientName || file.fileNumber)}</strong><small>${safe(file.projectType || "Project")} · ${safe(file.projectAddress || "Location pending")}</small></span><em>${safe(status(file))}</em></button>`; }).join("")}</div>` : empty("No upcoming jobs", "Upcoming scheduled work will appear here.")}<button class="animus-card-link" data-animus-open="calendar">View calendar</button></article>
         <article class="animus-home-card"><div class="animus-card-heading"><h2>Recent Activity</h2><button class="animus-card-link" data-animus-open="files">View all</button></div>${recent.length ? `<div class="animus-activity-list">${recent.map((item) => `<button data-animus-file="${safe(item.file.id)}"><span class="animus-activity-icon ${item.type}">${item.type === "note" ? "✎" : "◉"}</span><span><strong>${safe(item.file.clientName || item.file.fileNumber)}</strong><small>${safe(item.text)}</small></span><time>${relative(item.at)}</time></button>`).join("")}</div>` : empty("No recent activity", "Recent ANIMUS activity will appear here.")}</article>
       </section>

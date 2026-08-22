@@ -2244,7 +2244,7 @@ function searchCrmFile() {
 function initialDashboardView() {
   const params = new URLSearchParams(window.location.search);
   const view = String(params.get("view") || "").trim().toLowerCase();
-  return ["dashboard", "calendar", "revenue", "expenses", "prices", "invoice", "estimator"].includes(view) ? view : "dashboard";
+  return ["dashboard", "calendar", "revenue", "expenses", "prices", "business", "invoice", "estimator"].includes(view) ? view : "dashboard";
 }
 
 function applyInitialFileRoute() {
@@ -6699,7 +6699,7 @@ async function syncUpcomingCalendarEvents() {
   window.alert(`${events.length} calendar event${events.length === 1 ? "" : "s"} sent to Google Calendar.`);
 }
 
-async function importGoogleCalendarEvents() {
+async function importGoogleCalendarEvents(silent = false) {
   const button = $("crmImportGoogleCalendar");
   const originalText = button ? button.textContent : "";
   const start = new Date(crmCalendarCursor.getFullYear(), crmCalendarCursor.getMonth() - 1, 1);
@@ -6710,7 +6710,7 @@ async function importGoogleCalendarEvents() {
     crmExternalCalendarEvents = dedupeCalendarEvents(events.map(normalizeExternalCalendarEvent).filter(Boolean));
     saveExternalCalendarEvents();
     renderCalendar();
-    window.alert(`${crmExternalCalendarEvents.length} Google Calendar event${crmExternalCalendarEvents.length === 1 ? "" : "s"} imported into the CRM calendar.`);
+    if (!silent) window.alert(`${crmExternalCalendarEvents.length} Google Calendar event${crmExternalCalendarEvents.length === 1 ? "" : "s"} imported into the CRM calendar.`);
   } finally {
     if (button) button.textContent = originalText || "Import Google Calendar";
   }
@@ -6723,12 +6723,13 @@ function switchCrmView(view) {
   const showInvoice = view === "invoice";
   const showExpenses = view === "expenses";
   const showPrices = view === "prices";
+  const showBusiness = view === "business";
   const showEstimator = view === "estimator";
   const estimatorShell = $("crmEstimatorView")?.closest(".crm-dashboard-view");
   document.body.classList.toggle("crm-estimator-active", showEstimator);
   document.querySelectorAll(".crm-dashboard-view").forEach((section) => {
     const keepEstimatorShell = showEstimator && estimatorShell && section === estimatorShell;
-    section.hidden = !keepEstimatorShell && (showRevenue || showPayroll || showCalendar || showInvoice || showExpenses || showPrices || showEstimator);
+    section.hidden = !keepEstimatorShell && (showRevenue || showPayroll || showCalendar || showInvoice || showExpenses || showPrices || showBusiness || showEstimator);
   });
   $("crmRevenueView").hidden = !showRevenue;
   $("crmPayrollView").hidden = !showPayroll;
@@ -6736,20 +6737,48 @@ function switchCrmView(view) {
   $("crmInvoiceView").hidden = !showInvoice;
   $("crmExpensesView").hidden = !showExpenses;
   $("crmPriceView").hidden = !showPrices;
+  $("crmBusinessView").hidden = !showBusiness;
   $("crmEstimatorView").hidden = !showEstimator;
 document.querySelectorAll("[data-crm-view]").forEach((button) => {
   button.classList.toggle("active", button.dataset.crmView === view);
 });
+  if (showRevenue) {
+    crmFiles.filter((file) => file?.fileStatus === "In Progress" && file?.revenueExcluded !== true).forEach((file) => ensureRevenueRowForFile(file));
+    crmFiles.forEach((file) => {
+      if (revenueRowForDashboardFile(file)) syncFileExpensesToRevenue(file);
+    });
+    saveRevenueRows();
+    renderRevenue();
+  }
   if (showPayroll) renderPayroll();
   if (showInvoice) renderInvoiceView();
-  if (showCalendar) renderCalendar();
+  if (showCalendar) {
+    renderCalendar();
+    if (Date.now() - (window.animusLastCalendarImport || 0) > 5 * 60 * 1000) {
+      window.animusLastCalendarImport = Date.now();
+      importGoogleCalendarEvents(true).catch(() => {
+        window.animusLastCalendarImport = 0;
+      });
+    }
+  }
   if (showExpenses) renderFileExpenses();
   if (showPrices) renderPriceDatabase();
-  if (showEstimator && !$("crmEstimatorFrame").getAttribute("src")) {
-    const estimatorUrl = new URL("index.html", window.location.href);
-    estimatorUrl.searchParams.set("new", "1");
-    estimatorUrl.searchParams.set("embedded", "1");
-    $("crmEstimatorFrame").src = estimatorUrl.toString();
+  if (showBusiness && typeof window.renderBusinessPerformance === "function") window.renderBusinessPerformance();
+  if (showEstimator) {
+    const frame = $("crmEstimatorFrame");
+    const currentSrc = frame.getAttribute("src") || "";
+    const file = activeFile();
+    const needsFileEstimate = Boolean(file?.editableEstimate) && (!currentSrc || currentSrc.includes("new=1"));
+    if (needsFileEstimate) {
+      sendEstimateToEstimator(file.editableEstimate);
+      return;
+    }
+    if (!currentSrc) {
+      const estimatorUrl = new URL("index.html", window.location.href);
+      estimatorUrl.searchParams.set("new", "1");
+      estimatorUrl.searchParams.set("embedded", "1");
+      frame.src = estimatorUrl.toString();
+    }
   }
 }
 
@@ -7792,7 +7821,10 @@ $("crmOpenExpenses").addEventListener("click", () => {
   switchCrmView("expenses");
 });
 $("crmEstimatorOpenFile")?.addEventListener("click", () => switchCrmView("files"));
+$("crmEstimatorOpenEstimate")?.addEventListener("click", () => openActiveEstimate());
 $("crmEstimatorCreateSupplement")?.addEventListener("click", () => createSupplementForFile());
+$("crmEstimatorOpenInvoice")?.addEventListener("click", () => openActiveInvoice());
+$("crmEstimatorOpenAssignment")?.addEventListener("click", () => openActiveEstimate("#assignment"));
 window.addEventListener("storage", (event) => {
   if (event.key !== "d2EstimateStudio" || !event.newValue) return;
   try {
