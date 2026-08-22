@@ -863,6 +863,18 @@ async function postPayloadToCloudflare(payload) {
   return result;
 }
 
+// R2 writes must stay in order. Without a queue, two quick expense saves can
+// overlap and an older request may finish after the newer one, replacing the
+// newer receipt list with an older snapshot.
+let cloudDashboardWriteQueue = Promise.resolve();
+
+function queueDashboardCloudSave(payload) {
+  const write = cloudDashboardWriteQueue.then(() => postPayloadToCloudflare(payload));
+  // Keep the next save available even when one request fails.
+  cloudDashboardWriteQueue = write.catch(() => {});
+  return write;
+}
+
 async function fetchDashboardFromCloudflare() {
   const response = await fetch(`${CLOUDFLARE_DASHBOARD_API}?t=${Date.now()}`, {
     method: "GET",
@@ -915,7 +927,7 @@ function saveExpenseChangeToCloud(message = "Expense saved to Cloudflare.") {
   saveCrmFiles();
   saveRevenueRows();
   const payload = buildDashboardSyncPayload();
-  postPayloadToCloudflare(payload)
+  return queueDashboardCloudSave(payload)
     .then((result) => {
       // The Worker returns the merged copy it just stored. Keep this browser on
       // that same copy so the receipt history cannot fall back to an older list.
@@ -1140,7 +1152,7 @@ async function saveDashboardToGoogle() {
   showDashboardSaveStatus("Saving current Command Center...");
   const payload = buildDashboardSyncPayload();
   try {
-    const saved = await postPayloadToCloudflare(payload);
+    const saved = await queueDashboardCloudSave(payload);
     saveButton.disabled = false;
     saveButton.textContent = "Saved";
     renderCrm();
