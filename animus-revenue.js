@@ -47,7 +47,7 @@
     const main = field === "labor" ? `<button class="animus-revenue-labor-link" data-revenue-payroll="${safe(row.id)}">${formatted}</button>` : formatted;
     return `<div class="animus-revenue-money ${className}">${main}<button data-revenue-edit="${safe(row.id)}" data-revenue-field="${field}" title="Edit ${field}" ${calculated && field === "margin" ? "" : ""}>✎</button></div>`;
   }
-  function actionMenu(row) { return `<div class="animus-revenue-action-menu"><button data-revenue-open-file="${safe(row.id)}">Open work file</button><button data-revenue-expenses="${safe(row.id)}">Open expenses</button><button data-revenue-payroll="${safe(row.id)}">Open payroll</button><button data-revenue-export-row="${safe(row.id)}">Export job profitability</button></div>`; }
+  function actionMenu(row) { return `<div class="animus-revenue-action-menu"><button data-revenue-open-file="${safe(row.id)}">Open work file</button><button data-revenue-expenses="${safe(row.id)}">Open expenses</button><button data-revenue-payroll="${safe(row.id)}">Open payroll</button><button data-revenue-export-row="${safe(row.id)}">Export job profitability</button><button class="animus-revenue-delete" data-revenue-delete="${safe(row.id)}">Delete revenue row</button></div>`; }
   function render() {
     const view = document.querySelector("#crmRevenueView"); if (!view) return;
     const visibleRows = rows(); const total = totals(visibleRows); const margin = total.gross ? (total.profit / total.gross) * 100 : 0;
@@ -85,6 +85,10 @@
     document.querySelectorAll("[data-revenue-payroll]").forEach((button) => button.addEventListener("click", () => typeof openRevenuePayroll === "function" && openRevenuePayroll(button.dataset.revenuePayroll)));
     document.querySelectorAll("[data-revenue-actions]").forEach((button) => button.addEventListener("click", () => { state.action = state.action === button.dataset.revenueActions ? "" : button.dataset.revenueActions; render(); }));
     document.querySelectorAll("[data-revenue-export-row]").forEach((button) => button.addEventListener("click", () => exportCsv(button.dataset.revenueExportRow)));
+    document.querySelectorAll("[data-revenue-delete]").forEach((button) => button.addEventListener("click", () => {
+      state.action = "";
+      if (typeof deleteRevenueRow === "function") deleteRevenueRow(button.dataset.revenueDelete);
+    }));
     document.querySelectorAll("[data-revenue-page]").forEach((button) => button.addEventListener("click", () => { const target = button.dataset.revenuePage; state.page = target === "prev" ? Math.max(1,state.page - 1) : target === "next" ? state.page + 1 : Number(target); render(); }));
     document.querySelector("#animusRevenuePerPage")?.addEventListener("change", (event) => { state.perPage = Number(event.target.value); state.page = 1; render(); });
     document.querySelectorAll("[data-revenue-kpi-edit]").forEach((button) => button.addEventListener("click", () => { const table = document.querySelector(".animus-revenue-table"); table?.scrollIntoView({ behavior:"smooth", block:"center" }); }));

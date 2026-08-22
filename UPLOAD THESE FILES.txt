@@ -1,3 +1,3 @@
-Upload both files in this folder to the root of the ANIMUS-V.1 repository.
-This repair rebuilds missing Revenue rows from saved In Progress, Work Completed, and Closed / Paid work files.
-It preserves rows intentionally deleted from Revenue and preserves material costs until actual receipt expenses exist.
+Upload all four files in this folder to the root of the ANIMUS-V.1 repository.
+The Revenue three-dot menu now includes Delete revenue row with the existing confirmation prompt.
+This folder also includes the Revenue recovery repair from the prior update.
