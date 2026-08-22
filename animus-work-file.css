@@ -1,0 +1,340 @@
+/* Compact, read-first customer work file. Existing CRM controls remain in the DOM for compatibility. */
+body.animus-work-file-active .crm-command-panel,
+body.animus-work-file-active .crm-file-header,
+body.animus-work-file-active .crm-file-grid {
+  display: none !important;
+}
+
+.animus-work-file {
+  color: #10213f;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  min-width: 0;
+}
+
+.animus-work-file button,
+.animus-work-file a {
+  font: inherit;
+}
+
+.animus-record-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 18px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #174a9b;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.animus-record-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.animus-record-person {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-width: 0;
+}
+
+.animus-record-avatar {
+  display: grid;
+  width: 98px;
+  height: 98px;
+  flex: 0 0 98px;
+  place-items: center;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #e7edff, #f6f3ff);
+  color: #102f6a;
+  font-size: 32px;
+  font-weight: 800;
+}
+
+.animus-record-title h2 {
+  margin: 0 0 8px;
+  color: #101d36;
+  font-size: 29px;
+  line-height: 1.15;
+  letter-spacing: 0;
+}
+
+.animus-record-file-number {
+  margin: 0 0 7px;
+  color: #1552bd;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+}
+
+.animus-record-subtitle {
+  margin: 0 0 11px;
+  color: #52627e;
+  font-size: 14px;
+}
+
+.animus-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.animus-status-badge::before {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  content: "";
+}
+
+.animus-status-open { background: #e9f1ff; color: #1c5ec9; }
+.animus-status-active { background: #e7f8ef; color: #16824b; }
+.animus-status-warning { background: #fff4df; color: #bd7610; }
+.animus-status-closed { background: #fff0f0; color: #d32929; }
+
+.animus-record-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  max-width: 480px;
+}
+
+.animus-record-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  gap: 8px;
+  padding: 0 15px;
+  border: 1px solid #dce4f0;
+  border-radius: 9px;
+  background: #fff;
+  color: #0c2c63;
+  font-size: 13px;
+  font-weight: 750;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.animus-record-button:hover { border-color: #2563eb; color: #1d4ed8; }
+.animus-record-button.primary { border-color: #2563eb; background: #2563eb; color: #fff; }
+.animus-record-button.primary:hover { background: #1d4ed8; color: #fff; }
+.animus-record-button.small { min-height: 32px; padding: 0 10px; font-size: 12px; }
+
+.animus-more-menu { position: relative; }
+.animus-more-menu summary { list-style: none; }
+.animus-more-menu summary::-webkit-details-marker { display: none; }
+.animus-more-menu-panel {
+  position: absolute;
+  z-index: 15;
+  top: calc(100% + 7px);
+  right: 0;
+  display: grid;
+  width: 175px;
+  padding: 7px;
+  border: 1px solid #dce4f0;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, .14);
+}
+.animus-more-menu-panel button { justify-content: flex-start; border: 0; }
+.animus-more-menu-panel button:hover { background: #f4f7fb; }
+.animus-more-menu-panel .danger { color: #c42d2d; }
+
+.animus-contact-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin: 16px 0 20px;
+}
+.animus-contact-actions .animus-record-button { min-width: 98px; }
+
+.animus-summary-strip {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  overflow: hidden;
+  margin: 0 0 18px;
+  border: 1px solid #e2e8f0;
+  border-radius: 11px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+}
+
+.animus-summary-cell {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 11px;
+  padding: 18px 16px;
+  border-right: 1px solid #e6ebf3;
+}
+.animus-summary-cell:last-child { border-right: 0; }
+.animus-summary-icon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  place-items: center;
+  border-radius: 12px;
+  background: #ecf2ff;
+  color: #2563eb;
+  font-size: 18px;
+}
+.animus-summary-cell:nth-child(1) .animus-summary-icon { background: #e7f8ef; color: #16824b; }
+.animus-summary-cell:nth-child(3) .animus-summary-icon { background: #fff3e1; color: #dc7a00; }
+.animus-summary-cell:nth-child(4) .animus-summary-icon { background: #f1ebff; color: #713fd2; }
+.animus-summary-cell:nth-child(6) .animus-summary-icon { background: #fff3e1; color: #d48914; }
+.animus-summary-copy { min-width: 0; }
+.animus-summary-copy span { display: block; margin-bottom: 3px; color: #69758a; font-size: 11px; font-weight: 700; }
+.animus-summary-copy strong { display: block; overflow: hidden; color: #102a5e; font-size: 18px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+.animus-summary-copy small { display: block; overflow: hidden; margin-top: 2px; color: #233c6f; font-size: 12px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.animus-summary-cell.balance .animus-summary-copy strong { color: #d32929; }
+
+.animus-record-tabs {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  overflow-x: auto;
+  margin-bottom: 16px;
+  padding: 0 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+}
+.animus-record-tab {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  min-height: 50px;
+  gap: 8px;
+  padding: 0 17px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: #243653;
+  font-size: 13px;
+  font-weight: 750;
+  cursor: pointer;
+}
+.animus-record-tab.active { border-bottom-color: #2563eb; color: #1558d6; }
+
+.animus-work-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, .95fr) minmax(360px, 1.35fr) minmax(260px, .95fr);
+  gap: 14px;
+  align-items: start;
+}
+.animus-work-column { display: grid; gap: 14px; min-width: 0; }
+.animus-info-card {
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 11px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .035);
+}
+.animus-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 58px;
+  padding: 0 16px;
+  border-bottom: 1px solid #edf0f5;
+}
+.animus-card-head h3 { display: flex; align-items: center; gap: 10px; margin: 0; color: #102354; font-size: 15px; }
+.animus-card-head h3 .card-mark { color: #2563eb; font-size: 17px; }
+.animus-info-list { margin: 0; padding: 0 16px; }
+.animus-info-row { display: grid; grid-template-columns: 22px minmax(0, 1fr) 32px; align-items: center; gap: 9px; min-height: 67px; border-bottom: 1px solid #eef1f5; }
+.animus-info-row:last-child { border-bottom: 0; }
+.animus-info-row .item-icon { color: #587096; text-align: center; }
+.animus-info-row dt { margin: 0 0 3px; color: #71809a; font-size: 11px; font-weight: 750; }
+.animus-info-row dd { margin: 0; color: #172849; font-size: 13px; font-weight: 750; line-height: 1.35; overflow-wrap: anywhere; }
+.animus-info-row .row-action { display: grid; width: 31px; height: 31px; place-items: center; border: 1px solid #dce4f0; border-radius: 7px; color: #154baf; text-decoration: none; }
+
+.animus-progress-card { padding-bottom: 14px; }
+.animus-progress-line { display: grid; grid-template-columns: repeat(7, 1fr); position: relative; margin: 25px 18px 21px; }
+.animus-progress-line::before { position: absolute; top: 9px; right: 8%; left: 8%; z-index: 0; height: 3px; background: #d9e0eb; content: ""; }
+.animus-progress-step { position: relative; z-index: 1; display: grid; justify-items: center; gap: 8px; color: #71809a; font-size: 10px; font-weight: 750; text-align: center; }
+.animus-progress-dot { display: grid; width: 19px; height: 19px; place-items: center; border: 3px solid #cbd5e1; border-radius: 50%; background: #fff; color: #fff; font-size: 10px; }
+.animus-progress-step.done { color: #1e426f; }
+.animus-progress-step.done .animus-progress-dot { border-color: #14a35c; background: #14a35c; }
+.animus-progress-step.current { color: #1f4e9c; }
+.animus-progress-step.current .animus-progress-dot { border-color: #f59e0b; background: #fff9eb; }
+.animus-status-details { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin: 0 16px; border: 1px solid #dce4f0; border-radius: 8px; background: #fbfcfe; }
+.animus-status-details div { padding: 13px; }
+.animus-status-details div + div { border-left: 1px solid #e6ebf3; }
+.animus-status-details span { display: block; margin-bottom: 5px; color: #66758c; font-size: 11px; font-weight: 700; }
+.animus-status-details strong { color: #15274a; font-size: 13px; }
+.animus-status-details .closed-value { color: #d32929; }
+
+.animus-activity { padding: 0 16px 4px; }
+.animus-activity-row { position: relative; display: grid; grid-template-columns: 34px minmax(0, 1fr) 80px; gap: 10px; padding: 16px 0; border-bottom: 1px solid #edf1f6; }
+.animus-activity-row:last-child { border-bottom: 0; }
+.animus-activity-icon { display: grid; width: 31px; height: 31px; place-items: center; border-radius: 50%; background: #e7f8ef; color: #13834a; font-size: 14px; }
+.animus-activity-row:nth-child(2n) .animus-activity-icon { background: #ebf1ff; color: #2563eb; }
+.animus-activity-row:nth-child(3n) .animus-activity-icon { background: #fff4df; color: #cd7e0b; }
+.animus-activity-main strong { display: block; color: #18305c; font-size: 12px; }
+.animus-activity-main p { margin: 4px 0 0; color: #65748c; font-size: 12px; line-height: 1.4; }
+.animus-activity-time { color: #78859a; font-size: 10px; line-height: 1.4; text-align: right; }
+
+.animus-next-inner { margin: 16px; padding: 16px; border: 1px solid #dce8ff; border-radius: 9px; background: linear-gradient(135deg, #f1f6ff, #fff); }
+.animus-next-highlight { display: flex; gap: 13px; align-items: flex-start; margin-bottom: 16px; }
+.animus-next-icon { display: grid; width: 52px; height: 52px; flex: 0 0 52px; place-items: center; border-radius: 14px; background: #e4eeff; color: #1557d6; font-size: 23px; }
+.animus-next-highlight strong { display: block; color: #0d3d97; font-size: 14px; }
+.animus-next-highlight p { margin: 5px 0 0; color: #2f4f84; font-size: 12px; line-height: 1.45; }
+.animus-next-meta { margin: 0 0 14px; }
+.animus-next-meta div { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid #dce5f3; color: #60708a; font-size: 12px; }
+.animus-next-meta strong { color: #19305c; text-align: right; }
+.animus-next-empty { margin: 16px; color: #66758c; font-size: 13px; }
+
+.animus-important-note { margin: 16px; padding: 15px; border: 1px solid #f2d08c; border-radius: 8px; background: #fffaf0; }
+.animus-important-note p { margin: 0; color: #243653; font-size: 13px; line-height: 1.55; white-space: pre-wrap; }
+.animus-important-note small { display: block; margin-top: 18px; color: #71809a; font-size: 10px; }
+
+.animus-tab-panel { min-width: 0; }
+.animus-detail-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.animus-detail-card { min-height: 170px; }
+.animus-detail-card .animus-info-list { padding-bottom: 12px; }
+.animus-empty-panel { padding: 36px; border: 1px dashed #cfd8e7; border-radius: 10px; background: #fff; color: #6b7a91; text-align: center; }
+.animus-financial-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.animus-financial-value { padding: 18px; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; }
+.animus-financial-value span { display: block; color: #71809a; font-size: 11px; font-weight: 800; text-transform: uppercase; }
+.animus-financial-value strong { display: block; margin-top: 9px; color: #0b3f94; font-size: 23px; }
+.animus-financial-value.danger strong { color: #d32929; }
+.animus-action-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 15px; }
+
+.animus-inline-editor { margin-bottom: 16px; padding: 16px; border: 1px solid #bfd4ff; border-radius: 10px; background: #f8fbff; }
+.animus-inline-editor h3 { margin: 0 0 13px; color: #123b80; font-size: 15px; }
+.animus-inline-editor-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.animus-inline-editor label { display: grid; gap: 6px; color: #51627d; font-size: 12px; font-weight: 750; }
+.animus-inline-editor input, .animus-inline-editor select { min-height: 38px; padding: 0 10px; border: 1px solid #cfd9e8; border-radius: 7px; background: #fff; color: #142747; font: inherit; }
+.animus-inline-editor .wide { grid-column: 1 / -1; }
+
+@media (max-width: 1240px) {
+  .animus-work-grid { grid-template-columns: minmax(230px, 1fr) minmax(330px, 1.35fr); }
+  .animus-work-column.right { grid-column: 1 / -1; grid-template-columns: 1fr 1fr; }
+  .animus-summary-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .animus-summary-cell:nth-child(3) { border-right: 0; }
+  .animus-summary-cell:nth-child(-n+3) { border-bottom: 1px solid #e6ebf3; }
+}
+
+@media (max-width: 850px) {
+  .animus-record-header { display: grid; }
+  .animus-record-actions, .animus-contact-actions { justify-content: flex-start; }
+  .animus-work-grid, .animus-work-column.right, .animus-detail-grid { grid-template-columns: 1fr; }
+  .animus-summary-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .animus-summary-cell:nth-child(2n) { border-right: 0; }
+  .animus-summary-cell:nth-child(-n+4) { border-bottom: 1px solid #e6ebf3; }
+  .animus-financial-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
