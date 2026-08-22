@@ -124,6 +124,8 @@ const state = {
   photos: [],
   assignmentPhotos: [],
   dashboardFileId: "",
+  supplementFor: "",
+  supplementId: "",
   autoEstimateNumber: false,
   estimateNumberCommitted: false,
   estimateSequence: {},
@@ -2346,6 +2348,8 @@ function serializeEstimate() {
       materialPercent: MATERIAL_PERCENT * 100,
     },
     dashboardFileId: state.dashboardFileId || "",
+    supplementFor: state.supplementFor || "",
+    supplementId: state.supplementId || "",
     submittedAt: new Date().toISOString(),
   };
   fields.forEach((field) => {
@@ -2474,6 +2478,7 @@ function dashboardFileExistsForEstimate(payloadData) {
 }
 
 function syncEstimateToLinkedDashboard(payloadData) {
+  if (payloadData?.supplementFor && payloadData?.supplementId) return false;
   if (!payloadData || (!payloadData.dashboardFileId && !dashboardFileExistsForEstimate(payloadData))) return false;
   return saveEstimateToLocalDashboard(payloadData);
 }
@@ -2626,6 +2631,8 @@ function applyEstimateData(data) {
   $("useSpanishScope").checked = data.useSpanishScope === true;
   $("addFooterValueNote").checked = data.addFooterValueNote === true || data.addFooterValueNote === "Yes" || data.addFooterValueNote === "on";
   state.dashboardFileId = data.dashboardFileId || "";
+  state.supplementFor = data.supplementFor || "";
+  state.supplementId = data.supplementId || "";
   state.invoicePaid = data.invoicePaid === true || data.invoicePaid === "Yes";
   $("invoicePaidCheckbox").checked = state.invoicePaid;
   applyCompanyDefaults();
@@ -2749,6 +2756,9 @@ function saveEstimate(options = {}) {
     // Some direct file previews block storage; PDF saving still works.
   }
   syncEstimateToLinkedDashboard(estimate);
+  if (estimate.supplementFor && estimate.supplementId && window.parent !== window) {
+    window.parent.postMessage({ type: "animus-supplement-saved", estimate }, window.location.origin === "null" ? "*" : window.location.origin);
+  }
 
   if (!options.silent) {
     $("saveEstimate").textContent = "Saved";
@@ -2990,6 +3000,8 @@ function resetEstimate() {
   state.photos = [];
   state.assignmentPhotos = [];
   state.dashboardFileId = "";
+  state.supplementFor = "";
+  state.supplementId = "";
   renderLineItems();
   renderMaterialItems();
   renderPhotos();

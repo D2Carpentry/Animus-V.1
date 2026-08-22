@@ -1469,6 +1469,7 @@ function renderActiveFile() {
   if (!file) {
     $("activeFileNumber").textContent = "No project selected";
     $("activeClientName").textContent = "Create or select a customer file";
+    $("crmSupplementSummary").textContent = "";
     crmFields.forEach((field) => {
       const element = $(`crm${field[0].toUpperCase()}${field.slice(1)}`);
       if (element) element.value = "";
@@ -1486,6 +1487,10 @@ function renderActiveFile() {
   }
   $("activeFileNumber").textContent = `Project # ${file.fileNumber}`;
   $("activeClientName").textContent = file.clientName || "Unnamed Client";
+  const supplements = Array.isArray(file.supplements) ? file.supplements : [];
+  $("crmSupplementSummary").textContent = supplements.length
+    ? `${supplements.length} saved supplement${supplements.length === 1 ? "" : "s"} · Latest ${supplements[supplements.length - 1].estimateNumber || "Supplement"}`
+    : "";
   crmFields.forEach((field) => {
     const element = $(`crm${field[0].toUpperCase()}${field.slice(1)}`);
     if (element) element.value = file[field] || "";
@@ -2083,6 +2088,58 @@ function createEstimateForFile(file, target = "") {
   renderCrm();
   closeEstimateChoiceDialog();
   sendEstimateToEstimator(estimateData, target);
+}
+
+function createSupplementForFile(file = activeFile()) {
+  if (!file) {
+    window.alert("Select a work file before creating a supplement.");
+    return;
+  }
+  if (!file.editableEstimate) {
+    window.alert("This work file needs an estimate before a supplement can be created.");
+    showEstimateChoiceDialog("");
+    return;
+  }
+  const supplementNumber = (Array.isArray(file.supplements) ? file.supplements.length : 0) + 1;
+  const supplementId = `supplement-${Date.now()}`;
+  const data = JSON.parse(JSON.stringify(file.editableEstimate));
+  const baseNumber = String(file.editableEstimate.estimateNumber || file.fileNumber || "Estimate").replace(/-S\d+$/i, "");
+  data.estimateTitle = "Estimate Supplement";
+  data.estimateNumber = `${baseNumber}-S${supplementNumber}`;
+  data.lineItems = [];
+  data.materialItems = [];
+  data.flatTotal = "";
+  data.total = 0;
+  data.supplementFor = file.id;
+  data.supplementId = supplementId;
+  data.totals = {
+    ...(data.totals || {}), subtotal:0, discount:0, tax:0, total:0, deposit:0,
+    lineSubtotal:0, showDiscount:false, showTax:false, showDeposit:false, showSubtotal:false, hasFlatTotal:false,
+  };
+  file.supplements = Array.isArray(file.supplements) ? file.supplements : [];
+  file.supplements.push({
+    id: supplementId,
+    title: `Supplement ${supplementNumber}`,
+    estimateNumber: data.estimateNumber,
+    data,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+  addSystemNote(file, `${data.estimateNumber} started as a supplement to the current estimate.`);
+  saveCrmFiles();
+  renderCrm();
+  sendEstimateToEstimator(data);
+}
+
+function syncSupplementFromEstimator(data) {
+  if (!data?.supplementFor || !data?.supplementId) return;
+  const file = crmFiles.find((entry) => entry.id === data.supplementFor);
+  const supplement = file?.supplements?.find((entry) => entry.id === data.supplementId);
+  if (!file || !supplement) return;
+  supplement.data = data;
+  supplement.estimateNumber = data.estimateNumber || supplement.estimateNumber;
+  supplement.updatedAt = new Date().toISOString();
+  saveCrmFiles();
 }
 
 function showEstimateChoiceDialog(target = "") {
@@ -7713,12 +7770,27 @@ $("crmArchiveFile").addEventListener("click", () => {
 });
 $("crmDeleteFile").addEventListener("click", deleteActiveFile);
 $("crmOpenEstimate").addEventListener("click", () => showEstimateChoiceDialog(""));
+$("crmCreateSupplement").addEventListener("click", () => createSupplementForFile());
 $("crmOpenAssignment").addEventListener("click", () => openActiveEstimate("#assignment"));
 $("crmOpenInvoice").addEventListener("click", openActiveInvoice);
 $("crmOpenExpenses").addEventListener("click", () => {
   refreshCrmFilesFromStorage();
   saveActiveFile();
   switchCrmView("expenses");
+});
+$("crmEstimatorOpenFile")?.addEventListener("click", () => switchCrmView("files"));
+$("crmEstimatorCreateSupplement")?.addEventListener("click", () => createSupplementForFile());
+window.addEventListener("storage", (event) => {
+  if (event.key !== "d2EstimateStudio" || !event.newValue) return;
+  try {
+    syncSupplementFromEstimator(JSON.parse(event.newValue));
+  } catch (error) {
+    // An incomplete local draft should never interrupt work in the estimator.
+  }
+});
+window.addEventListener("message", (event) => {
+  if (event.origin !== window.location.origin || event.data?.type !== "animus-supplement-saved") return;
+  syncSupplementFromEstimator(event.data.estimate);
 });
 $("crmEstimateChoiceClose").addEventListener("click", closeEstimateChoiceDialog);
 $("crmEstimateChoiceModal").addEventListener("click", (event) => {

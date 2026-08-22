@@ -74,6 +74,16 @@
             </button>
           </div>
           <section class="crm-estimator-embed" id="crmEstimatorView" hidden>
+            <div class="crm-estimator-toolbar" id="crmEstimatorToolbar">
+              <div>
+                <p class="eyebrow">Estimate Workspace</p>
+                <strong>Build estimates and supplements without leaving ANIMUS.</strong>
+              </div>
+              <div>
+                <button type="button" class="icon-button" id="crmEstimatorOpenFile">Open Work File</button>
+                <button type="button" class="icon-button primary-action" id="crmEstimatorCreateSupplement">Create Supplement</button>
+              </div>
+            </div>
             <iframe id="crmEstimatorFrame" title="D2 Estimator"></iframe>
           </section>
         </section>
@@ -102,9 +112,11 @@
               <div>
                 <p class="eyebrow" id="activeFileNumber">No file selected</p>
                 <h2 id="activeClientName">Create or select a customer file</h2>
+                <p class="crm-supplement-summary" id="crmSupplementSummary"></p>
               </div>
               <div class="crm-file-header-actions">
                 <button type="button" class="icon-button" id="crmOpenEstimate">Estimate</button>
+                <button type="button" class="icon-button" id="crmCreateSupplement">Supplement</button>
                 <button type="button" class="icon-button" id="crmOpenAssignment">Assignment</button>
                 <button type="button" class="icon-button" id="crmOpenInvoice">Invoice</button>
                 <button type="button" class="icon-button" id="crmOpenExpenses">Expenses</button>
@@ -943,9 +955,9 @@
         caches.keys().then((keys) => keys.forEach((key) => caches.delete(key)));
       }
     </script>
-    <script src="crm.js?v=20260821-expense-v5-clean"></script>
+    <script src="crm.js?v=20260822-sidebar-supplements"></script>
     <script src="calendar-upgrade.js?v=20260808-calendar-popups"></script>
-    <script src="animus-shell.js?v=20260822-unified-ui"></script>
+    <script src="animus-shell.js?v=20260822-sidebar-supplements"></script>
     <script src="animus-dashboard.js?v=20260822-command-center-home"></script>
     <script src="expenses-v6.js?v=20260822-expense-center"></script>
   </body>
