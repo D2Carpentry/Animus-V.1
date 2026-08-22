@@ -4511,6 +4511,46 @@ body[data-copy-mode="team"] .estimate-sheet td:first-child {
   cursor: pointer;
 }
 
+.animus-v5-history-open {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.animus-v5-history-open small {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.animus-v5-item-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px 38px;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.animus-v5-item-row button {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid #e0b4b4;
+  border-radius: 6px;
+  background: #fff;
+  color: #a83232;
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
 .crm-manual-expense-card strong,
 .crm-manual-expense-card b {
   color: var(--blue);
@@ -4638,6 +4678,16 @@ body[data-copy-mode="team"] .estimate-sheet td:first-child {
 }
 
 @media (max-width: 720px) {
+  .animus-v5-item-row {
+    grid-template-columns: minmax(0, 1fr) 92px 34px;
+    gap: 7px;
+  }
+
+  .animus-v5-item-row button {
+    width: 34px;
+    height: 34px;
+  }
+
   .crm-shell {
     padding: 12px;
   }
