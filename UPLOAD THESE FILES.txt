@@ -1,15 +1,5 @@
-Upload every file in this folder to the main branch of the ANIMUS GitHub repository.
-
-Important: keep the included functions/api/dashboard.js inside its functions/api folder when uploading. It repairs the Cloudflare save/load connection.
-
-This update includes:
-- Command Center work-file status cards that open the matching Work Files section.
-- Business Performance page for pipeline and financial reporting.
-- Calendar import button plus automatic refresh while the Calendar page is open.
-- Work-file layout and editing improvements.
-- Estimate, supplement, invoice, and work-order actions in the embedded Estimate Studio.
-- Revenue refresh for active work files and their linked expenses.
-- Required work-file association before scanning or saving a receipt.
-- Cleaner Price Database layout.
-
-The separate folder named "ANIMUS - Before Operations Update Backup 2026-08-22" is a local safety copy. Do not upload it.
+Upload all four files in this folder to the root of the ANIMUS GitHub repository, replacing the existing files:
+crm.html
+animus-dashboard.js
+animus-work-file.js
+animus-work-file.css

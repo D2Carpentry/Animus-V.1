@@ -104,11 +104,16 @@
   function kpi(icon, label, number, tone, note, target) { return `<button class="animus-kpi-card" data-animus-open="${target}"><span class="animus-kpi-icon ${tone}">${icon}</span><span class="animus-kpi-copy"><small>${label}</small><strong>${number}</strong><em>${note}</em></span></button>`; }
   function empty(title, text) { return `<div class="animus-empty"><strong>${title}</strong><span>${text}</span></div>`; }
   function relative(value) { const milliseconds = Date.now() - new Date(value).getTime(); const minutes = Math.max(0, Math.round(milliseconds / 60000)); return minutes < 60 ? `${minutes || 1}m ago` : minutes < 1440 ? `${Math.round(minutes / 60)}h ago` : `${Math.round(minutes / 1440)}d ago`; }
-  function showHome(show, showFiles = false) {
+  function showHome(show, showFiles = false, showEstimator = false) {
     const root = document.querySelector("#animusDashboardHome");
     if (root) root.hidden = !show;
-    document.body.dataset.animusView = show ? "dashboard" : "files";
-    if (show || showFiles) document.querySelectorAll(".crm-dashboard-view").forEach((section) => { section.hidden = !showFiles; });
+    document.body.dataset.animusView = show ? "dashboard" : showEstimator ? "estimator" : "files";
+    if (show || showFiles || showEstimator) {
+      const estimatorShell = document.querySelector("#crmEstimatorView")?.closest(".crm-dashboard-view");
+      document.querySelectorAll(".crm-dashboard-view").forEach((section) => {
+        section.hidden = show ? true : showEstimator ? section !== estimatorShell : false;
+      });
+    }
   }
   function render() { const shell = document.querySelector(".crm-dashboard"); if (!shell) return; document.querySelector("#animusDashboardHome")?.remove(); shell.insertAdjacentHTML("afterbegin", template()); bind(); }
   function bind() {
@@ -124,8 +129,9 @@
   switchCrmView = function animusSwitchCrmView(view) {
     const wantsHome = view === "dashboard";
     const wantsFiles = view === "files";
+    const wantsEstimator = view === "estimator";
     baseSwitchView(wantsFiles ? "dashboard" : view);
-    showHome(wantsHome, wantsFiles);
+    showHome(wantsHome, wantsFiles, wantsEstimator);
     if (wantsHome) render();
   };
   window.animusDashboardRender = render;
