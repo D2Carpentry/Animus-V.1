@@ -2908,7 +2908,108 @@ function findFileForRevenue(row) {
   }) || null;
 }
 
+// Revenue is a reporting view of the work files, not a second source of truth.
+// Rebuild only missing or empty linked rows so a browser/cache restore cannot zero
+// the Revenue page, while honoring rows the user intentionally removed.
+function revenueEligibleFile(file) {
+  return !!file
+    && file.revenueExcluded !== true
+    && ["In Progress", "Work Completed", "Closed / Paid"].includes(file.fileStatus);
+}
+
+function revenueEstimateForFile(file) {
+  return parseMoney(file?.estimateTotal)
+    || parseMoney(file?.editableEstimate?.totals?.total)
+    || parseMoney(file?.editableEstimate?.backend?.total)
+    || parseMoney(file?.editableEstimate?.flatTotal);
+}
+
+function revenueMaterialForFile(file) {
+  return parseMoney(file?.materialTotal)
+    || parseMoney(file?.editableEstimate?.backend?.estimatedMaterialCost)
+    || 0;
+}
+
+function repairRevenueRowsFromFiles() {
+  let changed = false;
+
+  crmFiles.forEach((file) => {
+    if (!revenueEligibleFile(file)) return;
+
+    const gross = revenueEstimateForFile(file);
+    const recordedExpenses = fileExpenseTotal(file);
+    const materialExpense = revenueMaterialForFile(file);
+    const expenses = recordedExpenses || materialExpense;
+    const existing = revenueRowForDashboardFile(file);
+
+    // A file with no money attached is not a revenue record yet.
+    if (!existing && !gross && !expenses) return;
+
+    if (!existing) {
+      crmRevenueRows.unshift({
+        id: makeCrmId("rev-file"),
+        date: normalizeDate(file.startDate || file.anticipatedCompletionDate || todayIso(0)),
+        dashboardFileId: file.id || "",
+        fileNumber: file.fileNumber || "",
+        clientJob: revenueLabelForFile(file),
+        gross,
+        expenses,
+        labor: 0,
+        profit: gross - expenses,
+        receiptNotes: "",
+        laborAssigns: "",
+        expenseLines: Array.isArray(file.expenseLines) ? file.expenseLines.map((line) => ({ ...line })) : [],
+        attachedEstimate: file.editableEstimate
+          ? { ...file.editableEstimate, dashboardFileId: file.id || "", fileNumber: file.fileNumber || "" }
+          : { dashboardFileId: file.id || "", fileNumber: file.fileNumber || "" },
+      });
+      changed = true;
+      return;
+    }
+
+    const before = JSON.stringify({
+      dashboardFileId: existing.dashboardFileId,
+      fileNumber: existing.fileNumber,
+      clientJob: existing.clientJob,
+      date: existing.date,
+      gross: existing.gross,
+      expenses: existing.expenses,
+      expenseLines: existing.expenseLines,
+    });
+
+    existing.dashboardFileId = existing.dashboardFileId || file.id || "";
+    existing.fileNumber = existing.fileNumber || file.fileNumber || "";
+    existing.clientJob = existing.clientJob || revenueLabelForFile(file);
+    existing.date = existing.date || normalizeDate(file.startDate || file.anticipatedCompletionDate || todayIso(0));
+    if (!(Number(existing.gross) || 0) && gross) existing.gross = gross;
+    if (!(Number(existing.expenses) || 0) && expenses) existing.expenses = expenses;
+    if (recordedExpenses) {
+      existing.expenseLines = Array.isArray(file.expenseLines) ? file.expenseLines.map((line) => ({ ...line })) : [];
+      existing.expenses = recordedExpenses;
+    }
+    syncRevenueExpenseTotal(existing);
+
+    if (before !== JSON.stringify({
+      dashboardFileId: existing.dashboardFileId,
+      fileNumber: existing.fileNumber,
+      clientJob: existing.clientJob,
+      date: existing.date,
+      gross: existing.gross,
+      expenses: existing.expenses,
+      expenseLines: existing.expenseLines,
+    })) changed = true;
+  });
+
+  if (changed) {
+    crmRevenueRows = dedupeRevenueRows(crmRevenueRows);
+    activeRevenueId = activeRevenueId || crmRevenueRows[0]?.id || null;
+    saveRevenueRows();
+  }
+  return changed;
+}
+
 function renderRevenue() {
+  repairRevenueRowsFromFiles();
   const totals = revenueTotals();
   $("crmRevenueGross").textContent = crmCurrency.format(totals.gross);
   $("crmRevenueExpenses").textContent = crmCurrency.format(totals.expenses);
@@ -6809,7 +6910,7 @@ document.querySelectorAll("[data-crm-view]").forEach((button) => {
   button.classList.toggle("active", button.dataset.crmView === view);
 });
   if (showRevenue) {
-    crmFiles.filter((file) => file?.fileStatus === "In Progress" && file?.revenueExcluded !== true).forEach((file) => ensureRevenueRowForFile(file));
+    repairRevenueRowsFromFiles();
     crmFiles.forEach((file) => {
       if (revenueRowForDashboardFile(file)) syncFileExpensesToRevenue(file);
     });
@@ -8163,8 +8264,17 @@ syncFileExpensesToRevenue = function syncFileExpensesToRevenueV4(file) {
   row.dashboardFileId = file.id || row.dashboardFileId || "";
   row.fileNumber = file.fileNumber || row.fileNumber || "";
   if (!row.clientJob || row.clientJob === "Unnamed Client") row.clientJob = revenueLabelForFile(file);
-  row.expenses = fileExpenseTotal(file);
-  row.expenseLines = (file.expenseLines || []).map((line) => ({ ...line }));
+  const recordedExpenses = fileExpenseTotal(file);
+  const hasExpenseRecords = (file.expenseLines || []).length > 0
+    || (file.animusExpenseLedgerV4 || []).length > 0;
+  // Keep the estimate's material cost when the job has not recorded receipts yet.
+  // Once receipts/manual expenses exist, they become the reported expense total.
+  if (hasExpenseRecords) {
+    row.expenses = recordedExpenses;
+    row.expenseLines = (file.expenseLines || []).map((line) => ({ ...line }));
+  } else if (!(Number(row.expenses) || 0)) {
+    row.expenses = revenueMaterialForFile(file);
+  }
   syncRevenueExpenseTotal(row);
   saveRevenueRows();
 };
