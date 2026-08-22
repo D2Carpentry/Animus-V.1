@@ -1169,12 +1169,17 @@ async function saveDashboardToGoogle() {
   }
 }
 
-function applyDashboardBackup(dashboard = {}) {
-  const files = Array.isArray(dashboard.dashboardFiles) ? dashboard.dashboardFiles : [];
-  const revenueRows = Array.isArray(dashboard.revenueRows) ? dashboard.revenueRows : [];
-  const payrollRows = Array.isArray(dashboard.payrollRows) ? dashboard.payrollRows : [];
-  const priceRows = Array.isArray(dashboard.priceRows) ? dashboard.priceRows : [];
-  const deletedPriceIds = Array.isArray(dashboard.deletedPriceIds) ? dashboard.deletedPriceIds : [];
+function applyDashboardBackup(dashboard = {}, options = {}) {
+  const preserveMissing = options.preserveMissing === true;
+  const hasFiles = Array.isArray(dashboard.dashboardFiles) && dashboard.dashboardFiles.length;
+  const hasRevenue = Array.isArray(dashboard.revenueRows) && dashboard.revenueRows.length;
+  const hasPayroll = Array.isArray(dashboard.payrollRows) && dashboard.payrollRows.length;
+  const hasPrices = Array.isArray(dashboard.priceRows) && dashboard.priceRows.length;
+  const files = hasFiles ? dashboard.dashboardFiles : (preserveMissing ? crmFiles : []);
+  const revenueRows = hasRevenue ? dashboard.revenueRows : (preserveMissing ? crmRevenueRows : []);
+  const payrollRows = hasPayroll ? dashboard.payrollRows : (preserveMissing ? crmPayrollRows : []);
+  const priceRows = hasPrices ? dashboard.priceRows : (preserveMissing ? crmPriceRows : []);
+  const deletedPriceIds = Array.isArray(dashboard.deletedPriceIds) ? dashboard.deletedPriceIds : (preserveMissing ? crmDeletedPriceIds : []);
   crmFiles = repairCrmFileCategories(files.map((file) => normalizeCrmFile({ ...file })));
   crmRevenueRows = dedupeRevenueRows(revenueRows.map((row) => ({ ...row })));
   crmPayrollRows = payrollRows.map((row) => normalizePayrollRow(row));
@@ -1298,7 +1303,12 @@ async function autoRestoreDashboardFromCloud() {
       showDashboardSaveStatus("Cloudflare does not have a saved Command Center yet. Showing this browser's temporary copy.", true);
       return;
     }
-    applyDashboardBackup(dashboard);
+    const localFileCount = Array.isArray(crmFiles) ? crmFiles.length : 0;
+    if (localFileCount && files.length < localFileCount) {
+      showDashboardSaveStatus(`Cloud copy has only ${files.length} files while this device has ${localFileCount}. Kept this device's copy. Use Restore Backup to choose a full snapshot.`, true);
+      return;
+    }
+    applyDashboardBackup(dashboard, { preserveMissing: true });
     renderCrm();
     showDashboardSaveStatus(`Loaded the current cloud copy: ${files.length} files. ${dashboardCloudCountSummary(files)}.`);
   } catch (error) {
