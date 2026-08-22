@@ -1,10 +1,10 @@
 // Shared navigation and page framing for the existing ANIMUS CRM views.
 (() => {
   const views = [
-    ["dashboard", "⌂", "Dashboard"], ["dashboard", "▣", "CRM / Files"], ["calendar", "□", "Calendar"], ["estimator", "▤", "Estimates"], ["dashboard", "▱", "Jobs"],
+    ["dashboard", "⌂", "Dashboard"], ["files", "▣", "CRM / Files"], ["calendar", "□", "Calendar"], ["estimator", "▤", "Estimates"], ["files", "▱", "Jobs"],
     ["revenue", "↗", "Revenue"], ["expenses", "▧", "Expenses"], ["payroll", "♙", "Payroll"], ["prices", "▦", "Price Database"],
   ];
-  const titles = { dashboard:"Command Center", calendar:"Calendar", revenue:"Revenue", expenses:"Expenses", payroll:"Payroll", prices:"Price Database", estimator:"Estimate Studio", invoice:"Invoice" };
+  const titles = { dashboard:"Command Center", files:"CRM / Files", calendar:"Calendar", revenue:"Revenue", expenses:"Expenses", payroll:"Payroll", prices:"Price Database", estimator:"Estimate Studio", invoice:"Invoice" };
   function currentView() {
     if (!document.querySelector("#crmExpensesView")?.hidden) return "expenses";
     if (!document.querySelector("#crmRevenueView")?.hidden) return "revenue";
@@ -12,7 +12,7 @@
     if (!document.querySelector("#crmCalendarView")?.hidden) return "calendar";
     if (!document.querySelector("#crmPriceView")?.hidden) return "prices";
     if (!document.querySelector("#crmEstimatorView")?.hidden) return "estimator";
-    return "dashboard";
+    return document.body.dataset.animusView === "files" ? "files" : "dashboard";
   }
   function syncShell() {
     const view = currentView();
