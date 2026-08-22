@@ -133,24 +133,64 @@
   async function scanReceipt(file) {
     if (!file) return;
     status("Reading receipt photo with AI...");
-    const imageDataUrl = await new Promise((resolve, reject) => {
-      const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(file);
+    if (typeof showReceiptLoading === "function") showReceiptLoading("Reading receipt photo with AI...");
+    try {
+      const imageDataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(file);
+      });
+      const response = await fetch("/api/receipt", {
+        method: "POST", headers: { "Content-Type": "application/json" }, cache: "no-store",
+        body: JSON.stringify({ imageDataUrl, fileName: file.name }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || payload.ok === false) throw new Error(payload.error || "Receipt AI could not read that image.");
+      const receipt = payload.receipt || {};
+      expenseState.draft = cleanDraft({
+        ...expenseState.draft, date: receipt.date || today(), vendor: receipt.vendor || "", category: receipt.category || "Supplies",
+        paymentType: receipt.paymentType || "", amount: receipt.total || "", notes: receipt.notes || "", imageDataUrl, imageTitle: file.name,
+        title: receipt.vendor || file.name.replace(/\.[^.]+$/, ""),
+        items: (receipt.lineItems || []).map((item) => ({ name: item.name || "", price: item.total || "", category: item.category || receipt.category || "Supplies" })),
+      });
+      renderExpenseV5();
+      status(payload.aiAvailable ? "Receipt read with AI. Review it, then save." : "Receipt attached. Review the fields, then save.", payload.aiAvailable ? "success" : "");
+    } finally {
+      if (typeof hideReceiptLoading === "function") hideReceiptLoading();
+    }
+  }
+
+  function openPriceImport() {
+    captureDraft();
+    const draft = expenseState.draft || cleanDraft();
+    const database = typeof priceDatabaseRows === "function" ? priceDatabaseRows() : [];
+    const normalizer = typeof normalizeReceiptProduct === "function" ? normalizeReceiptProduct : (value) => String(value || "").trim().toLowerCase();
+    const lines = draft.items.filter((item) => item.name.trim() && amount(item.price) > 0).map((item, index) => {
+      const product = item.name.trim();
+      const price = amount(item.price);
+      const existing = database.find((row) => normalizer(row.product || row.name) === normalizer(product));
+      const existingPrice = amount(existing?.defaultPrice || existing?.priceLow || existing?.price);
+      const changed = Boolean(existing) && Math.abs(existingPrice - price) > 0.004;
+      return { id: `v5-price-${index}`, product, price, category: item.category || draft.category, vendor: draft.vendor, existingPrice, status: existing ? (changed ? "Update price" : "Already current") : "New item", checked: !existing || changed };
     });
-    const response = await fetch("/api/receipt", {
-      method: "POST", headers: { "Content-Type": "application/json" }, cache: "no-store",
-      body: JSON.stringify({ imageDataUrl, fileName: file.name }),
+    if (!lines.length) return status("Add at least one named receipt item with a price before importing.", "error");
+    document.querySelector("#animusV5PartsModal")?.remove();
+    document.body.insertAdjacentHTML("beforeend", `<div class="crm-modal-backdrop" id="animusV5PartsModal"><section class="crm-choice-modal crm-parts-import-modal" role="dialog" aria-modal="true" aria-labelledby="animusV5PartsTitle"><button type="button" class="crm-modal-close" id="animusV5PartsClose" aria-label="Close">×</button><p class="eyebrow">Price Database</p><h2 id="animusV5PartsTitle">Review Receipt Items</h2><p class="crm-helper-text">Choose the items to add. Existing items are selected only when the receipt price is different.</p><div class="crm-parts-import-list">${lines.map((line) => `<div class="crm-parts-import-row"><input type="checkbox" data-v5-price-check="${line.id}"${line.checked ? " checked" : ""}><span><strong>${line.status}${line.existingPrice ? ` · Current ${money(line.existingPrice)}` : ""}</strong><input data-v5-price-product="${line.id}" value="${esc(line.product)}" placeholder="Item name"><input data-v5-price-amount="${line.id}" value="${esc(line.price)}" inputmode="decimal" placeholder="Price"><input data-v5-price-category="${line.id}" value="${esc(line.category)}" placeholder="Category"><input data-v5-price-vendor="${line.id}" value="${esc(line.vendor)}" placeholder="Vendor"></span></div>`).join("")}</div><div class="crm-choice-actions"><button type="button" class="icon-button primary-action" id="animusV5PartsConfirm">Add Checked Items</button></div></section></div>`);
+    const close = () => document.querySelector("#animusV5PartsModal")?.remove();
+    document.querySelector("#animusV5PartsClose")?.addEventListener("click", close);
+    document.querySelector("#animusV5PartsModal")?.addEventListener("click", (event) => { if (event.target.id === "animusV5PartsModal") close(); });
+    document.querySelector("#animusV5PartsConfirm")?.addEventListener("click", () => {
+      const selected = lines.filter((line) => document.querySelector(`[data-v5-price-check="${line.id}"]`)?.checked).map((line) => ({
+        product: document.querySelector(`[data-v5-price-product="${line.id}"]`)?.value.trim() || line.product,
+        price: document.querySelector(`[data-v5-price-amount="${line.id}"]`)?.value.trim() || line.price,
+        category: document.querySelector(`[data-v5-price-category="${line.id}"]`)?.value.trim() || line.category,
+        vendor: document.querySelector(`[data-v5-price-vendor="${line.id}"]`)?.value.trim() || line.vendor,
+        unit: "each",
+      }));
+      if (!selected.length) return;
+      if (typeof importLinesToPriceDatabase !== "function") return status("The Price Database is not available yet.", "error");
+      const result = importLinesToPriceDatabase(selected, { vendor: draft.vendor, date: draft.date, category: draft.category });
+      close();
+      status(`${result.updatedCount} updated, ${result.addedCount} added to the Price Database.`, "success");
     });
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok || payload.ok === false) throw new Error(payload.error || "Receipt AI could not read that image.");
-    const receipt = payload.receipt || {};
-    expenseState.draft = cleanDraft({
-      ...expenseState.draft, date: receipt.date || today(), vendor: receipt.vendor || "", category: receipt.category || "Supplies",
-      paymentType: receipt.paymentType || "", amount: receipt.total || "", notes: receipt.notes || "", imageDataUrl, imageTitle: file.name,
-      title: receipt.vendor || file.name.replace(/\.[^.]+$/, ""),
-      items: (receipt.lineItems || []).map((item) => ({ name: item.name || "", price: item.total || "", category: item.category || receipt.category || "Supplies" })),
-    });
-    renderExpenseV5();
-    status(payload.aiAvailable ? "Receipt read with AI. Review it, then save." : "Receipt attached. Review the fields, then save.", payload.aiAvailable ? "success" : "");
   }
 
   function renderExpenseV5Markup() {
@@ -166,7 +206,7 @@
       <section class="crm-expenses-clean"><section class="panel crm-detail-card crm-file-receipt-panel"><div class="panel-header"><div><p class="eyebrow">New / Edit Expense</p><h2>Receipt Details</h2></div><p class="crm-helper-text" id="animusExpenseV5Status">${expenseState.loading ? "Loading cloud expenses..." : "Every saved receipt is stored separately in Cloudflare."}</p></div>
         <div class="crm-file-receipt-top"><div class="crm-receipt-preview crm-ai-receipt-preview">${draft.imageDataUrl ? `<img src="${esc(draft.imageDataUrl)}" alt="Receipt preview"><p>${esc(draft.imageTitle || "Receipt")}</p>` : `<div class="crm-receipt-preview-empty">No receipt photo selected yet.</div>`}</div>
           <div class="field-grid two crm-file-receipt-fields"><label>Date<input id="animusV5Date" type="date" value="${esc(draft.date)}"></label><label>Vendor<input id="animusV5Vendor" value="${esc(draft.vendor)}" placeholder="Home Depot"></label><label>Title<input id="animusV5Title" value="${esc(draft.title)}" placeholder="Cabinet hardware, paint supplies, fuel"></label><label>Category<select id="animusV5Category">${["Supplies","Materials","Fuel","Equipment","Labor","Other"].map((value) => `<option${draft.category === value ? " selected" : ""}>${value}</option>`).join("")}</select></label><label>Paid By<select id="animusV5Payment">${["","Cash","Credit - Chase Business","Credit - Bank of America","Credit - Chase Personal"].map((value) => `<option value="${esc(value)}"${draft.paymentType === value ? " selected" : ""}>${value || "Select"}</option>`).join("")}</select></label><label>Receipt Total<input id="animusV5Amount" value="${esc(draft.amount)}" inputmode="decimal" placeholder="0.00"></label><label class="crm-file-receipt-wide">Notes<textarea id="animusV5Notes" rows="3" placeholder="What was purchased or why this expense was added">${esc(draft.notes)}</textarea></label></div></div>
-        <div class="crm-file-receipt-lines"><div class="crm-file-receipt-lines-heading"><h3>Expense Items</h3><strong>${money(currentTotal())}</strong></div><div class="animus-v5-items">${items}</div><button type="button" id="animusV5AddItem">Add Item Line</button></div><div class="crm-receipt-review-actions"><button type="button" class="primary-action" id="animusV5Save">Save Expense</button><button type="button" id="animusV5Clear">Clear</button></div></section>
+        <div class="crm-file-receipt-lines"><div class="crm-file-receipt-lines-heading"><h3>Expense Items</h3><strong>${money(currentTotal())}</strong></div><div class="animus-v5-items">${items}</div><button type="button" id="animusV5AddItem">Add Item Line</button></div><div class="crm-receipt-review-actions"><button type="button" id="animusV5Import">Add Items to Price Database</button><button type="button" class="primary-action" id="animusV5Save">Save Expense</button><button type="button" id="animusV5Clear">Clear</button></div></section>
       <section class="panel crm-detail-card crm-receipt-history-panel"><div class="panel-header"><div><p class="eyebrow">Receipt History</p><h2>${file ? `${esc(file.clientName || "Unnamed Client")} Expenses` : "No file selected"}</h2></div><strong>${money(total)}</strong></div><div class="crm-manual-expense-cards crm-receipt-history-list">${history}</div></section></section>`;
     bindExpenseV5();
   }
@@ -190,6 +230,7 @@
     document.querySelector("#animusV5Scan")?.addEventListener("click", () => document.querySelector("#animusV5Upload")?.click());
     document.querySelector("#animusV5Upload")?.addEventListener("change", async (event) => { try { await scanReceipt(event.target.files?.[0]); } catch (error) { status(error.message || "Receipt could not be read.", "error"); } event.target.value = ""; });
     document.querySelector("#animusV5AddItem")?.addEventListener("click", () => { captureDraft(); expenseState.draft.items.push({ name: "", price: "", category: expenseState.draft.category }); renderExpenseV5Markup(); });
+    document.querySelector("#animusV5Import")?.addEventListener("click", openPriceImport);
     document.querySelector("#animusV5Clear")?.addEventListener("click", () => { expenseState.draft = cleanDraft(); renderExpenseV5Markup(); });
     document.querySelector("#animusV5Save")?.addEventListener("click", async () => { try { captureDraft(); await saveExpense(); } catch (error) { status(error.message || "Expense could not be saved.", "error"); } });
     document.querySelectorAll("[data-v5-remove-item]").forEach((button) => button.addEventListener("click", () => { captureDraft(); expenseState.draft.items.splice(Number(button.dataset.v5RemoveItem), 1); if (!expenseState.draft.items.length) expenseState.draft.items.push({ name: "", price: "", category: expenseState.draft.category }); renderExpenseV5Markup(); }));
