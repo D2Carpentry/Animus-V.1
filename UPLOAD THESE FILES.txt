@@ -1,5 +1,7 @@
 Upload every file in this folder to the main branch of the ANIMUS GitHub repository.
 
+Important: keep the included functions/api/dashboard.js inside its functions/api folder when uploading. It repairs the Cloudflare save/load connection.
+
 This update includes:
 - Command Center work-file status cards that open the matching Work Files section.
 - Business Performance page for pipeline and financial reporting.

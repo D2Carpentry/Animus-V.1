@@ -780,7 +780,7 @@ function buildDashboardSyncPayload() {
     syncExpenseFileForStorage(file);
   });
   syncAllFileExpensesToRevenue();
-  return {
+  const dashboard = {
     action: "dashboardSync",
     syncedAt: new Date().toISOString(),
     source: "D2 Command Center",
@@ -790,6 +790,12 @@ function buildDashboardSyncPayload() {
     priceRows: crmPriceRows,
     deletedPriceIds: crmDeletedPriceIds,
   };
+  // Receipt details stay with their work file. Large photo data is left out of
+  // the main cloud snapshot so a photo cannot overload the dashboard save.
+  return JSON.parse(JSON.stringify(dashboard, (key, value) => {
+    if (["imageDataUrl", "receiptDataUrl", "thumbnailDataUrl", "photoDataUrl"].includes(key) && typeof value === "string" && value.startsWith("data:")) return "";
+    return value;
+  }));
 }
 
 function dashboardCloudCounts(files = []) {

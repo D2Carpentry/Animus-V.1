@@ -337,14 +337,13 @@ async function handlePost(context) {
     }, 400);
   }
 
-  const existingDashboard = await readExistingDashboard(env);
   const dashboard = {
-    ...mergeDashboard(existingDashboard || {}, payload),
+    ...payload,
     action: "dashboardSync",
     syncedAt: new Date().toISOString(),
     savedTo: "Cloudflare R2",
   };
-  const body = JSON.stringify(dashboard, null, 2);
+  const body = JSON.stringify(dashboard);
   const dryRun = new URL(request.url).searchParams.has("dryRun");
 
   if (!dryRun) {
@@ -364,7 +363,8 @@ async function handlePost(context) {
   return jsonResponse({
     ok: true,
     dryRun,
-    dashboard,
+    summary: dashboardSummary(dashboard, DASHBOARD_KEY),
+    syncedAt: dashboard.syncedAt,
     fileCount: files.length,
     revenueCount: revenueRows.length,
     payrollCount: payrollRows.length,
