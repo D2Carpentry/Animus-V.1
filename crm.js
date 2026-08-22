@@ -1230,7 +1230,10 @@ async function loadDashboardFromGoogle() {
     const menu = candidates.map((backup, index) => {
       const counts = backup.counts || {};
       const savedAt = backup.syncedAt || backup.uploaded || "Unknown time";
-      return `${index + 1}. ${backup.totalFiles} files | Closed ${counts.archive || 0} | Pending Estimates ${counts.estimate || 0} | In Negotiation ${counts.negotiation || 0} | Active ${counts.active || 0} | ${savedAt}`;
+      const receiptDetails = typeof backup.receiptCount === "number"
+        ? ` | Receipts ${backup.receiptCount}`
+        : "";
+      return `${index + 1}. ${backup.totalFiles} files | Closed ${counts.archive || 0} | Pending Estimates ${counts.estimate || 0} | In Negotiation ${counts.negotiation || 0} | Active ${counts.active || 0}${receiptDetails} | ${savedAt}`;
     }).join("\n");
     const choice = window.prompt(`Choose the Cloudflare backup to restore by number:\n\n${menu}`, "1");
     if (!choice) return;

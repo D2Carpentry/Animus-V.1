@@ -64,11 +64,25 @@ function fileCounts(files = []) {
 
 function dashboardSummary(dashboard = {}, key = "") {
   const files = Array.isArray(dashboard.dashboardFiles) ? dashboard.dashboardFiles : [];
+  const receiptIds = new Set();
+  let expenseLineCount = 0;
+  files.forEach((file) => {
+    [file?.freshExpenseReceipts, file?.expenseReceipts, file?.receiptHistory].forEach((receipts) => {
+      (Array.isArray(receipts) ? receipts : []).forEach((receipt, index) => {
+        const id = String(receipt?.id || receipt?.receiptGroupId || `${file?.id || "file"}-${index}`).trim();
+        if (id) receiptIds.add(id);
+      });
+    });
+    expenseLineCount += (Array.isArray(file?.expenseLines) ? file.expenseLines.length : 0);
+    expenseLineCount += (Array.isArray(file?.animusManualExpenses) ? file.animusManualExpenses.length : 0);
+  });
   return {
     key,
     syncedAt: dashboard.syncedAt || "",
     totalFiles: files.length,
     counts: fileCounts(files),
+    receiptCount: receiptIds.size,
+    expenseLineCount,
   };
 }
 
