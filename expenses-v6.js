@@ -2,7 +2,9 @@
 // UI layer over the existing receipt AI, Cloudflare receipt ledger, Revenue, and Price Database hooks.
 (() => {
   const API = "/api/expenses";
-  const state = { entries: [], loaded: false, loading: false, selectedId: "", scope: "all", tab: "processed", filters: {}, draft: null, editing: false, processStep: "", requestId: 0 };
+  // "home" is the business-wide landing page. "file" is used only when a
+  // Work File or Revenue row deliberately opens its own expense ledger.
+  const state = { entries: [], loaded: false, loading: false, selectedId: "", scope: "all", mode: "home", tab: "processed", filters: {}, draft: null, editing: false, processStep: "", requestId: 0 };
   const money = (value) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(value) || 0);
   const amount = (value) => Number(String(value || "").replace(/[$,]/g, "")) || 0;
   const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#039;" }[char]));
@@ -70,6 +72,33 @@
     return state.entries.filter((entry) => String(entry.date || "").slice(0,7) === month).reduce((sum,entry) => sum + amount(entry.amount), 0);
   }
 
+  function fileExpenseGroups() {
+    const groups = new Map();
+    state.entries.forEach((entry) => {
+      const key = String(entry.fileId || "");
+      if (!key) return;
+      const current = groups.get(key) || { file: findFile(key) || entry.file, entries: [], total: 0, latest: "" };
+      current.entries.push(entry);
+      current.total += amount(entry.amount);
+      const stamp = String(entry.updatedAt || entry.createdAt || entry.date || "");
+      if (stamp > current.latest) current.latest = stamp;
+      groups.set(key, current);
+    });
+    return [...groups.values()].sort((a, b) => String(b.latest).localeCompare(String(a.latest)));
+  }
+
+  function expenseHomeMarkup() {
+    if (state.loading) return `<section class="expense-home-card expense-empty">Loading saved expense ledgers from Cloudflare...</section>`;
+    const groups = fileExpenseGroups();
+    if (!groups.length) return `<section class="expense-home-card expense-empty"><strong>No work files have saved expenses yet.</strong><span>Open a work file, choose Expenses, then add the first receipt or manual expense.</span></section>`;
+    return `<section class="expense-home-card"><div class="expense-home-card-head"><div><h2>Work Files with Expenses</h2><p>Open a file to review, add, or edit only its own saved expenses.</p></div><span>${groups.length} file${groups.length === 1 ? "" : "s"}</span></div><div class="expense-file-ledger-list">${groups.map((group) => {
+      const file = group.file || {};
+      const title = `${file.fileNumber || "Project"} · ${file.clientName || "Unnamed Client"}`;
+      const latest = String(group.latest || group.entries[0]?.date || "").slice(0, 10) || "No date";
+      return `<button type="button" class="expense-file-ledger" data-expense-file-open="${esc(fileKey(file) || group.entries[0]?.fileId)}"><span class="expense-file-ledger-avatar">${esc(String(file.clientName || "?").split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "?")}</span><span class="expense-file-ledger-copy"><strong>${esc(title)}</strong><small>${group.entries.length} saved expense${group.entries.length === 1 ? "" : "s"} · Updated ${esc(latest)}</small></span><span class="expense-file-ledger-total">${money(group.total)}<small>Open ledger ›</small></span></button>`;
+    }).join("")}</div></section>`;
+  }
+
   function drawerData() { return state.draft || selectedEntry(); }
 
   function processingMarkup() {
@@ -111,10 +140,22 @@
     if (!root) return;
     setExpenseCenterMode(true);
     const rows = visibleEntries();
+    const groups = fileExpenseGroups();
     const categories = [...new Set(state.entries.map((entry) => entry.category).filter(Boolean))];
     const vendors = [...new Set(state.entries.map((entry) => entry.vendor).filter(Boolean))].sort();
     const activeTabs = [["inbox","Receipt Inbox"],["processed","Processed Expenses"],["history","Expense History"],["categories","Categories"],["vendors","Vendors"]];
-    root.innerHTML = `<section class="expense-center"><aside class="expense-sidebar"><div class="expense-brand"><img src="assets/d2-logo.png" alt="D2 logo"><span>ANIMUS<small>Command Center</small></span></div><p class="expense-side-label">Workspace</p>${[["dashboard","⌂","Dashboard"],["dashboard","▣","CRM / Files"],["calendar","□","Calendar"],["estimator","▤","Estimates"],["dashboard","▱","Jobs"]].map(([view,icon,label]) => `<button class="expense-side-button" data-expense-view="${view}"><span class="expense-side-icon">${icon}</span>${label}</button>`).join("")}<p class="expense-side-label">Business</p>${[["revenue","↗","Revenue"],["expenses","▧","Expenses"],["payroll","♙","Payroll"],["prices","▦","Price Database"]].map(([view,icon,label]) => `<button class="expense-side-button ${view === "expenses" ? "active" : ""}" data-expense-view="${view}"><span class="expense-side-icon">${icon}</span>${label}</button>`).join("")}<div class="expense-side-account"><strong>D2 Carpentry &amp; Design</strong>Owner</div></aside><main class="expense-main"><header class="expense-header"><div><p class="expense-breadcrumb">Home &nbsp;›&nbsp; Expenses &nbsp;›&nbsp; Receipt Reader</p><h1 class="expense-title">Expenses</h1></div><div class="expense-header-actions"><button class="expense-button" id="expenseUpload">↑ Upload Receipt</button><button class="expense-button primary" id="expenseScan">⌑ Scan Receipt</button><button class="expense-button" id="expenseRefresh">↻</button><input id="expenseUploadInput" type="file" accept="image/*" hidden></div></header><section class="expense-kpis"><article class="expense-kpi"><div class="expense-kpi-label">This Month Expenses</div><div class="expense-kpi-value">${money(thisMonthExpenses())}</div><div class="expense-kpi-note">From saved expense records</div><div class="expense-kpi-mark">$</div></article><article class="expense-kpi"><div class="expense-kpi-label">Receipts Processed</div><div class="expense-kpi-value">${state.entries.length}</div><div class="expense-kpi-note">Saved Cloudflare expense records</div><div class="expense-kpi-mark">▧</div></article><article class="expense-kpi"><div class="expense-kpi-label">Receipt Images</div><div class="expense-kpi-value">${state.entries.filter((entry) => entry.imageDataUrl).length}</div><div class="expense-kpi-note">Attached receipt images</div><div class="expense-kpi-mark">▣</div></article><article class="expense-kpi"><div class="expense-kpi-label">Needs Review</div><div class="expense-kpi-value">—</div><div class="expense-kpi-note">Confidence is not stored yet</div><div class="expense-kpi-mark">!</div></article></section><nav class="expense-tabs">${activeTabs.map(([value,label]) => `<button class="expense-tab ${state.tab === value ? "active" : ""}" data-expense-tab="${value}">${label}</button>`).join("")}</nav><section class="expense-workspace"><section class="expense-table-card"><div class="expense-toolbar"><input class="expense-search" id="expenseSearch" value="${esc(state.filters.query || "")}" placeholder="Search receipts..."><select class="expense-select" id="expenseScope">${fileOptions(state.scope)}</select><select class="expense-select" id="expenseCategory"><option value="">Category</option>${categories.map((value) => `<option${state.filters.category === value ? " selected" : ""}>${esc(value)}</option>`).join("")}</select><select class="expense-select" id="expenseVendor"><option value="">Vendor</option>${vendors.map((value) => `<option${state.filters.vendor === value ? " selected" : ""}>${esc(value)}</option>`).join("")}</select><input class="expense-select" id="expenseFrom" type="date" value="${esc(state.filters.from || "")}"><input class="expense-select" id="expenseTo" type="date" value="${esc(state.filters.to || "")}"><span class="expense-count">${rows.length} receipt${rows.length === 1 ? "" : "s"}</span></div>${tableMarkup(rows)}</section>${drawerMarkup()}</section></main></section>`;
+    const isHome = state.mode === "home";
+    const targetFile = state.scope !== "all" ? findFile(state.scope) : null;
+    const headerEntries = isHome ? state.entries : rows;
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    const headerThisMonth = headerEntries.filter((entry) => String(entry.date || "").slice(0, 7) === currentMonth).reduce((sum, entry) => sum + amount(entry.amount), 0);
+    const headerTotal = headerEntries.reduce((sum, entry) => sum + amount(entry.amount), 0);
+    const pageTitle = isHome ? "Expenses" : `${targetFile?.clientName || "Work File"} Expenses`;
+    const breadcrumb = isHome ? "Home &nbsp;›&nbsp; Expenses" : `Expenses &nbsp;›&nbsp; ${esc(targetFile?.fileNumber || "Work File")}`;
+    const body = isHome
+      ? `<section class="expense-home-workspace">${expenseHomeMarkup()}</section>`
+      : `<section class="expense-workspace"><section class="expense-table-card"><div class="expense-toolbar"><button class="expense-button small" id="expenseBackHome">← All expense files</button><input class="expense-search" id="expenseSearch" value="${esc(state.filters.query || "")}" placeholder="Search this file's expenses..."><select class="expense-select" id="expenseCategory"><option value="">Category</option>${categories.map((value) => `<option${state.filters.category === value ? " selected" : ""}>${esc(value)}</option>`).join("")}</select><select class="expense-select" id="expenseVendor"><option value="">Vendor</option>${vendors.map((value) => `<option${state.filters.vendor === value ? " selected" : ""}>${esc(value)}</option>`).join("")}</select><input class="expense-select" id="expenseFrom" type="date" value="${esc(state.filters.from || "")}"><input class="expense-select" id="expenseTo" type="date" value="${esc(state.filters.to || "")}"><span class="expense-count">${rows.length} receipt${rows.length === 1 ? "" : "s"}</span></div>${tableMarkup(rows)}</section>${drawerMarkup()}</section>`;
+    root.innerHTML = `<section class="expense-center"><aside class="expense-sidebar"><div class="expense-brand"><img src="assets/d2-logo.png" alt="D2 logo"><span>ANIMUS<small>Command Center</small></span></div><p class="expense-side-label">Workspace</p>${[["dashboard","⌂","Dashboard"],["dashboard","▣","CRM / Files"],["calendar","□","Calendar"],["estimator","▤","Estimates"],["dashboard","▱","Jobs"]].map(([view,icon,label]) => `<button class="expense-side-button" data-expense-view="${view}"><span class="expense-side-icon">${icon}</span>${label}</button>`).join("")}<p class="expense-side-label">Business</p>${[["revenue","↗","Revenue"],["expenses","▧","Expenses"],["payroll","♙","Payroll"],["prices","▦","Price Database"]].map(([view,icon,label]) => `<button class="expense-side-button ${view === "expenses" ? "active" : ""}" data-expense-view="${view}"><span class="expense-side-icon">${icon}</span>${label}</button>`).join("")}<div class="expense-side-account"><strong>D2 Carpentry &amp; Design</strong>Owner</div></aside><main class="expense-main"><header class="expense-header"><div><p class="expense-breadcrumb">${breadcrumb}</p><h1 class="expense-title">${esc(pageTitle)}</h1></div><div class="expense-header-actions"><button class="expense-button" id="expenseUpload">↑ Upload Receipt</button><button class="expense-button primary" id="expenseScan">⌑ Scan Receipt</button><button class="expense-button" id="expenseRefresh">↻</button><input id="expenseUploadInput" type="file" accept="image/*" hidden></div></header><section class="expense-kpis"><article class="expense-kpi"><div class="expense-kpi-label">This Month Expenses</div><div class="expense-kpi-value">${money(headerThisMonth)}</div><div class="expense-kpi-note">${isHome ? "Across all saved work files" : "For this work file"}</div><div class="expense-kpi-mark">$</div></article><article class="expense-kpi"><div class="expense-kpi-label">${isHome ? "Files with Expenses" : "Saved Expenses"}</div><div class="expense-kpi-value">${isHome ? groups.length : headerEntries.length}</div><div class="expense-kpi-note">${isHome ? "Work files with saved costs" : "Receipts and manual costs"}</div><div class="expense-kpi-mark">▤</div></article><article class="expense-kpi"><div class="expense-kpi-label">Receipt Images</div><div class="expense-kpi-value">${headerEntries.filter((entry) => entry.imageDataUrl).length}</div><div class="expense-kpi-note">Attached receipt images</div><div class="expense-kpi-mark">▣</div></article><article class="expense-kpi"><div class="expense-kpi-label">${isHome ? "Total Expenses" : "File Expense Total"}</div><div class="expense-kpi-value">${money(headerTotal)}</div><div class="expense-kpi-note">${isHome ? "All saved work-file expenses" : "All saved costs on this file"}</div><div class="expense-kpi-mark">$</div></article></section>${body}</main></section>`;
     bind();
   }
 
@@ -196,23 +237,43 @@
     document.querySelectorAll("[data-expense-view]").forEach((button) => button.addEventListener("click", () => { const view=button.dataset.expenseView; if (view !== "expenses") { setExpenseCenterMode(false); switchCrmView(view); } }));
     document.querySelectorAll("[data-expense-tab]").forEach((button) => button.addEventListener("click",()=>{state.tab=button.dataset.expenseTab;render();}));
     document.querySelector("#expenseRefresh")?.addEventListener("click",loadExpenses); document.querySelector("#expenseUpload")?.addEventListener("click",()=>document.querySelector("#expenseUploadInput")?.click()); document.querySelector("#expenseScan")?.addEventListener("click",()=>document.querySelector("#expenseUploadInput")?.click()); document.querySelector("#expenseUploadInput")?.addEventListener("change",(event)=>scan(event.target.files?.[0]).catch((error)=>{state.processStep="";render();window.alert(error.message || "Receipt could not be read.");}));
+    document.querySelector("#expenseBackHome")?.addEventListener("click", () => { state.mode = "home"; state.scope = "all"; state.selectedId = ""; state.draft = null; state.editing = false; render(); });
+    document.querySelectorAll("[data-expense-file-open]").forEach((button) => button.addEventListener("click", () => { const file = findFile(button.dataset.expenseFileOpen); if (!file) return; if (typeof activeFileId !== "undefined") activeFileId = file.id; state.mode = "file"; state.scope = fileKey(file); state.selectedId = ""; state.draft = null; state.editing = false; render(); }));
     document.querySelector("#expenseSearch")?.addEventListener("input",(event)=>{state.filters.query=event.target.value;render();}); document.querySelector("#expenseScope")?.addEventListener("change",(event)=>{state.scope=event.target.value;render();}); document.querySelector("#expenseCategory")?.addEventListener("change",(event)=>{state.filters.category=event.target.value;render();}); document.querySelector("#expenseVendor")?.addEventListener("change",(event)=>{state.filters.vendor=event.target.value;render();}); document.querySelector("#expenseFrom")?.addEventListener("change",(event)=>{state.filters.from=event.target.value;render();}); document.querySelector("#expenseTo")?.addEventListener("change",(event)=>{state.filters.to=event.target.value;render();});
     document.querySelectorAll("[data-expense-open]").forEach((button)=>button.addEventListener("click",()=>{state.selectedId=button.dataset.expenseOpen;state.draft=null;state.editing=false;render();})); document.querySelectorAll("[data-expense-edit]").forEach((button)=>button.addEventListener("click",()=>{state.selectedId=button.dataset.expenseEdit;state.draft=cleanDraft(selectedEntry());state.editing=true;render();})); document.querySelector("#expenseDrawerClose")?.addEventListener("click",()=>{state.selectedId="";state.draft=null;state.editing=false;render();});
     document.querySelector("#expenseEditToggle")?.addEventListener("click",()=>{if (!state.editing) state.draft=cleanDraft(selectedEntry()); else captureDrawer();state.editing=!state.editing;render();}); document.querySelector("#expenseSave")?.addEventListener("click",()=>saveDrawer().catch((error)=>window.alert(error.message || "Expense could not be saved."))); document.querySelector("#expenseSaveLater")?.addEventListener("click",()=>{captureDrawer();state.editing=true;render();}); document.querySelector("#expenseDelete")?.addEventListener("click",()=>deleteSelected().catch((error)=>window.alert(error.message || "Expense could not be deleted."))); document.querySelector("#expenseImportAll")?.addEventListener("click",()=>showPriceImport(drawerData()?.items || [])); document.querySelectorAll("[data-expense-item-import]").forEach((button)=>button.addEventListener("click",()=>showPriceImport([drawerData()?.items?.[Number(button.dataset.expenseItemImport)]])));
   }
 
   // Replaces only the Expenses view. The existing scanner and storage functions are left intact.
+  // The sidebar always opens the Expense Home. Calls from a specific Work File
+  // explicitly use the file scope, so records never appear mixed together.
+  const legacySwitchCrmView = typeof switchCrmView === "function" ? switchCrmView : null;
+  if (legacySwitchCrmView) {
+    switchCrmView = function animusExpenseCenterSwitch(view, options = {}) {
+      if (view === "expenses") {
+        const fileScoped = options?.expenseScope === "file" || options?.expenseFileId;
+        const file = typeof activeFile === "function" ? activeFile() : null;
+        state.mode = fileScoped && file ? "file" : "home";
+        state.scope = fileScoped && file ? fileKey(file) : "all";
+        state.selectedId = "";
+        state.draft = null;
+        state.editing = false;
+      }
+      return legacySwitchCrmView(view);
+    };
+    window.switchCrmView = switchCrmView;
+  }
   const legacyOpenFileExpenses = typeof openFileExpenses === "function" ? openFileExpenses : null;
-  if (legacyOpenFileExpenses) {
-    openFileExpenses = function animusOpenFileExpenses(...args) {
-      legacyOpenFileExpenses(...args);
+  openFileExpenses = function animusOpenFileExpenses(...args) {
+      if (legacyOpenFileExpenses) legacyOpenFileExpenses(...args);
       const file = typeof activeFile === "function" ? activeFile() : null;
       state.scope = fileKey(file) || "all";
+      state.mode = file ? "file" : "home";
       state.selectedId = "";
-      render();
+      if (typeof switchCrmView === "function") switchCrmView("expenses", { expenseScope: "file" }); else render();
       if (!state.loaded && !state.loading) loadExpenses();
-    };
-  }
+  };
+  window.openFileExpenses = openFileExpenses;
   // Revenue rows open expenses for their linked customer file. Keep the new
   // center focused on that file rather than making the user filter it again.
   const legacyOpenRevenueExpenses = typeof openRevenueExpenses === "function" ? openRevenueExpenses : null;
@@ -221,6 +282,7 @@
       legacyOpenRevenueExpenses(...args);
       const file = typeof activeFile === "function" ? activeFile() : null;
       state.scope = fileKey(file) || "all";
+      state.mode = file ? "file" : "home";
       state.selectedId = "";
       render();
       if (!state.loaded && !state.loading) loadExpenses();

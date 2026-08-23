@@ -1,3 +1,13 @@
-Upload all four files in this folder to the root of the ANIMUS-V.1 repository.
-This update keeps every saved expense in one ledger and recalculates the linked Revenue expense total from the entire ledger after each save.
-It also keeps a manually deleted Revenue row from being recreated automatically.
+Upload every file in this folder to the root of the ANIMUS-V.1 GitHub repository.
+
+This update includes:
+- A global Expenses home page that lists only work files with saved expenses.
+- File-specific expense ledgers when opening Expenses from a work file or Revenue row.
+- Correct global and per-file totals in the Expenses header.
+
+Upload these five files together:
+- crm.html
+- crm.js
+- expenses-v6.js
+- expenses-v6.css
+- animus-work-file.js

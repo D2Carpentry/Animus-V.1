@@ -3082,7 +3082,7 @@ function openRevenueExpenses(rowId) {
   activeRevenueId = row.id;
   const file = findFileForRevenue(row);
   if (file) activeFileId = file.id;
-  switchCrmView("expenses");
+  switchCrmView("expenses", { expenseScope: "file" });
   renderFileExpenses();
 }
 
@@ -7991,7 +7991,7 @@ $("crmOpenInvoice").addEventListener("click", openActiveInvoice);
 $("crmOpenExpenses").addEventListener("click", () => {
   refreshCrmFilesFromStorage();
   saveActiveFile();
-  switchCrmView("expenses");
+  switchCrmView("expenses", { expenseScope: "file" });
 });
 $("crmEstimatorOpenFile")?.addEventListener("click", () => switchCrmView("files"));
 $("crmEstimatorOpenEstimate")?.addEventListener("click", () => openActiveEstimate());

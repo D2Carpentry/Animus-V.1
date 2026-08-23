@@ -234,7 +234,7 @@
     const id = { estimate: "crmOpenEstimate", supplement: "crmCreateSupplement", assignment: "crmOpenAssignment", invoice: "crmOpenInvoice", archive: "crmArchiveFile", delete: "crmDeleteFile" }[action];
     if (action === "expenses") {
       if (typeof window.openFileExpenses === "function") window.openFileExpenses();
-      else if (typeof window.switchCrmView === "function") window.switchCrmView("expenses");
+      else if (typeof window.switchCrmView === "function") window.switchCrmView("expenses", { expenseScope: "file" });
       return;
     }
     byId(id)?.click();
