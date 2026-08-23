@@ -23,8 +23,8 @@
   function createShell() {
     if (document.querySelector("#animusGlobalSidebar")) return;
     document.body.classList.add("animus-unified-ui");
-    const workspace = views.slice(0,5);
-    const business = views.slice(5);
+    const workspace = views.slice(0,4);
+    const business = views.slice(4);
     const makeButtons = (items) => items.map(([view, icon, label]) => `<button type="button" data-animus-shell-view="${view}"><span class="animus-global-icon">${icon}</span>${label}</button>`).join("");
     document.body.insertAdjacentHTML("afterbegin", `<aside class="animus-global-sidebar" id="animusGlobalSidebar"><div class="animus-global-brand"><img src="assets/d2-logo.png" alt="D2 logo"><span>ANIMUS<small>Command Center</small></span></div><p class="animus-global-label">Workspace</p><nav class="animus-global-nav">${makeButtons(workspace)}</nav><p class="animus-global-label">Business</p><nav class="animus-global-nav">${makeButtons(business)}</nav><div class="animus-sidebar-footer"><div class="animus-account-wrap"><button class="animus-global-account" id="animusAccountToggle" type="button"><span><strong>D2 Carpentry &amp; Design</strong>Owner</span><b aria-hidden="true">⌄</b></button><div class="animus-account-menu" id="animusAccountMenu" hidden></div></div></div></aside>`);
     const accountMenu = document.querySelector("#animusAccountMenu");

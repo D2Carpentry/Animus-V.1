@@ -1,20 +1,16 @@
-Upload and replace all four files in the GitHub repository root:
+Upload and replace these four files in the ANIMUS repository root:
 
 1. crm.html
-2. crm.js
-3. revenue-history-restore.js
-4. financial-data.js
+2. animus-shell.js
+3. animus-payroll.js
+4. animus-payroll.css
 
-This is a revenue-only recovery.
+What this update changes:
+- Revenue moves into the Business section of the shared sidebar on every page.
+- Payroll receives the new ANIMUS dashboard-style layout.
+- Payroll continues to use the same saved labor entries, rates, work-file links, payment statuses, and totals.
 
-Verified history restored:
-- 40 revenue records
-- $101,476.00 gross revenue
-- $25,050.67 expenses
-
-No customer/work-file data is included in this recovery, so it will not alter file numbers, customer details, or file statuses.
+No customer files, estimates, revenue rows, expenses, receipts, or Cloudflare data are included or modified by this package.
 
 After upload, open:
-https://animus-v-1.pages.dev/crm?revenueRecovery=20260822
-
-The first open will restore the verified ledger and clear only old stale deletion markers. Future rows you delete after this update will still remain deleted.
+https://animus-v-1.pages.dev/crm?payrollCenter=20260822
