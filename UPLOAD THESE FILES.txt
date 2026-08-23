@@ -1,7 +1,12 @@
-Upload all three files in this folder to the root of the ANIMUS-V.1 repository:
+Upload all four files in this folder to the root of the ANIMUS-V.1 repository:
 
 crm.html
+crm.js
 animus-work-file.css
 animus-work-file.js
 
-This update makes Job Details readable with horizontal label/value rows, larger text, two wide cards, and a full-width Operations card.
+This update:
+- Makes Back to CRM / Files close the selected file and return to the file list.
+- Moves Call, Text, Email, and Maps links into Customer Info.
+- Replaces the Activity tab with an Estimate tab for Estimate, Supplement, Invoice, and Work Order.
+- Removes the More button from the work-file header.

@@ -283,6 +283,8 @@ body.animus-unified-ui .animus-work-files-layout .crm-file-workspace {
 }
 .animus-customer-info-panel strong { color: #102a5e; font-size: 13px; }
 .animus-customer-info-panel span { overflow-wrap: anywhere; }
+.animus-customer-info-panel a { color: #1552bd; font-weight: 700; text-decoration: none; }
+.animus-customer-info-panel a:hover { text-decoration: underline; }
 .animus-customer-info-panel .animus-record-button { justify-self: start; margin-top: 3px; }
 
 .animus-record-file-number {
@@ -568,6 +570,9 @@ body.animus-unified-ui .animus-work-files-layout .crm-file-workspace { gap: 16px
 .animus-financial-value strong { display: block; margin-top: 9px; color: #0b3f94; font-size: 23px; }
 .animus-financial-value.danger strong { color: #d32929; }
 .animus-action-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 15px; }
+.animus-estimate-actions-inner { padding: 18px; }
+.animus-estimate-actions-inner > p { margin: 0; color: #61718a; font-size: 13px; }
+.animus-estimate-actions-inner small { display: block; margin-top: 15px; color: #526681; font-size: 12px; font-weight: 700; }
 
 .animus-inline-editor { margin-bottom: 16px; padding: 16px; border: 1px solid #bfd4ff; border-radius: 10px; background: #f8fbff; }
 .animus-inline-editor h3 { margin: 0 0 13px; color: #123b80; font-size: 15px; }

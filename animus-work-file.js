@@ -129,7 +129,7 @@
   }
 
   function tabsMarkup() {
-    const tabs = [["overview", "Overview", "&#8962;"], ["activity", "Activity", "&#9678;"], ["financials", "Financials", "&#36;"], ["expenses", "Expenses", "&#9638;"], ["documents", "Documents", "&#128196;"], ["details", "Job Details", "&#9881;"]];
+    const tabs = [["overview", "Overview", "&#8962;"], ["estimate", "Estimate", "&#128196;"], ["financials", "Financials", "&#36;"], ["expenses", "Expenses", "&#9638;"], ["documents", "Documents", "&#128196;"], ["details", "Job Details", "&#9881;"]];
     return `<nav class="animus-record-tabs" aria-label="Work file sections">${tabs.map(([id, label, icon]) => `<button class="animus-record-tab ${state.tab === id ? "active" : ""}" data-animus-tab="${id}"><span>${icon}</span>${label}</button>`).join("")}</nav>`;
   }
 
@@ -139,6 +139,11 @@
 
   function activityPanel(file) {
     return `<div class="animus-tab-panel"><section class="animus-info-card"><div class="animus-card-head"><h3>Activity</h3><button class="animus-record-button small" data-animus-add-note>Add Note</button></div>${activityMarkup(file, 100)}</section></div>`;
+  }
+
+  function estimatePanel(file) {
+    const supplements = Array.isArray(file.supplements) ? file.supplements : [];
+    return `<div class="animus-tab-panel"><section class="animus-info-card animus-estimate-actions"><div class="animus-card-head"><h3>Estimate &amp; Documents</h3></div><div class="animus-estimate-actions-inner"><p>Open, create, or add to this work file's estimate and job documents.</p><div class="animus-action-row"><button class="animus-record-button primary" data-animus-open="estimate">Estimate</button><button class="animus-record-button" data-animus-open="supplement">Create Supplement</button><button class="animus-record-button" data-animus-open="invoice">Invoice</button><button class="animus-record-button" data-animus-open="assignment">Work Order</button></div>${supplements.length ? `<small>${supplements.length} supplement${supplements.length === 1 ? "" : "s"} saved to this work file.</small>` : ""}</div></section></div>`;
   }
 
   function financialsPanel(file) {
@@ -187,7 +192,7 @@
   }
 
   function panel(file) {
-    if (state.tab === "activity") return activityPanel(file);
+    if (state.tab === "estimate") return estimatePanel(file);
     if (state.tab === "financials") return financialsPanel(file);
     if (state.tab === "expenses") return expensesPanel(file);
     if (state.tab === "documents") return documentsPanel(file);
@@ -206,7 +211,7 @@
     const phone = field(file, "clientPhone").replace(/[^+\d]/g, "");
     const email = field(file, "clientEmail");
     const address = field(file, "projectAddress");
-    root.innerHTML = `<button class="animus-record-back" data-animus-back>&larr; Back to CRM / Files</button>${editorMarkup(file)}<header class="animus-record-header"><div class="animus-record-person"><div class="animus-record-avatar">${escape(initials(file.clientName))}</div><div class="animus-record-title"><div class="animus-record-name-line"><h2>${escape(file.clientName || "Unnamed Client")}</h2><details class="animus-customer-info"><summary>Customer Info</summary><div class="animus-customer-info-panel"><strong>Customer Information</strong><span>Phone: ${escape(field(file, "clientPhone", "Not added"))}</span><span>Email: ${escape(field(file, "clientEmail", "Not added"))}</span><span>Address: ${escape(address || "Not added")}</span><button class="animus-record-button small" data-animus-edit="customer">Edit Customer</button></div></details></div><p class="animus-record-file-number">Project # ${escape(file.fileNumber || "Not assigned")}</p><p class="animus-record-subtitle">${escape(field(file, "projectType", "Other"))} &bull; ${escape(field(file, "leadSource", "Manual"))}</p><span class="animus-status-badge animus-status-${statusTone(file.fileStatus)}">${escape(field(file, "fileStatus", "New Lead"))}</span></div></div><div class="animus-record-actions"><button class="animus-record-button" data-animus-edit="customer">Edit File</button><details class="animus-more-menu"><summary class="animus-record-button">More &#8964;</summary><div class="animus-more-menu-panel"><button class="animus-record-button" data-animus-open="estimate">Estimate</button><button class="animus-record-button" data-animus-open="supplement">Supplement</button><button class="animus-record-button" data-animus-open="assignment">Assignment</button><button class="animus-record-button" data-animus-open="invoice">Invoice</button><button class="animus-record-button" data-animus-open="archive">Archive</button><button class="animus-record-button danger" data-animus-open="delete">Delete File</button></div></details><button class="animus-record-button primary" data-animus-save>Save</button></div></header><div class="animus-contact-actions">${phone ? `<a class="animus-record-button" href="tel:${escape(phone)}">Call</a><a class="animus-record-button" href="sms:${escape(phone)}">Text</a>` : ""}${email ? `<a class="animus-record-button" href="mailto:${escape(email)}">Email</a>` : ""}${address ? `<a class="animus-record-button" href="https://www.google.com/maps/search/?api=1&amp;query=${encodeURIComponent(address)}" target="_blank" rel="noreferrer">Location</a>` : ""}</div>${summaryMarkup(file)}${tabsMarkup()}<main class="animus-tab-panel">${panel(file)}</main>`;
+    root.innerHTML = `<button class="animus-record-back" data-animus-back>&larr; Back to CRM / Files</button>${editorMarkup(file)}<header class="animus-record-header"><div class="animus-record-person"><div class="animus-record-avatar">${escape(initials(file.clientName))}</div><div class="animus-record-title"><div class="animus-record-name-line"><h2>${escape(file.clientName || "Unnamed Client")}</h2><details class="animus-customer-info"><summary>Customer Info</summary><div class="animus-customer-info-panel"><strong>Customer Information</strong>${phone ? `<a href="tel:${escape(phone)}">Call: ${escape(field(file, "clientPhone"))}</a><a href="sms:${escape(phone)}">Text customer</a>` : `<span>Phone: Not added</span>`}${email ? `<a href="mailto:${escape(email)}">Email: ${escape(email)}</a>` : `<span>Email: Not added</span>`}${address ? `<a target="_blank" rel="noreferrer" href="https://www.google.com/maps/search/?api=1&amp;query=${encodeURIComponent(address)}">Open address in Maps</a>` : `<span>Address: Not added</span>`}<button class="animus-record-button small" data-animus-edit="customer">Edit Customer</button></div></details></div><p class="animus-record-file-number">Project # ${escape(file.fileNumber || "Not assigned")}</p><p class="animus-record-subtitle">${escape(field(file, "projectType", "Other"))} &bull; ${escape(field(file, "leadSource", "Manual"))}</p><span class="animus-status-badge animus-status-${statusTone(file.fileStatus)}">${escape(field(file, "fileStatus", "New Lead"))}</span></div></div><div class="animus-record-actions"><button class="animus-record-button" data-animus-edit="customer">Edit File</button><button class="animus-record-button primary" data-animus-save>Save</button></div></header>${summaryMarkup(file)}${tabsMarkup()}<main class="animus-tab-panel">${panel(file)}</main>`;
     const editor = root.querySelector(".animus-inline-editor");
     const contentPanel = root.querySelector("main.animus-tab-panel");
     if (editor && contentPanel) contentPanel.prepend(editor);
@@ -277,9 +282,7 @@
     }
     if (target.hasAttribute("data-animus-save")) { if (typeof window.saveActiveFile === "function") window.saveActiveFile(); if (typeof window.saveDashboardToGoogle === "function") window.saveDashboardToGoogle(); renderWorkFile(); return; }
     if (target.hasAttribute("data-animus-back")) {
-      const filter = byId("crmFileFilter");
-      if (filter) filter.value = "all";
-      if (typeof window.renderCrm === "function") window.renderCrm();
+      if (typeof window.clearActiveCrmFileSelection === "function") window.clearActiveCrmFileSelection();
       document.querySelector(".crm-file-list-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   });

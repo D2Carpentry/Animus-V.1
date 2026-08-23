@@ -1326,6 +1326,13 @@ function activeFile() {
   return crmFiles.find((file) => file.id === activeFileId) || null;
 }
 
+// Used by the Work File back control to return to the list without changing any file data.
+window.clearActiveCrmFileSelection = function clearActiveCrmFileSelection() {
+  activeFileId = null;
+  activateCrmFilter("all");
+  renderCrm();
+};
+
 function normalizeCrmFile(file) {
   if (!file) return file;
   if (!Array.isArray(file.notes)) file.notes = [];
