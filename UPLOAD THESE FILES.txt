@@ -1,3 +1,3 @@
 Upload all four files in this folder to the root of the ANIMUS-V.1 repository.
-The Revenue three-dot menu now includes Delete revenue row with the existing confirmation prompt.
-This folder also includes the Revenue recovery repair from the prior update.
+This update keeps every saved expense in one ledger and recalculates the linked Revenue expense total from the entire ledger after each save.
+It also keeps a manually deleted Revenue row from being recreated automatically.

@@ -3009,6 +3009,7 @@ function repairRevenueRowsFromFiles() {
 }
 
 function renderRevenue() {
+  reconcileSavedExpenseLedgersToRevenue();
   repairRevenueRowsFromFiles();
   const totals = revenueTotals();
   $("crmRevenueGross").textContent = crmCurrency.format(totals.gross);
@@ -3461,6 +3462,7 @@ function revenueLabelForFile(file) {
 function ensureExpenseRevenueRowForFile(file) {
   if (!file) return null;
   const existing = revenueRowForDashboardFile(file);
+  if (file.revenueExcluded === true) return existing;
   if (existing) return existing;
   const expenses = fileExpenseTotal(file);
   const gross = Number(file.estimateTotal) || Number(file.editableEstimate?.totals?.total) || 0;
@@ -8222,8 +8224,58 @@ function expenseLedgerV4ForFile(file) {
   return file.animusExpenseLedgerV4;
 }
 
+// The receipt scanner and the manual form both feed this one ledger. Older
+// scanner saves arrive as freshExpenseReceipts, so migrate them before the
+// ledger writes its mirrors. This prevents a second scanned receipt from
+// replacing the first one.
+function absorbFreshReceiptsIntoExpenseLedgerV4(file) {
+  if (!file || !Array.isArray(file.freshExpenseReceipts) || !file.freshExpenseReceipts.length) return false;
+
+  const existing = expenseLedgerV4ForFile(file);
+  const existingIds = new Set(existing.map((entry) => String(entry.id || "")));
+  const additions = file.freshExpenseReceipts
+    .filter((receipt) => receipt && !existingIds.has(String(receipt.id || "")))
+    .map((receipt) => {
+      const items = (Array.isArray(receipt.lines) ? receipt.lines : [])
+        .filter((line) => line?.use !== false)
+        .map((line) => cleanManualExpenseItem({
+          id: line.id || makeCrmId("expense-item"),
+          name: line.description || line.note || "Receipt item",
+          price: parseMoney(line.price || line.baseAmount || line.amount),
+          use: line.use !== false,
+        }));
+      const itemTotal = items.reduce((sum, item) => sum + parseMoney(item.price), 0);
+      const receiptTotal = (Array.isArray(receipt.lines) ? receipt.lines : []).reduce((sum, line) => {
+        if (line?.use === false) return sum;
+        const price = parseMoney(line.price || line.baseAmount || line.amount);
+        const tax = line?.addTax ? price * (Number(line.taxRate) || DEFAULT_EXPENSE_TAX_RATE) : 0;
+        return sum + price + tax;
+      }, 0);
+      return cleanExpenseLedgerV4Entry({
+        id: receipt.id || makeCrmId("expense-v4"),
+        createdAt: receipt.createdAt || receipt.savedAt || new Date().toISOString(),
+        updatedAt: receipt.updatedAt || receipt.createdAt || receipt.savedAt || new Date().toISOString(),
+        date: receipt.date || todayIso(0),
+        vendor: receipt.vendor || "",
+        title: receipt.imageTitle || receipt.fileName || receipt.vendor || "Scanned receipt",
+        category: receipt.category || "Supplies",
+        paymentType: [receipt.paymentType, receipt.paymentCard].filter(Boolean).join(" - "),
+        amount: receiptTotal || parseMoney(receipt.amount) || itemTotal,
+        notes: receipt.notes || "",
+        imageDataUrl: receipt.imageDataUrl || "",
+        imageTitle: receipt.imageTitle || receipt.fileName || receipt.vendor || "",
+        items,
+      });
+    });
+
+  if (!additions.length) return false;
+  file.animusExpenseLedgerV4 = mergeManualExpenseArrays(existing, additions);
+  return true;
+}
+
 function syncExpenseLedgerV4(file) {
   if (!file) return;
+  absorbFreshReceiptsIntoExpenseLedgerV4(file);
   const entries = expenseLedgerV4ForFile(file);
   file.expenseLines = entries.map((entry) => ({
     id: entry.id, receiptGroupId: entry.id, date: entry.date, vendor: entry.vendor,
@@ -8278,6 +8330,26 @@ syncFileExpensesToRevenue = function syncFileExpensesToRevenueV4(file) {
   syncRevenueExpenseTotal(row);
   saveRevenueRows();
 };
+
+function reconcileSavedExpenseLedgersToRevenue() {
+  let changed = false;
+  crmFiles.forEach((file) => {
+    if (!Array.isArray(file?.animusExpenseLedgerV4) || !file.animusExpenseLedgerV4.length) return;
+    if (file.revenueExcluded === true) return;
+    const row = ensureExpenseRevenueRowForFile(file);
+    if (!row) return;
+    const total = expenseLedgerV4Total(file);
+    const lines = (file.expenseLines || []).map((line) => ({ ...line }));
+    if (Number(row.expenses) !== total || JSON.stringify(row.expenseLines || []) !== JSON.stringify(lines)) {
+      row.expenses = total;
+      row.expenseLines = lines;
+      syncRevenueExpenseTotal(row);
+      changed = true;
+    }
+  });
+  if (changed) saveRevenueRows();
+  return changed;
+}
 
 function renderExpenseLedgerV4() {
   const file = normalizeCrmFile(activeFile());
@@ -8349,6 +8421,7 @@ function saveExpenseLedgerV4() {
   expenseLedgerV4EditingId = "";
   clearManualExpenseForm();
   syncFileExpensesToRevenue(file);
+  reconcileSavedExpenseLedgersToRevenue();
   saveCrmFiles(); saveRevenueRows(); renderExpenseLedgerV4(); renderRevenue();
   saveExpenseChangeToCloud("Expense saved to Cloudflare.");
   setManualExpenseStatus("Expense saved to this file.", "good");
