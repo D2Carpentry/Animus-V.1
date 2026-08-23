@@ -1,9 +1,10 @@
-Upload all three items in this folder to the ANIMUS repository, keeping the folders exactly as shown:
+Upload every file in this folder to the main ANIMUS repository.
 
-1. crm.html
-2. expenses-v6.js
-3. functions/api/expenses.js
+This adds Contacts below Work Files in the sidebar. Contacts is a live directory made from your existing CRM work files; it does not create a second customer list.
 
-After Cloudflare finishes deploying, every newly saved receipt photo is stored as its own file in ANIMUS cloud storage. The expense record keeps a link to that photo, so the main Command Center backup stays small.
-
-Existing receipt photos are left alone. They will continue to display. New photos use the separate receipt-photo backup area.
+On Contacts:
+- Click a name to open that customer's work file.
+- Call opens the phone action.
+- Text opens the text action.
+- Email opens the email action.
+- Address opens the location in Maps.

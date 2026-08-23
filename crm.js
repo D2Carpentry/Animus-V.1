@@ -1216,35 +1216,47 @@ function fetchDashboardFromGoogle() {
 }
 
 async function saveDashboardToGoogle() {
-  captureCurrentDashboardEdits({ includeRevenue: false });
-  saveCrmFiles();
-  savePayrollRows();
-  savePriceRows();
-  saveDeletedPriceIds();
   const saveButton = $("crmSaveDemo");
   saveButton.disabled = true;
-  saveButton.textContent = "Saving...";
-  showDashboardSaveStatus("Saving current Command Center...");
-  // Revenue has its own save path. A general Command Center save must never
-  // replace the ledger with a stale browser snapshot.
-  const payload = buildDashboardSyncPayload({ includeRevenue: false });
+  saveButton.textContent = "Checking...";
+  showDashboardSaveStatus("Checking every file and Revenue line before saving the full Command Center...");
   try {
+    // First, exercise the exact full snapshot against a separate test object.
+    // Nothing live is changed until Cloudflare returns a matching result.
+    const payload = buildDashboardSyncPayload({ includeRevenue: true, syncExpenses: false });
+    const tested = await queueDashboardCloudSave(payload, { testSnapshot: true });
+    const testVerification = verifyDashboardTestSnapshot(payload, tested.dashboard);
+    if (!testVerification.ok) {
+      throw new Error(`Save All stopped before changing the live cloud copy. ${testVerification.missingFiles.length} file(s) or ${testVerification.mismatchedRevenue.length} revenue line(s) did not match.`);
+    }
+
+    saveButton.textContent = "Saving...";
+    showDashboardSaveStatus("Save check passed. Saving the verified full Command Center to Cloudflare...");
     const saved = await queueDashboardCloudSave(payload);
-    // Do not load revenue from this response. Revenue is already saved by its
-    // dedicated pathway and remains untouched by the main Save control.
-    saveButton.disabled = false;
-    saveButton.textContent = "Saved";
+    const liveVerification = verifyDashboardTestSnapshot(payload, saved.dashboard);
+    if (!liveVerification.ok) {
+      throw new Error(`Cloudflare protected existing data and did not accept ${liveVerification.missingFiles.length} file(s) or ${liveVerification.mismatchedRevenue.length} revenue line(s) exactly. Restore was not run.`);
+    }
+
+    saveCrmFiles();
+    saveRevenueRows();
+    savePayrollRows();
+    savePriceRows();
+    saveDeletedPriceIds();
     renderCrm();
     const savedFiles = Array.isArray(saved.dashboard?.dashboardFiles) ? saved.dashboard.dashboardFiles : payload.dashboardFiles;
     rememberCloudSync(saved.dashboard || payload);
-    showDashboardSaveStatus(`Saved ${savedFiles.length} files to Cloudflare. ${dashboardCloudCountSummary(savedFiles)}.`);
+    const totals = dashboardTestTotals(payload.revenueRows || []);
+    showDashboardSaveStatus(`Saved all data to Cloudflare. ${savedFiles.length} files and ${payload.revenueRows.length} revenue lines verified. Gross ${crmCurrency.format(totals.gross)} · Expenses ${crmCurrency.format(totals.expenses)}.`);
+    saveButton.textContent = "Saved";
     window.setTimeout(() => {
-      saveButton.textContent = "Save";
+      saveButton.textContent = "Save All";
     }, 1400);
   } catch (error) {
+    showDashboardSaveStatus(error.message || "Save All could not be verified. The live cloud copy was not changed.", true);
+  } finally {
     saveButton.disabled = false;
-    saveButton.textContent = "Save";
-    showDashboardSaveStatus(error.message || "Cloudflare save failed.", true);
+    if (saveButton.textContent !== "Saved") saveButton.textContent = "Save All";
   }
 }
 
@@ -7081,6 +7093,7 @@ function switchCrmView(view) {
   const showRevenue = view === "revenue";
   const showPayroll = view === "payroll";
   const showCalendar = view === "calendar";
+  const showContacts = view === "contacts";
   const showInvoice = view === "invoice";
   const showExpenses = view === "expenses";
   const showPrices = view === "prices";
@@ -7090,11 +7103,12 @@ function switchCrmView(view) {
   document.body.classList.toggle("crm-estimator-active", showEstimator);
   document.querySelectorAll(".crm-dashboard-view").forEach((section) => {
     const keepEstimatorShell = showEstimator && estimatorShell && section === estimatorShell;
-    section.hidden = !keepEstimatorShell && (showRevenue || showPayroll || showCalendar || showInvoice || showExpenses || showPrices || showBusiness || showEstimator);
+    section.hidden = !keepEstimatorShell && (showRevenue || showPayroll || showCalendar || showContacts || showInvoice || showExpenses || showPrices || showBusiness || showEstimator);
   });
   $("crmRevenueView").hidden = !showRevenue;
   $("crmPayrollView").hidden = !showPayroll;
   $("crmCalendarView").hidden = !showCalendar;
+  $("crmContactsView").hidden = !showContacts;
   $("crmInvoiceView").hidden = !showInvoice;
   $("crmExpensesView").hidden = !showExpenses;
   $("crmPriceView").hidden = !showPrices;
@@ -7122,6 +7136,7 @@ document.querySelectorAll("[data-crm-view]").forEach((button) => {
       });
     }
   }
+  if (showContacts && typeof window.renderAnimusContacts === "function") window.renderAnimusContacts();
   if (showExpenses) renderFileExpenses();
   if (showPrices) renderPriceDatabase();
   if (showBusiness && typeof window.renderBusinessPerformance === "function") window.renderBusinessPerformance();
@@ -8152,9 +8167,6 @@ $("crmNewNote").addEventListener("keydown", (event) => {
 });
 $("crmSaveDemo").addEventListener("click", () => {
   saveDashboardToGoogle();
-});
-$("crmSaveTest")?.addEventListener("click", () => {
-  saveDashboardTest();
 });
 $("crmLoadCloud").addEventListener("click", () => {
   loadDashboardFromGoogle().catch((error) => {
