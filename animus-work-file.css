@@ -126,7 +126,7 @@ body.animus-unified-ui .animus-work-files-layout .crm-file-workspace {
 
 .animus-work-files-layout .crm-file-card {
   display: grid;
-  grid-template-columns: 38px minmax(0, 1fr) 12px;
+  grid-template-columns: minmax(0, 1fr) 12px;
   align-items: center;
   gap: 8px;
   min-height: 62px;
@@ -389,19 +389,19 @@ body.animus-unified-ui .animus-work-files-layout .crm-file-workspace { gap: 16px
 @media (max-width: 1240px) {
   body.animus-unified-ui .animus-work-files-layout { grid-template-columns: minmax(300px, 330px) minmax(0, 1fr); }
   .animus-file-card-meta { display: none; }
-  .animus-work-files-layout .crm-file-card { grid-template-columns: 42px minmax(0, 1fr) 13px; }
+  .animus-work-files-layout .crm-file-card { grid-template-columns: minmax(0, 1fr) 13px; }
 }
 
 @media (max-width: 920px) {
   body.animus-unified-ui .animus-work-files-layout { grid-template-columns: 1fr; }
   body.animus-unified-ui .animus-work-files-layout .crm-file-list-panel { max-height: 440px; }
   .animus-file-card-meta { display: grid; }
-  .animus-work-files-layout .crm-file-card { grid-template-columns: 42px minmax(0, 1fr) auto 13px; }
+  .animus-work-files-layout .crm-file-card { grid-template-columns: minmax(0, 1fr) 13px; }
 }
 
 .animus-summary-strip {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   overflow: hidden;
   margin: 0 0 18px;
   border: 1px solid #e2e8f0;
@@ -546,6 +546,28 @@ body.animus-unified-ui .animus-work-files-layout .crm-file-workspace { gap: 16px
 .animus-next-meta strong { color: #19305c; text-align: right; }
 .animus-next-empty { margin: 16px; color: #66758c; font-size: 13px; }
 
+.animus-assigned-card { min-height: 118px; }
+.animus-assigned-person {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  width: calc(100% - 32px);
+  align-items: center;
+  gap: 10px;
+  margin: 14px 16px 16px;
+  padding: 11px;
+  border: 1px solid #e1e9f5;
+  border-radius: 9px;
+  background: #f8fbff;
+  color: #153460;
+  text-align: left;
+  cursor: pointer;
+}
+.animus-assigned-person:hover { border-color: #9dbfff; background: #f2f7ff; }
+.animus-assigned-icon { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 10px; color: #b97206; background: #fff2dc; font-size: 17px; }
+.animus-assigned-person small { display: block; margin-bottom: 3px; color: #70809a; font-size: 10px; font-weight: 750; }
+.animus-assigned-person strong { display: block; overflow: hidden; color: #14325e; font-size: 14px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+.animus-assigned-person b { color: #1b5bc1; font-size: 10px; white-space: nowrap; }
+
 .animus-important-note { margin: 16px; padding: 15px; border: 1px solid #f2d08c; border-radius: 8px; background: #fffaf0; }
 .animus-important-note p { margin: 0; color: #243653; font-size: 13px; line-height: 1.55; white-space: pre-wrap; }
 .animus-important-note small { display: block; margin-top: 18px; color: #71809a; font-size: 10px; }
@@ -585,9 +607,9 @@ body.animus-unified-ui .animus-work-files-layout .crm-file-workspace { gap: 16px
 @media (max-width: 1240px) {
   .animus-work-grid { grid-template-columns: minmax(230px, 1fr) minmax(330px, 1.35fr); }
   .animus-work-column.right { grid-column: 1 / -1; grid-template-columns: 1fr 1fr; }
-  .animus-summary-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .animus-summary-cell:nth-child(3) { border-right: 0; }
-  .animus-summary-cell:nth-child(-n+3) { border-bottom: 1px solid #e6ebf3; }
+  .animus-summary-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .animus-summary-cell:nth-child(2n) { border-right: 0; }
+  .animus-summary-cell:nth-child(-n+2) { border-bottom: 1px solid #e6ebf3; }
   .animus-inline-editor-details .animus-inline-editor-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .animus-work-grid-focused { grid-template-columns: minmax(0, 1.45fr) minmax(270px, .85fr); }
 }
@@ -598,7 +620,7 @@ body.animus-unified-ui .animus-work-files-layout .crm-file-workspace { gap: 16px
   .animus-work-grid, .animus-work-column.right, .animus-detail-grid { grid-template-columns: 1fr; }
   .animus-summary-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .animus-summary-cell:nth-child(2n) { border-right: 0; }
-  .animus-summary-cell:nth-child(-n+4) { border-bottom: 1px solid #e6ebf3; }
+  .animus-summary-cell:nth-child(-n+2) { border-bottom: 1px solid #e6ebf3; }
   .animus-financial-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .animus-work-grid-focused { grid-template-columns: 1fr; }
   .animus-detail-pair { grid-template-columns: 1fr; gap: 4px; padding: 12px 0; }

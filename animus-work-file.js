@@ -116,14 +116,17 @@
     return `<section class="animus-info-card animus-file-notes-card"><div class="animus-card-head"><h3><span class="card-mark">&#9744;</span> File Notes</h3><button class="animus-record-button small" data-animus-add-note>Add Note</button></div>${note ? `<div class="animus-important-note"><p>${escape(note.text)}</p><small>Updated ${escape(date((note.editedAt || note.at || "").slice(0, 10)))} by D2 Carpentry &amp; Design</small></div>` : `<p class="animus-next-empty">No notes yet. Add the first note for this work file.</p>`}</section>`;
   }
 
+  function assignedToCard(file) {
+    const employee = assignment(file);
+    return `<section class="animus-info-card animus-assigned-card"><div class="animus-card-head"><h3><span class="card-mark">&#9787;</span> Assigned To</h3><button class="animus-record-button small" data-animus-open="payroll">Payroll</button></div><button class="animus-assigned-person" data-animus-open="payroll"><span class="animus-assigned-icon">&#9787;</span><span><small>Employee</small><strong>${escape(employee)}</strong></span><b>Manage in Payroll &rsaquo;</b></button></section>`;
+  }
+
   function summaryMarkup(file) {
     const estimate = Number(file.estimateTotal) || 0;
     const paid = paidTotal(file);
     const balance = Math.max(estimate - paid, 0);
-    const next = field(file, "nextAction") || "No action set";
-    const nextDate = field(file, "nextActionDate") || field(file, "followUpDate");
     const cells = [
-      ["&#36;", "Estimate", money(estimate), "", "", "estimate"], ["&#9638;", "Paid", money(paid), ""], ["&#128179;", "Balance", money(balance), "", "balance"], ["&#128197;", "Next Action", next, nextDate ? date(nextDate) : "", "", "action"], ["&#128197;", "Start Date", field(file, "startDate") ? date(file.startDate) : "Not set", ""], ["&#9787;", "Assigned To", assignment(file), "", "", "payroll"],
+      ["&#36;", "Estimate", money(estimate), "", "", "estimate"], ["&#9638;", "Paid", money(paid), ""], ["&#128179;", "Balance", money(balance), "", "balance"], ["&#128197;", "Start Date", field(file, "startDate") ? date(file.startDate) : "Not set", ""],
     ];
     return `<div class="animus-summary-strip">${cells.map(([icon, label, value, sub, extra, action]) => `<button class="animus-summary-cell ${extra || ""} ${action ? "clickable" : ""}"${action ? ` data-animus-summary="${action}"` : ""}><span class="animus-summary-icon">${icon}</span><span class="animus-summary-copy"><span>${escape(label)}</span><strong>${escape(value)}</strong>${sub ? `<small>${escape(sub)}</small>` : ""}</span></button>`).join("")}</div>`;
   }
@@ -134,7 +137,7 @@
   }
 
   function overviewPanel(file) {
-    return `<div class="animus-work-grid animus-work-grid-focused"><div class="animus-work-column">${progressMarkup(file)}${importantNotesCard(file)}</div><div class="animus-work-column right">${nextActionCard(file)}</div></div><section class="animus-info-card animus-recent-activity-card"><div class="animus-card-head"><h3><span class="card-mark">&#126;</span> Recent Activity</h3><button class="animus-record-button small" data-animus-tab="activity">View all activity</button></div>${activityMarkup(file, 5)}</section>`;
+    return `<div class="animus-work-grid animus-work-grid-focused"><div class="animus-work-column">${progressMarkup(file)}${importantNotesCard(file)}</div><div class="animus-work-column right">${nextActionCard(file)}${assignedToCard(file)}</div></div><section class="animus-info-card animus-recent-activity-card"><div class="animus-card-head"><h3><span class="card-mark">&#126;</span> Recent Activity</h3></div>${activityMarkup(file, 5)}</section>`;
   }
 
   function activityPanel(file) {
@@ -254,6 +257,9 @@
   }
 
   document.addEventListener("click", (event) => {
+    if (!event.target.closest("details")) {
+      document.querySelectorAll(".animus-work-file details[open]").forEach((menu) => { menu.open = false; });
+    }
     const target = event.target.closest("[data-animus-tab], [data-animus-edit], [data-animus-save], [data-animus-save-editor], [data-animus-cancel-editor], [data-animus-complete-action], [data-animus-open], [data-animus-add-note], [data-animus-back], [data-animus-summary]");
     if (!target) return;
     if (target.dataset.animusTab) { state.tab = target.dataset.animusTab; state.editor = ""; renderWorkFile(); return; }
