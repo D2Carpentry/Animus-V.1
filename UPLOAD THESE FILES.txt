@@ -1,13 +1,16 @@
-Upload and replace these five files in the main folder of the ANIMUS repository:
+Upload and replace these two files in the main folder of the ANIMUS repository:
 
 crm.html
-crm.js
-financial-data.js
-animus-shell.js
-animus-work-file.js
+expenses-v6.js
 
-This update:
-- Makes Paid and Balance open the Financials tab.
-- Makes Start Date open Job Details.
-- Removes the duplicate sidebar search.
-- Restores the protected manual revenue history, including the saved Reese figures.
+Every ANIMUS page now uses this same sidebar order:
+
+Dashboard
+Calendar
+Estimates
+Work Files
+Revenue
+Expenses
+Payroll
+Price Database
+Business Performance
