@@ -80,7 +80,7 @@
         if (error) { error.hidden = false; error.textContent = name ? "ANIMUS could not create this work file. Please try again." : "Enter the customer name before creating this contact."; }
         return;
       }
-      newCrmFile();
+      newCrmFile({ direct:true });
       const file = activeFile();
       if (!file) return;
       file.clientName = name;

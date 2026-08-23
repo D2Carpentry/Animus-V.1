@@ -16,6 +16,7 @@ const CRM_REVENUE_DELETED_KEY = "d2CrmRevenueDeletedIds";
 const CRM_REVENUE_HISTORY_RECOVERY_KEY = "d2CrmRevenueHistoryRecoveryV2";
 const CRM_PRICE_BACKUP_KEY = "d2PriceDatabaseBackup";
 const CRM_RECEIPT_DRAFT_KEY = "d2ReceiptScannerDraft";
+const CRM_NEW_FILE_DRAFT_KEY = "animusNewWorkFileDraft";
 const CRM_RESTORE_VERSION_KEY = "d2CrmRestoreVersion";
 const CRM_CLOUD_SYNC_AT_KEY = "d2CrmCloudSyncAt";
 const DEFAULT_GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzZkie1W4LplkKwFoMq19suIHWsamKYNUwCt9xjnihTdy_dN271ou3lscTgq09bAGIG2w/exec";
@@ -2089,55 +2090,134 @@ function editCrmNote(index) {
   renderCrm();
 }
 
-function newCrmFile() {
+function newFileOptionMarkup(values, selected = "") {
+  return values.map((value) => `<option value="${escapeHtml(value)}"${value === selected ? " selected" : ""}>${escapeHtml(value)}</option>`).join("");
+}
+
+function newFileDraftValues() {
+  try {
+    const raw = localStorage.getItem(CRM_NEW_FILE_DRAFT_KEY);
+    const draft = raw ? JSON.parse(raw) : {};
+    return draft && typeof draft === "object" ? draft : {};
+  } catch (error) {
+    return {};
+  }
+}
+
+function saveNewFileDraft() {
+  const modal = $("animusNewFileModal");
+  if (!modal || modal.hidden) return;
+  const draft = {};
+  modal.querySelectorAll("[data-new-file-field]").forEach((field) => {
+    draft[field.dataset.newFileField] = field.type === "checkbox" ? field.checked : field.value;
+  });
+  try { localStorage.setItem(CRM_NEW_FILE_DRAFT_KEY, JSON.stringify(draft)); } catch (error) { /* Draft storage is optional. */ }
+}
+
+function clearNewFileDraft() {
+  try { localStorage.removeItem(CRM_NEW_FILE_DRAFT_KEY); } catch (error) { /* Draft storage is optional. */ }
+}
+
+function closeNewCrmFileModal() {
+  const modal = $("animusNewFileModal");
+  if (modal) modal.hidden = true;
+}
+
+function openNewCrmFileModal() {
+  let modal = $("animusNewFileModal");
+  const draft = newFileDraftValues();
+  if (!modal) {
+    const status = draft.fileStatus || "New Lead";
+    const detail = draft.statusDetail || CRM_STATUS_DETAILS[status]?.[0] || "Needs Contact";
+    modal = document.createElement("div");
+    modal.id = "animusNewFileModal";
+    modal.className = "animus-new-file-modal-backdrop";
+    modal.innerHTML = `<section class="animus-new-file-modal" role="dialog" aria-modal="true" aria-labelledby="animusNewFileTitle">
+      <header><div><p>NEW WORK FILE</p><h2 id="animusNewFileTitle">Create a Customer File</h2><span>Enter the information you have now. Everything can be updated later.</span></div><button type="button" class="animus-new-file-close" data-new-file-close aria-label="Close">×</button></header>
+      <form id="animusNewFileForm">
+        <section><h3>Customer</h3><div class="animus-new-file-grid"><label class="wide">Customer Name<input data-new-file-field="clientName" value="${escapeHtml(draft.clientName || "")}" autocomplete="name" required placeholder="Customer name"></label><label>Phone<input data-new-file-field="clientPhone" value="${escapeHtml(draft.clientPhone || "")}" autocomplete="tel" type="tel" placeholder="(239) 555-0100"></label><label>Email<input data-new-file-field="clientEmail" value="${escapeHtml(draft.clientEmail || "")}" autocomplete="email" type="email" placeholder="name@email.com"></label><label class="wide">Project Address<input data-new-file-field="projectAddress" value="${escapeHtml(draft.projectAddress || "")}" autocomplete="street-address" placeholder="Street, city, state, ZIP"></label></div></section>
+        <section><h3>Project & Status</h3><div class="animus-new-file-grid"><label>Lead Source<select data-new-file-field="leadSource">${newFileOptionMarkup(["Manual", "Phone", "Website", "Angi", "Referral", "Social Media"], draft.leadSource || "Manual")}</select></label><label>Project Type<select data-new-file-field="projectType">${newFileOptionMarkup(CRM_PROJECT_TYPES, draft.projectType || "Other")}</select></label><label>File Status<select data-new-file-field="fileStatus" id="animusNewFileStatus">${newFileOptionMarkup(Object.keys(CRM_STATUS_DETAILS), status)}</select></label><label>Status Detail<select data-new-file-field="statusDetail" id="animusNewFileStatusDetail">${newFileOptionMarkup(CRM_STATUS_DETAILS[status] || [], detail)}</select></label><label class="wide">Next Action<input data-new-file-field="nextAction" value="${escapeHtml(draft.nextAction || "Contact customer")}" placeholder="Follow up, send estimate, set inspection"></label><label>Next Action Date<input data-new-file-field="nextActionDate" value="${escapeHtml(draft.nextActionDate || todayIso(1))}" type="date"></label></div></section>
+        <section><h3>Contact & Schedule</h3><div class="animus-new-file-grid"><label>Contact Email Sent?<select data-new-file-field="contactEmailSent">${newFileOptionMarkup(["No", "Yes"], draft.contactEmailSent || "No")}</select></label><label>Contact Text Sent?<select data-new-file-field="contactTextSent">${newFileOptionMarkup(["No", "Yes"], draft.contactTextSent || "No")}</select></label><label>Inspection Date Set?<select data-new-file-field="inspectionDateSet">${newFileOptionMarkup(["No", "Yes"], draft.inspectionDateSet || "No")}</select></label><label>Inspection Date<input data-new-file-field="inspectionDate" value="${escapeHtml(draft.inspectionDate || "")}" type="date"></label><label>Inspection Time<input data-new-file-field="inspectionTime" value="${escapeHtml(draft.inspectionTime || "")}" type="time"></label><label>Arrival Window<select data-new-file-field="arrivalWindow">${newFileOptionMarkup(["Open", "7:00 AM", "8:00 AM", "9:00 AM", "10:00 AM", "Afternoon"], draft.arrivalWindow || "Open")}</select></label><label>Start Date<input data-new-file-field="startDate" value="${escapeHtml(draft.startDate || "")}" type="date"></label><label>Follow-Up Date<input data-new-file-field="followUpDate" value="${escapeHtml(draft.followUpDate || "")}" type="date"></label><label>Anticipated Completion<input data-new-file-field="anticipatedCompletionDate" value="${escapeHtml(draft.anticipatedCompletionDate || "")}" type="date"></label></div></section>
+        <section><h3>Financials & Operations</h3><div class="animus-new-file-grid"><label>Estimate Amount<input data-new-file-field="estimateTotal" value="${escapeHtml(draft.estimateTotal || "")}" inputmode="decimal" type="number" min="0" step="0.01" placeholder="0.00"></label><label>Materials Amount<input data-new-file-field="materialTotal" value="${escapeHtml(draft.materialTotal || "")}" inputmode="decimal" type="number" min="0" step="0.01" placeholder="0.00"></label><label>Initial Deposit Secured?<select data-new-file-field="initialDepositSecured">${newFileOptionMarkup(["No", "Yes"], draft.initialDepositSecured || "No")}</select></label><label>Initial Deposit<input data-new-file-field="initialDeposit" value="${escapeHtml(draft.initialDeposit || "")}" inputmode="decimal" type="number" min="0" step="0.01" placeholder="0.00"></label><label>Midpoint Deposit Secured?<select data-new-file-field="midpointDepositSecured">${newFileOptionMarkup(["No", "Yes"], draft.midpointDepositSecured || "No")}</select></label><label>Midpoint Deposit<input data-new-file-field="midpointDeposit" value="${escapeHtml(draft.midpointDeposit || "")}" inputmode="decimal" type="number" min="0" step="0.01" placeholder="0.00"></label><label>Final Payment Secured?<select data-new-file-field="finalPaymentSecured">${newFileOptionMarkup(["No", "Yes"], draft.finalPaymentSecured || "No")}</select></label><label>Final Payment<input data-new-file-field="finalPaymentAmount" value="${escapeHtml(draft.finalPaymentAmount || "")}" inputmode="decimal" type="number" min="0" step="0.01" placeholder="0.00"></label><label>Invoice Sent?<select data-new-file-field="invoiceSent">${newFileOptionMarkup(["No", "Yes"], draft.invoiceSent || "No")}</select></label><label>Review Requested?<select data-new-file-field="reviewRequested">${newFileOptionMarkup(["No", "Yes"], draft.reviewRequested || "No")}</select></label><label>Closing Call Completed?<select data-new-file-field="closingCallCompleted">${newFileOptionMarkup(["No", "Yes"], draft.closingCallCompleted || "No")}</select></label><label>Warranty Details<select data-new-file-field="warrantyStatus">${newFileOptionMarkup(["Not Sent", "Sent"], draft.warrantyStatus || "Not Sent")}</select></label></div></section>
+        <p class="animus-new-file-error" id="animusNewFileError" hidden></p><footer><button type="button" class="animus-new-file-cancel" data-new-file-close>Cancel</button><button type="submit" class="animus-new-file-create">Create Work File</button></footer>
+      </form></section>`;
+    document.body.appendChild(modal);
+    modal.querySelectorAll("[data-new-file-field]").forEach((field) => { field.addEventListener("input", saveNewFileDraft); field.addEventListener("change", saveNewFileDraft); });
+    modal.querySelector("#animusNewFileStatus")?.addEventListener("change", (event) => {
+      const details = CRM_STATUS_DETAILS[event.target.value] || [""];
+      const target = modal.querySelector("#animusNewFileStatusDetail");
+      target.innerHTML = newFileOptionMarkup(details, details[0]);
+      saveNewFileDraft();
+    });
+    modal.querySelectorAll("[data-new-file-close]").forEach((button) => button.addEventListener("click", closeNewCrmFileModal));
+    modal.addEventListener("click", (event) => { if (event.target === modal) closeNewCrmFileModal(); });
+    modal.querySelector("form")?.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const values = {};
+      modal.querySelectorAll("[data-new-file-field]").forEach((field) => { values[field.dataset.newFileField] = field.value; });
+      if (!String(values.clientName || "").trim()) { const error = $("animusNewFileError"); error.hidden = false; error.textContent = "Enter the customer name before creating this work file."; return; }
+      newCrmFile({ direct:true, values });
+      clearNewFileDraft();
+      closeNewCrmFileModal();
+    });
+  }
+  modal.hidden = false;
+  window.setTimeout(() => modal.querySelector("[data-new-file-field='clientName']")?.focus(), 0);
+}
+
+function newCrmFile(options = {}) {
+  if (!options.direct) { openNewCrmFileModal(); return null; }
+  const values = options.values || {};
   // Never read hidden form fields from another ANIMUS view. Those values can
   // be stale while the user is on the Dashboard, Contacts, or Revenue page.
   if (isActiveFileEditorVisible()) flushActiveFileDraft();
+  const status = values.fileStatus || "New Lead";
+  const detail = values.statusDetail || CRM_STATUS_DETAILS[status]?.[0] || "Needs Contact";
   const file = {
     id: makeCrmId("file"),
     fileNumber: makeCrmFileNumber(),
-    clientName: "",
-    clientPhone: "",
-    clientEmail: "",
-    projectAddress: "",
-    leadSource: "Manual",
-    fileStatus: "New Lead",
-    statusDetail: "Needs Contact",
-    projectType: "Other",
+    clientName: String(values.clientName || "").trim(),
+    clientPhone: String(values.clientPhone || "").trim(),
+    clientEmail: String(values.clientEmail || "").trim(),
+    projectAddress: String(values.projectAddress || "").trim(),
+    leadSource: values.leadSource || "Manual",
+    fileStatus: status,
+    statusDetail: detail,
+    projectType: normalizeProjectType(values.projectType || "Other"),
     projectStage: "Lead",
-    contactEmailSent: "No",
-    contactTextSent: "No",
-    inspectionDateSet: "No",
-    inspectionDate: "",
-    inspectionTime: "",
-    startDate: "",
-    arrivalWindow: "Open",
-    followUpDate: "",
-    anticipatedCompletionDate: "",
-    nextAction: "Contact customer",
-    nextActionDate: todayIso(1),
-    warrantyStatus: "Not Sent",
-    depositSecured: "No",
-    initialDepositSecured: "No",
-    initialDeposit: "",
-    midpointDepositSecured: "No",
-    midpointDeposit: "",
+    contactEmailSent: values.contactEmailSent || "No",
+    contactTextSent: values.contactTextSent || "No",
+    inspectionDateSet: values.inspectionDateSet || "No",
+    inspectionDate: values.inspectionDate || "",
+    inspectionTime: values.inspectionTime || "",
+    startDate: values.startDate || "",
+    arrivalWindow: values.arrivalWindow || "Open",
+    followUpDate: values.followUpDate || "",
+    anticipatedCompletionDate: values.anticipatedCompletionDate || "",
+    nextAction: values.nextAction || "Contact customer",
+    nextActionDate: values.nextActionDate || todayIso(1),
+    warrantyStatus: values.warrantyStatus || "Not Sent",
+    depositSecured: values.initialDepositSecured || "No",
+    initialDepositSecured: values.initialDepositSecured || "No",
+    initialDeposit: parseMoney(values.initialDeposit || 0),
+    midpointDepositSecured: values.midpointDepositSecured || "No",
+    midpointDeposit: parseMoney(values.midpointDeposit || 0),
     paidInFull: "No",
-    closingCallCompleted: "No",
-    finalPaymentSecured: "No",
-    finalPaymentAmount: "",
-    invoiceSent: "No",
+    closingCallCompleted: values.closingCallCompleted || "No",
+    finalPaymentSecured: values.finalPaymentSecured || "No",
+    finalPaymentAmount: parseMoney(values.finalPaymentAmount || 0),
+    invoiceSent: values.invoiceSent || "No",
     invoicePaid: "No",
-    reviewRequested: "No",
+    reviewRequested: values.reviewRequested || "No",
     reviewSent: "No",
     estimateStatus: "Not Started",
     invoiceStatus: "Not Created",
     reviewStatus: "Not Ready",
-    estimateTotal: 0,
+    estimateTotal: parseMoney(values.estimateTotal || 0),
     depositTotal: 0,
-    materialTotal: 0,
+    materialTotal: parseMoney(values.materialTotal || 0),
     notes: [],
-    timeline: ["File created"],
+    timeline: [{ at:new Date().toISOString(), text:"Work file created" }],
   };
   crmFiles.unshift(file);
   activeFileId = file.id;
@@ -2145,6 +2225,7 @@ function newCrmFile() {
   if (typeof switchCrmView === "function") switchCrmView("files");
   renderCrm();
   window.setTimeout(() => $("crmClientName")?.focus(), 0);
+  return file;
 }
 
 function deleteActiveFile() {
