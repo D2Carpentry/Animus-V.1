@@ -1471,9 +1471,7 @@ function renderFileList() {
       <span class="animus-file-card-copy">
         <strong>${escapeHtml(file.clientName || "Unnamed Client")}</strong>
         <small>${escapeHtml(file.fileNumber || "No file number")}</small>
-      </span>
-      <span class="animus-file-card-meta">
-        <span class="animus-file-status ${statusTone(file)}">${escapeHtml(file.fileStatus || "New Lead")}</span>
+        <span class="animus-file-status-inline ${statusTone(file)}">${escapeHtml(file.fileStatus || "New Lead")}</span>
       </span>
       <span class="animus-file-chevron" aria-hidden="true">›</span>
     </button>
@@ -1493,11 +1491,6 @@ function renderFileList() {
       $("animusWorkFileFilterButton").setAttribute("aria-expanded", "false");
       renderCrm();
     });
-  });
-  $("animusWorkFileFilterButton")?.addEventListener("click", () => {
-    const menu = $("animusWorkFileFilterMenu");
-    menu.hidden = !menu.hidden;
-    $("animusWorkFileFilterButton").setAttribute("aria-expanded", String(!menu.hidden));
   });
 }
 
@@ -7878,6 +7871,35 @@ document.querySelectorAll("[data-crm-filter]").forEach((button) => {
 $("crmFileFilter").addEventListener("change", () => {
   activateCrmFilter($("crmFileFilter").value);
   renderCrm();
+});
+document.addEventListener("click", (event) => {
+  const filterToggle = event.target.closest?.("#animusWorkFileFilterButton");
+  if (filterToggle) {
+    event.preventDefault();
+    event.stopPropagation();
+    const menu = $("animusWorkFileFilterMenu");
+    if (!menu) return;
+    menu.hidden = !menu.hidden;
+    filterToggle.setAttribute("aria-expanded", String(!menu.hidden));
+    return;
+  }
+  const collapseToggle = event.target.closest?.("#animusWorkFilesCollapse");
+  if (collapseToggle) {
+    const layout = document.querySelector(".animus-work-files-layout");
+    if (!layout) return;
+    const collapsed = layout.classList.toggle("animus-work-files-collapsed");
+    collapseToggle.setAttribute("aria-expanded", String(!collapsed));
+    collapseToggle.setAttribute("title", collapsed ? "Expand Work Files" : "Collapse Work Files");
+    collapseToggle.textContent = collapsed ? "›" : "‹";
+    return;
+  }
+  if (!event.target.closest?.(".animus-work-file-filter-menu")) {
+    const menu = $("animusWorkFileFilterMenu");
+    if (menu && !menu.hidden) {
+      menu.hidden = true;
+      $("animusWorkFileFilterButton")?.setAttribute("aria-expanded", "false");
+    }
+  }
 });
 $("animusWorkFileSearch")?.addEventListener("input", renderCrm);
 $("animusWorkFileSearchButton")?.addEventListener("click", renderCrm);

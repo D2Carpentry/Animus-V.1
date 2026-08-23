@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="expenses-v6.css?v=20260822-expense-home-file-scope">
     <link rel="stylesheet" href="animus-shell.css?v=20260822-unified-ui">
     <link rel="stylesheet" href="animus-dashboard.css?v=20260822-command-center-home">
-    <link rel="stylesheet" href="animus-work-file.css?v=20260822-compact-work-files-rail">
+    <link rel="stylesheet" href="animus-work-file.css?v=20260822-collapsible-work-files-rail">
     <link rel="stylesheet" href="animus-operations.css?v=20260822-operations-layout">
   </head>
   <body class="crm-body">
@@ -95,6 +95,7 @@
 
         <section class="crm-layout crm-dashboard-view animus-work-files-layout">
           <aside class="crm-file-list-panel">
+            <button type="button" class="animus-work-files-collapse" id="animusWorkFilesCollapse" aria-expanded="true" title="Collapse Work Files">‹</button>
             <div class="crm-panel-heading">
               <div>
                 <p class="eyebrow">Files</p>
@@ -979,7 +980,7 @@
         caches.keys().then((keys) => keys.forEach((key) => caches.delete(key)));
       }
     </script>
-    <script src="crm.js?v=20260822-compact-work-files-rail"></script>
+    <script src="crm.js?v=20260822-collapsible-work-files-rail"></script>
     <script src="calendar-upgrade.js?v=20260808-calendar-popups"></script>
     <script src="animus-shell.js?v=20260822-sidebar-supplements"></script>
     <script src="animus-dashboard.js?v=20260822-navigation-estimator-repair"></script>

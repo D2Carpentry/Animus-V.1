@@ -1,10 +1,7 @@
-Upload these three files together to the root of the ANIMUS-V.1 GitHub repository:
+Upload these three files together to the root of the ANIMUS-V.1 repository:
 
-- crm.html
-- crm.js
-- animus-work-file.css
+crm.html
+crm.js
+animus-work-file.css
 
-This update only changes the Work Files desktop layout:
-- Removes address and updated-time rows from the file list.
-- Narrows the list panel and gives the selected work-file area more room.
-- Replaces status filter bubbles with one square filter menu.
+This update fixes the Work Files filter menu, moves each file status beneath its file number, and adds the collapsible Work Files rail.
