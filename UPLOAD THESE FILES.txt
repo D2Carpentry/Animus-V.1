@@ -1,13 +1,7 @@
-Upload this entire folder to the ANIMUS GitHub repository and replace matching files.
+Upload both files to the ANIMUS repository and replace the existing copies.
 
-Important: keep the functions/api/dashboard.js folder path intact. This is the
-Cloudflare save protection that prevents an empty browser copy from replacing
-the saved revenue ledger.
+This removes the old-interface flash when Command Center opens. The page now
+shows a clean ANIMUS opening screen until the current interface is ready.
 
-This package contains the verified historical revenue ledger:
-40 rows | $101,476.00 gross | $25,050.67 expenses
-
-After Cloudflare finishes deploying, open:
-https://animus-v-1.pages.dev/crm?revenueLedgerGuard=20260823
-
-Then click Save once. It should keep the full ledger instead of zeroing it.
+After deployment, use:
+https://animus-v-1.pages.dev/crm?smoothOpening=20260823

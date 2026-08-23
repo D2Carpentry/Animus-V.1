@@ -35,6 +35,11 @@
     const observer = new MutationObserver(syncShell);
     ["crmExpensesView","crmRevenueView","crmPayrollView","crmCalendarView","crmPriceView","crmBusinessView","crmEstimatorView"].map((id) => document.getElementById(id)).filter(Boolean).forEach((element) => observer.observe(element, { attributes:true, attributeFilter:["hidden"] }));
     syncShell();
+    // Do not reveal the legacy HTML while the shared ANIMUS shell is being built.
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      document.body.classList.remove("crm-booting");
+      document.body.classList.add("animus-ready");
+    }));
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", createShell); else createShell();
 })();
