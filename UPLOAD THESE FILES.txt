@@ -1,7 +1,7 @@
-Upload these three files together to the root of the ANIMUS-V.1 repository:
+Upload all three files in this folder to the root of the ANIMUS-V.1 repository:
 
 crm.html
-crm.js
 animus-work-file.css
+animus-work-file.js
 
-This update fixes the Work Files filter menu, moves each file status beneath its file number, and adds the collapsible Work Files rail.
+This update makes the top Estimate / Paid / Balance summary strip more compact and clean, and makes Job Details wider and easier to read.
