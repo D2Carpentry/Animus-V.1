@@ -1445,16 +1445,18 @@ function renderCounts() {
 function renderFileList() {
   const files = visibleFiles();
   $("crmListTitle").textContent = $("crmFileFilter").selectedOptions[0].textContent;
-  const tabs = [
-    ["all", "All", crmFiles.length],
-    ["new", "Leads", filesInCategory("new").length],
-    ["estimate", "Estimates", filesInCategory("estimate").length],
-    ["active", "Jobs", filesInCategory("active").length],
-    ["archive", "Closed", filesInCategory("archive").length],
+  const filters = [
+    ["all", "All Work Files", crmFiles.length],
+    ["new", "New Leads", filesInCategory("new").length],
+    ["contact", "Pending Contact", filesInCategory("contact").length],
+    ["estimate", "Pending Estimates", filesInCategory("estimate").length],
+    ["negotiation", "In Negotiation", filesInCategory("negotiation").length],
+    ["active", "Active Jobs", filesInCategory("active").length],
+    ["archive", "Closed Files", filesInCategory("archive").length],
   ];
-  const tabHost = $("animusWorkFileTabs");
-  if (tabHost) {
-    tabHost.innerHTML = tabs.map(([value, label, count]) => `<button type="button" class="animus-work-file-tab ${$("crmFileFilter").value === value ? "active" : ""}" data-animus-file-filter="${value}">${label} <b>${count}</b></button>`).join("");
+  const filterMenu = $("animusWorkFileFilterMenu");
+  if (filterMenu) {
+    filterMenu.innerHTML = filters.map(([value, label, count]) => `<button type="button" class="animus-work-file-filter-option ${$("crmFileFilter").value === value ? "active" : ""}" data-animus-file-filter="${value}"><span>${label}</span><b>${count}</b></button>`).join("");
   }
   const statusTone = (file) => {
     if (["Closed / Paid", "Job Lost / Closed"].includes(file.fileStatus)) return "closed";
@@ -1463,27 +1465,15 @@ function renderFileList() {
     return "open";
   };
   const initials = (name) => String(name || "?").split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
-  const location = (file) => String(file.projectAddress || "").split(",").slice(-2).join(",").trim() || "Location not added";
-  const lastUpdated = (file) => {
-    const note = Array.isArray(file.notes) ? file.notes[file.notes.length - 1] : null;
-    const timeline = Array.isArray(file.timeline) ? file.timeline[file.timeline.length - 1] : null;
-    const raw = file.updatedAt || note?.editedAt || note?.at || timeline?.at || "";
-    const value = new Date(raw).getTime();
-    if (!Number.isFinite(value)) return "";
-    const hours = Math.max(0, Math.round((Date.now() - value) / 3600000));
-    return hours < 1 ? "Updated now" : hours < 24 ? `Updated ${hours}h ago` : `Updated ${Math.round(hours / 24)}d ago`;
-  };
   $("crmFileList").innerHTML = files.map((file) => `
     <button type="button" class="crm-file-card ${file.id === activeFileId ? "active" : ""}" data-file-id="${file.id}">
       <span class="animus-file-avatar">${escapeHtml(initials(file.clientName))}</span>
       <span class="animus-file-card-copy">
         <strong>${escapeHtml(file.clientName || "Unnamed Client")}</strong>
         <small>${escapeHtml(file.fileNumber || "No file number")}</small>
-        <em>⌖ ${escapeHtml(location(file))}</em>
       </span>
       <span class="animus-file-card-meta">
         <span class="animus-file-status ${statusTone(file)}">${escapeHtml(file.fileStatus || "New Lead")}</span>
-        <small>${escapeHtml(lastUpdated(file))}</small>
       </span>
       <span class="animus-file-chevron" aria-hidden="true">›</span>
     </button>
@@ -1499,8 +1489,15 @@ function renderFileList() {
   document.querySelectorAll("[data-animus-file-filter]").forEach((button) => {
     button.addEventListener("click", () => {
       activateCrmFilter(button.dataset.animusFileFilter);
+      $("animusWorkFileFilterMenu").hidden = true;
+      $("animusWorkFileFilterButton").setAttribute("aria-expanded", "false");
       renderCrm();
     });
+  });
+  $("animusWorkFileFilterButton")?.addEventListener("click", () => {
+    const menu = $("animusWorkFileFilterMenu");
+    menu.hidden = !menu.hidden;
+    $("animusWorkFileFilterButton").setAttribute("aria-expanded", String(!menu.hidden));
   });
 }
 

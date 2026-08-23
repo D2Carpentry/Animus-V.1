@@ -1,13 +1,10 @@
-Upload every file in this folder to the root of the ANIMUS-V.1 GitHub repository.
+Upload these three files together to the root of the ANIMUS-V.1 GitHub repository:
 
-This update includes:
-- A global Expenses home page that lists only work files with saved expenses.
-- File-specific expense ledgers when opening Expenses from a work file or Revenue row.
-- Correct global and per-file totals in the Expenses header.
-
-Upload these five files together:
 - crm.html
 - crm.js
-- expenses-v6.js
-- expenses-v6.css
-- animus-work-file.js
+- animus-work-file.css
+
+This update only changes the Work Files desktop layout:
+- Removes address and updated-time rows from the file list.
+- Narrows the list panel and gives the selected work-file area more room.
+- Replaces status filter bubbles with one square filter menu.

@@ -12,7 +12,7 @@ body.animus-work-file-active.crm-estimator-active .crm-command-panel {
 
 /* Work Files is a dedicated master-detail workspace; CRM data stays untouched. */
 body.animus-unified-ui .animus-work-files-layout {
-  grid-template-columns: minmax(350px, 385px) minmax(0, 1fr);
+  grid-template-columns: minmax(270px, 300px) minmax(0, 1fr);
   align-items: stretch;
   gap: 14px;
   min-height: calc(100vh - 118px);
@@ -70,32 +70,15 @@ body.animus-unified-ui .animus-work-files-layout .crm-file-workspace {
   white-space: nowrap;
 }
 
-.animus-work-file-tabs {
-  display: flex;
-  gap: 6px;
-  overflow-x: auto;
-  margin: 0 -1px 12px;
-  padding-bottom: 2px;
-  scrollbar-width: none;
-}
-
-.animus-work-file-tabs::-webkit-scrollbar { display: none; }
-
-.animus-work-file-tab {
-  flex: 0 0 auto;
-  min-height: 32px;
-  padding: 0 10px;
-  border: 1px solid #dde6f3;
-  border-radius: 7px;
-  background: #f8fafc;
-  color: #263959;
-  font-size: 11px;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.animus-work-file-tab b { color: inherit; font-weight: 850; }
-.animus-work-file-tab.active { border-color: #2563eb; background: #2563eb; color: #fff; box-shadow: 0 2px 6px rgba(37, 99, 235, .18); }
+.animus-work-file-filter-menu { position:relative; display:flex; justify-content:flex-end; margin:-40px 0 12px; }
+.animus-work-file-filter-button { display:grid; width:35px; height:35px; place-items:center; border:1px solid #dce5f2; border-radius:7px; color:#164d9f; background:#fff; cursor:pointer; font-size:17px; line-height:1; }
+.animus-work-file-filter-button:hover,.animus-work-file-filter-button[aria-expanded="true"] { border-color:#8ab5ff; background:#f3f7ff; }
+.animus-work-file-filter-options { position:absolute; z-index:15; top:41px; right:0; width:210px; overflow:hidden; padding:5px; border:1px solid #dce5f2; border-radius:9px; background:#fff; box-shadow:0 12px 30px rgba(15,23,42,.14); }
+.animus-work-file-filter-options[hidden] { display:none; }
+.animus-work-file-filter-option { display:flex; align-items:center; justify-content:space-between; width:100%; gap:12px; padding:9px 10px; border:0; border-radius:6px; color:#263959; background:#fff; cursor:pointer; font:inherit; font-size:12px; font-weight:750; text-align:left; }
+.animus-work-file-filter-option:hover { background:#f4f8ff; }
+.animus-work-file-filter-option.active { color:#fff; background:#2563eb; }
+.animus-work-file-filter-option b { font-size:11px; }
 
 .animus-work-file-tools {
   display: grid;
@@ -133,11 +116,11 @@ body.animus-unified-ui .animus-work-files-layout .crm-file-workspace {
 
 .animus-work-files-layout .crm-file-card {
   display: grid;
-  grid-template-columns: 42px minmax(0, 1fr) auto 13px;
+  grid-template-columns: 38px minmax(0, 1fr) auto 12px;
   align-items: center;
-  gap: 10px;
-  min-height: 83px;
-  padding: 11px 4px;
+  gap: 8px;
+  min-height: 62px;
+  padding: 9px 3px;
   border: 0;
   border-bottom: 1px solid #edf1f6;
   border-radius: 0;
@@ -147,12 +130,12 @@ body.animus-unified-ui .animus-work-files-layout .crm-file-workspace {
 
 .animus-work-files-layout .crm-file-card:first-child { border-top: 1px solid #edf1f6; }
 .animus-work-files-layout .crm-file-card:hover { background: #f8fbff; }
-.animus-work-files-layout .crm-file-card.active { margin: 3px 0; padding: 10px; border: 1px solid #8ab5ff; border-radius: 8px; background: linear-gradient(105deg, #f3f7ff, #fff); box-shadow: 0 3px 10px rgba(37, 99, 235, .08); }
+.animus-work-files-layout .crm-file-card.active { margin:3px 0; padding:8px; border:1px solid #8ab5ff; border-radius:8px; background:linear-gradient(105deg,#f3f7ff,#fff); box-shadow:0 3px 10px rgba(37,99,235,.08); }
 
 .animus-file-avatar {
   display: grid;
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   place-items: center;
   border-radius: 11px;
   background: #eef2f8;
@@ -163,15 +146,12 @@ body.animus-unified-ui .animus-work-files-layout .crm-file-workspace {
 
 .animus-file-card-copy { min-width: 0; text-align: left; }
 .animus-file-card-copy strong,
-.animus-file-card-copy small,
-.animus-file-card-copy em { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.animus-file-card-copy small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .animus-file-card-copy strong { margin-bottom: 4px; color: #15284a; font-size: 13px; font-weight: 850; }
-.animus-file-card-copy small { margin-bottom: 4px; color: #1d559f; font-size: 11px; font-weight: 800; }
-.animus-file-card-copy em { color: #677993; font-size: 10px; font-style: normal; font-weight: 650; }
+.animus-file-card-copy small { color:#1d559f; font-size:11px; font-weight:800; }
 
-.animus-file-card-meta { display: grid; justify-items: end; gap: 8px; min-width: 0; }
-.animus-file-card-meta > small { max-width: 80px; overflow: hidden; color: #71809a; font-size: 9px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
-.animus-file-status { max-width: 105px; overflow: hidden; padding: 4px 7px; border-radius: 999px; font-size: 9px; font-weight: 850; text-overflow: ellipsis; white-space: nowrap; }
+.animus-file-card-meta { display:grid; justify-items:end; min-width:0; }
+.animus-file-status { max-width:84px; overflow:hidden; padding:4px 6px; border-radius:999px; font-size:9px; font-weight:850; text-overflow:ellipsis; white-space:nowrap; }
 .animus-file-status.open { background: #e9f1ff; color: #1e57c8; }
 .animus-file-status.warning { background: #fff2dc; color: #b46a00; }
 .animus-file-status.active { background: #e5f8ee; color: #148047; }
