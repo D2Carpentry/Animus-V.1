@@ -1694,6 +1694,24 @@ function saveActiveFile() {
   saveCrmFiles();
 }
 
+// Keep a partially completed new file safe when the user switches away to copy
+// customer information. The visible Save button remains the cloud-save action.
+let crmDraftSaveTimer;
+function saveActiveFileDraft() {
+  if (!activeFile()) return;
+  window.clearTimeout(crmDraftSaveTimer);
+  crmLocalChangeVersion += 1;
+  crmDraftSaveTimer = window.setTimeout(() => {
+    saveActiveFile();
+  }, 180);
+}
+
+function flushActiveFileDraft() {
+  if (!activeFile()) return;
+  window.clearTimeout(crmDraftSaveTimer);
+  saveActiveFile();
+}
+
 function toggleEstimateAmountEdit() {
   const panel = $("crmEstimateEditPanel");
   panel.hidden = !panel.hidden;
@@ -6999,6 +7017,9 @@ async function importGoogleCalendarEvents(silent = false) {
 }
 
 function switchCrmView(view) {
+  // Changing Command Center sections must not discard a partially completed
+  // customer file. The full dashboard still goes to cloud only through Save.
+  flushActiveFileDraft();
   const showRevenue = view === "revenue";
   const showPayroll = view === "payroll";
   const showCalendar = view === "calendar";
@@ -8299,6 +8320,15 @@ $("crmFileStatus").addEventListener("change", () => {
   handleStatusWorkflow();
 });
 $("crmStatusDetail").addEventListener("change", handleStatusWorkflow);
+
+crmFields.forEach((field) => {
+  const element = $(`crm${field[0].toUpperCase()}${field.slice(1)}`);
+  if (!element) return;
+  element.addEventListener("input", saveActiveFileDraft);
+  element.addEventListener("change", saveActiveFileDraft);
+});
+
+window.addEventListener("pagehide", flushActiveFileDraft);
 
 document.querySelectorAll("input, select, textarea").forEach((element) => {
   if (element.closest("#crmExpensesView")) return;
