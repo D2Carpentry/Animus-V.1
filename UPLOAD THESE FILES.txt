@@ -1,11 +1,14 @@
-Upload all three files in this folder to the root of the ANIMUS-V.1 repository:
+Upload and replace these five files in the main folder of the ANIMUS repository:
 
 crm.html
-animus-work-file.css
+crm.js
+expenses-v6.js
 animus-work-file.js
+animus-work-file.css
 
-This update:
-- Closes Work File dropdowns when clicking elsewhere on the page.
-- Removes Next Action and Assigned To from the top summary strip for more space.
-- Adds the Payroll-linked Assigned To card below Next Action.
-- Removes file initials/thumbnails from the Work Files list.
+This update includes:
+- ANIMUS-style Add File Note dialog
+- Expense Center records mirrored into each Work File and Revenue
+- historical Revenue rows protected from zero-only browser copies
+- duplicate CRM / Files and Jobs buttons removed from Expenses
+- Work File list thumbnails hidden to give the file list more room

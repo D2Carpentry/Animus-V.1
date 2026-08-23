@@ -156,7 +156,13 @@
   }
 
   function expensesPanel(file) {
-    const records = Array.isArray(file.animusExpenseLedgerV4) ? file.animusExpenseLedgerV4 : [];
+    const stored = Array.isArray(file.animusExpenseLedgerV4) ? file.animusExpenseLedgerV4 : [];
+    const cloud = typeof window.getAnimusExpensesForFile === "function" ? window.getAnimusExpensesForFile(file.id || file.fileNumber) : [];
+    const records = [...cloud, ...stored].reduce((unique, entry) => {
+      const key = String(entry?.id || `${entry?.date || ""}-${entry?.vendor || ""}-${entry?.amount || ""}`);
+      if (!unique.some((item) => item.key === key)) unique.push({ key, entry });
+      return unique;
+    }, []).map((item) => item.entry).sort((a, b) => String(b.updatedAt || b.createdAt || "").localeCompare(String(a.updatedAt || a.createdAt || "")));
     return `<div class="animus-tab-panel"><section class="animus-info-card"><div class="animus-card-head"><h3>Expenses</h3><button class="animus-record-button primary small" data-animus-open="expenses">Open Expense Center</button></div>${records.length ? `<div class="animus-activity">${records.map((entry) => `<article class="animus-activity-row"><span class="animus-activity-icon">R</span><div class="animus-activity-main"><strong>${escape(entry.vendor || entry.title || "Expense")}</strong><p>${escape(entry.category || "Other")} · ${escape(date(entry.date))}</p></div><time class="animus-activity-time">${money(entry.amount)}</time></article>`).join("")}</div>` : `<div class="animus-empty-panel">No saved expenses for this file.</div>`}</section></div>`;
   }
 
@@ -242,6 +248,38 @@
     if (typeof window.renderCrm === "function") window.renderCrm();
   }
 
+  function openFileNoteModal() {
+    const modal = byId("animusFileNoteModal");
+    const input = byId("animusFileNoteText");
+    if (!modal || !input) return;
+    input.value = "";
+    modal.hidden = false;
+    window.setTimeout(() => input.focus(), 0);
+  }
+
+  function closeFileNoteModal() {
+    const modal = byId("animusFileNoteModal");
+    const input = byId("animusFileNoteText");
+    if (modal) modal.hidden = true;
+    if (input) input.value = "";
+  }
+
+  function saveFileNote() {
+    const file = currentFile();
+    const input = byId("animusFileNoteText");
+    const text = input?.value.trim();
+    if (!file || !text) {
+      input?.focus();
+      return;
+    }
+    const stamp = new Date().toISOString();
+    file.notes = [...(Array.isArray(file.notes) ? file.notes : []), { at: stamp, text }];
+    file.timeline = [...(Array.isArray(file.timeline) ? file.timeline : []), `Note added ${new Date(stamp).toLocaleString("en-US")}`];
+    if (typeof window.saveCrmFiles === "function") window.saveCrmFiles();
+    closeFileNoteModal();
+    if (typeof window.renderCrm === "function") window.renderCrm(); else renderWorkFile();
+  }
+
   function openExisting(action) {
     const id = { estimate: "crmOpenEstimate", supplement: "crmCreateSupplement", assignment: "crmOpenAssignment", invoice: "crmOpenInvoice", archive: "crmArchiveFile", delete: "crmDeleteFile" }[action];
     if (action === "payroll") {
@@ -260,6 +298,14 @@
     if (!event.target.closest("details")) {
       document.querySelectorAll(".animus-work-file details[open]").forEach((menu) => { menu.open = false; });
     }
+    if (event.target.id === "animusFileNoteModal" || event.target.closest("#animusFileNoteClose, #animusFileNoteCancel")) {
+      closeFileNoteModal();
+      return;
+    }
+    if (event.target.closest("#animusFileNoteSave")) {
+      saveFileNote();
+      return;
+    }
     const target = event.target.closest("[data-animus-tab], [data-animus-edit], [data-animus-save], [data-animus-save-editor], [data-animus-cancel-editor], [data-animus-complete-action], [data-animus-open], [data-animus-add-note], [data-animus-back], [data-animus-summary]");
     if (!target) return;
     if (target.dataset.animusTab) { state.tab = target.dataset.animusTab; state.editor = ""; renderWorkFile(); return; }
@@ -275,15 +321,7 @@
       return;
     }
     if (target.hasAttribute("data-animus-add-note")) {
-      const file = currentFile();
-      const text = window.prompt("Add a note to this work file:");
-      if (file && text && text.trim()) {
-        const stamp = new Date().toISOString();
-        file.notes = [...(Array.isArray(file.notes) ? file.notes : []), { at: stamp, text: text.trim() }];
-        file.timeline = [...(Array.isArray(file.timeline) ? file.timeline : []), `Note added ${new Date(stamp).toLocaleString("en-US")}`];
-        if (typeof window.saveCrmFiles === "function") window.saveCrmFiles();
-        if (typeof window.renderCrm === "function") window.renderCrm();
-      }
+      openFileNoteModal();
       return;
     }
     if (target.hasAttribute("data-animus-save")) { if (typeof window.saveActiveFile === "function") window.saveActiveFile(); if (typeof window.saveDashboardToGoogle === "function") window.saveDashboardToGoogle(); renderWorkFile(); return; }

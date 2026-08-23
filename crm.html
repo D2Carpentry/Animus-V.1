@@ -957,6 +957,21 @@
         </div>
       </section>
     </div>
+    <div class="crm-modal-backdrop" id="animusFileNoteModal" hidden>
+      <section class="crm-choice-modal animus-file-note-modal" role="dialog" aria-modal="true" aria-labelledby="animusFileNoteTitle">
+        <button type="button" class="crm-modal-close" id="animusFileNoteClose" aria-label="Close">×</button>
+        <p class="eyebrow">Work File</p>
+        <h2 id="animusFileNoteTitle">Add File Note</h2>
+        <p class="animus-file-note-help">Keep a clear record for this customer and project.</p>
+        <label class="animus-file-note-label" for="animusFileNoteText">Note
+          <textarea id="animusFileNoteText" rows="8" placeholder="Write the note you want saved to this work file..."></textarea>
+        </label>
+        <div class="crm-choice-actions animus-file-note-actions">
+          <button type="button" class="icon-button" id="animusFileNoteCancel">Cancel</button>
+          <button type="button" class="icon-button primary-action" id="animusFileNoteSave">Save Note</button>
+        </div>
+      </section>
+    </div>
     <div class="crm-modal-backdrop crm-loading-backdrop" id="crmReceiptLoadingModal" hidden>
       <section class="crm-choice-modal crm-loading-modal" role="status" aria-live="polite" aria-label="Reading receipt photo">
         <div class="crm-loading-spinner" aria-hidden="true"></div>
@@ -980,15 +995,15 @@
         caches.keys().then((keys) => keys.forEach((key) => caches.delete(key)));
       }
     </script>
-    <script src="crm.js?v=20260822-work-file-back-button"></script>
+    <script src="crm.js?v=20260822-expense-file-mirror"></script>
     <script src="calendar-upgrade.js?v=20260808-calendar-popups"></script>
     <script src="animus-shell.js?v=20260822-sidebar-supplements"></script>
     <script src="animus-dashboard.js?v=20260822-navigation-estimator-repair"></script>
     <link rel="stylesheet" href="animus-business-performance.css?v=20260822-business-performance">
     <script src="animus-business-performance.js?v=20260822-business-performance"></script>
-    <script src="expenses-v6.js?v=20260822-expense-home-file-scope"></script>
+    <script src="expenses-v6.js?v=20260822-expense-file-mirror"></script>
     <link rel="stylesheet" href="animus-revenue.css?v=20260822-revenue-actions">
     <script src="animus-revenue.js?v=20260822-revenue-actions"></script>
-    <script src="animus-work-file.js?v=20260822-work-file-space-and-menus"></script>
+    <script src="animus-work-file.js?v=20260822-file-note-dialog"></script>
   </body>
 </html>

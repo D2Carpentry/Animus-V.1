@@ -154,6 +154,8 @@ body.animus-unified-ui .animus-work-files-layout .crm-file-workspace {
   font-weight: 850;
 }
 
+.animus-work-files-layout .crm-file-card .animus-file-avatar { display: none; }
+
 .animus-file-card-copy { min-width: 0; text-align: left; }
 .animus-file-card-copy strong,
 .animus-file-card-copy small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -603,6 +605,13 @@ body.animus-unified-ui .animus-work-files-layout .crm-file-workspace { gap: 16px
 .animus-inline-editor input, .animus-inline-editor select { min-height: 38px; padding: 0 10px; border: 1px solid #cfd9e8; border-radius: 7px; background: #fff; color: #142747; font: inherit; }
 .animus-inline-editor .wide { grid-column: 1 / -1; }
 .animus-inline-editor-details .animus-inline-editor-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+.animus-file-note-modal { width: min(620px, calc(100vw - 32px)); }
+.animus-file-note-help { margin: 0 0 16px; color: #62728a; font-size: 13px; line-height: 1.45; }
+.animus-file-note-label { display: grid; gap: 8px; color: #263b5c; font-size: 13px; font-weight: 800; }
+.animus-file-note-label textarea { min-height: 190px; resize: vertical; padding: 13px; border: 1px solid #cfd9e8; border-radius: 9px; background: #fbfdff; color: #142747; font: inherit; line-height: 1.5; }
+.animus-file-note-label textarea:focus { outline: 3px solid rgba(37, 99, 235, .14); border-color: #4f8cff; background: #fff; }
+.animus-file-note-actions { justify-content: flex-end; }
 
 @media (max-width: 1240px) {
   .animus-work-grid { grid-template-columns: minmax(230px, 1fr) minmax(330px, 1.35fr); }

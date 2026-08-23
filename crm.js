@@ -519,14 +519,14 @@ function loadRevenueRows() {
           if (Array.isArray(backupRows) && backupRows.length) return filterDeletedRevenueRows(dedupeRevenueRows(backupRows), deletedKeys);
           if (restoredRows.length) return filterDeletedRevenueRows(dedupeRevenueRows(restoredRows), deletedKeys);
         }
-        return filterDeletedRevenueRows(restoredRows.length ? dedupeRevenueRows(mergeRevenueRows(rows, restoredRows)) : dedupeRevenueRows(rows), deletedKeys);
+        const baselineRows = mergeRevenueRows(restoredRows, spreadsheetRows);
+        return filterDeletedRevenueRows(dedupeRevenueRows(mergeRevenueRows(rows, baselineRows)), deletedKeys);
       }
     }
   } catch (error) {
     // Local demo storage may be unavailable in some browsers.
   }
-  if (restoredRows.length) return filterDeletedRevenueRows(dedupeRevenueRows(restoredRows), deletedKeys);
-  return filterDeletedRevenueRows(dedupeRevenueRows(spreadsheetRows), deletedKeys);
+  return filterDeletedRevenueRows(dedupeRevenueRows(mergeRevenueRows(restoredRows, spreadsheetRows)), deletedKeys);
 }
 
 function loadPriceRows() {
@@ -2798,12 +2798,28 @@ function filterDeletedRevenueRows(rows = [], deletedKeys = loadDeletedRevenueKey
 
 function mergeRevenueRows(primary = [], secondary = []) {
   const merged = [];
-  const seen = new Set();
+  const indexes = new Map();
+  const hasFinancialValue = (row) => [row?.gross, row?.expenses, row?.labor, row?.profit]
+    .some((value) => Math.abs(Number(value) || 0) > 0.0001);
   [...primary, ...secondary].forEach((row) => {
     const key = revenueRowKey(row);
-    if (!key || seen.has(key)) return;
-    seen.add(key);
-    merged.push({ ...row });
+    if (!key) return;
+    const index = indexes.get(key);
+    if (index === undefined) {
+      indexes.set(key, merged.length);
+      merged.push({ ...row });
+      return;
+    }
+    const existing = merged[index];
+    if (!hasFinancialValue(existing) && hasFinancialValue(row)) {
+      merged[index] = {
+        ...existing,
+        ...row,
+        dashboardFileId: existing.dashboardFileId || row.dashboardFileId || "",
+        fileNumber: existing.fileNumber || row.fileNumber || "",
+        attachedEstimate: existing.attachedEstimate || row.attachedEstimate,
+      };
+    }
   });
   return merged;
 }
