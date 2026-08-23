@@ -1,22 +1,13 @@
-Upload and replace every file in this folder in the ANIMUS repository root.
+Upload this entire folder to the ANIMUS GitHub repository and replace matching files.
 
-This package fixes the main Save button so it cannot save an empty or partial
-Revenue list over the verified revenue history.
+Important: keep the functions/api/dashboard.js folder path intact. This is the
+Cloudflare save protection that prevents an empty browser copy from replacing
+the saved revenue ledger.
 
-Included revenue recovery:
-- 40 verified historical revenue records
-- $101,476.00 gross revenue
-- $25,050.67 expenses
+This package contains the verified historical revenue ledger:
+40 rows | $101,476.00 gross | $25,050.67 expenses
 
-The recovery is revenue-only. It does not contain customer file records,
-work-file statuses, estimates, expenses, or receipts.
+After Cloudflare finishes deploying, open:
+https://animus-v-1.pages.dev/crm?revenueLedgerGuard=20260823
 
-Also included are the current shared sidebar and Payroll files so the updated
-crm.html always has every script it needs.
-
-After upload, open:
-https://animus-v-1.pages.dev/crm?revenueSafeSave=20260822
-
-Then confirm the Revenue page has the historical rows before clicking Save.
-Once confirmed, click Save once. The new protection sends the complete ledger
-to Cloudflare instead of allowing a blank list to replace it.
+Then click Save once. It should keep the full ledger instead of zeroing it.

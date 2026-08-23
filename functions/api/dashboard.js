@@ -174,6 +174,8 @@ function mergeFiles(existing = [], incoming = []) {
 
 function mergeRevenueRows(existing = [], incoming = []) {
   const merged = new Map();
+  const hasFinancialValue = (row = {}) => [row.gross, row.expenses, row.labor, row.profit]
+    .some((value) => Math.abs(Number(value) || 0) > 0.0001);
   existing.forEach((row) => {
     const key = rowMergeKey(row);
     if (key) merged.set(key, { ...row });
@@ -182,9 +184,19 @@ function mergeRevenueRows(existing = [], incoming = []) {
     const key = rowMergeKey(row);
     if (!key) return;
     const prior = merged.get(key) || {};
+    // A stale browser can carry an empty financial row. Keep the verified
+    // cloud figures in that case rather than turning a real ledger entry into $0.
+    const incomingIsEmpty = !hasFinancialValue(row);
+    const priorHasValues = hasFinancialValue(prior);
     merged.set(key, {
       ...prior,
       ...row,
+      ...(incomingIsEmpty && priorHasValues ? {
+        gross: prior.gross,
+        expenses: prior.expenses,
+        labor: prior.labor,
+        profit: prior.profit,
+      } : {}),
       expenseLines: mergeExpenseLines(prior.expenseLines, row.expenseLines),
     });
   });
@@ -203,11 +215,16 @@ async function readExistingDashboard(env) {
 }
 
 function mergeDashboard(existing = {}, incoming = {}) {
+  const deletedRevenueKeys = new Set(
+    Array.isArray(incoming.deletedRevenueKeys) ? incoming.deletedRevenueKeys.map((key) => String(key).trim().toLowerCase()) : [],
+  );
+  const mergedRevenueRows = mergeRevenueRows(existing.revenueRows, incoming.revenueRows)
+    .filter((row) => !deletedRevenueKeys.has(rowMergeKey(row)));
   return {
     ...existing,
     ...incoming,
     dashboardFiles: mergeFiles(existing.dashboardFiles, incoming.dashboardFiles),
-    revenueRows: mergeRevenueRows(existing.revenueRows, incoming.revenueRows),
+    revenueRows: mergedRevenueRows,
     payrollRows: Array.isArray(incoming.payrollRows) ? incoming.payrollRows : (existing.payrollRows || []),
     priceRows: Array.isArray(incoming.priceRows) ? incoming.priceRows : (existing.priceRows || []),
     deletedPriceIds: Array.isArray(incoming.deletedPriceIds) ? incoming.deletedPriceIds : (existing.deletedPriceIds || []),
@@ -337,8 +354,9 @@ async function handlePost(context) {
     }, 400);
   }
 
+  const existing = await readExistingDashboard(env);
   const dashboard = {
-    ...payload,
+    ...mergeDashboard(existing || {}, payload),
     action: "dashboardSync",
     syncedAt: new Date().toISOString(),
     savedTo: "Cloudflare R2",
@@ -363,6 +381,7 @@ async function handlePost(context) {
   return jsonResponse({
     ok: true,
     dryRun,
+    dashboard,
     summary: dashboardSummary(dashboard, DASHBOARD_KEY),
     syncedAt: dashboard.syncedAt,
     fileCount: files.length,

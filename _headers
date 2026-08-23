@@ -7,6 +7,9 @@
 /crm.js
   Cache-Control: no-store, no-cache, must-revalidate, max-age=0
 
+/*.js
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+
 /expenses-v5.js
   Cache-Control: no-store, no-cache, must-revalidate, max-age=0
 

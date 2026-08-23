@@ -819,6 +819,7 @@ function buildDashboardSyncPayload() {
     source: "D2 Command Center",
     dashboardFiles: crmFiles,
     revenueRows: crmRevenueRows,
+    deletedRevenueKeys: Array.from(loadDeletedRevenueKeys()),
     payrollRows: crmPayrollRows,
     priceRows: crmPriceRows,
     deletedPriceIds: crmDeletedPriceIds,
