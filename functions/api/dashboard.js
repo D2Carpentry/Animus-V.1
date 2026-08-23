@@ -22,6 +22,10 @@ function backupKey() {
   return `${BACKUP_PREFIX}${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
 }
 
+function testSnapshotKey() {
+  return `dashboard/tests/${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
+}
+
 function missingBucketResponse() {
   return jsonResponse({
     ok: false,
@@ -354,6 +358,8 @@ async function handlePost(context) {
     }, 400);
   }
 
+  const url = new URL(request.url);
+  const isTestSnapshot = url.searchParams.get("testSnapshot") === "1";
   const existing = await readExistingDashboard(env);
   const dashboard = {
     ...mergeDashboard(existing || {}, payload),
@@ -362,15 +368,18 @@ async function handlePost(context) {
     savedTo: "Cloudflare R2",
   };
   const body = JSON.stringify(dashboard);
-  const dryRun = new URL(request.url).searchParams.has("dryRun");
+  const dryRun = url.searchParams.has("dryRun");
 
   if (!dryRun) {
-    await env.ANIMUS_BUCKET.put(DASHBOARD_KEY, body, {
+    const writeKey = isTestSnapshot ? testSnapshotKey() : DASHBOARD_KEY;
+    await env.ANIMUS_BUCKET.put(writeKey, body, {
       httpMetadata: { contentType: "application/json; charset=utf-8" },
     });
-    await env.ANIMUS_BUCKET.put(backupKey(), body, {
-      httpMetadata: { contentType: "application/json; charset=utf-8" },
-    });
+    if (!isTestSnapshot) {
+      await env.ANIMUS_BUCKET.put(backupKey(), body, {
+        httpMetadata: { contentType: "application/json; charset=utf-8" },
+      });
+    }
   }
 
   const files = Array.isArray(dashboard.dashboardFiles) ? dashboard.dashboardFiles : [];
@@ -381,6 +390,7 @@ async function handlePost(context) {
   return jsonResponse({
     ok: true,
     dryRun,
+    testSnapshot: isTestSnapshot,
     dashboard,
     summary: dashboardSummary(dashboard, DASHBOARD_KEY),
     syncedAt: dashboard.syncedAt,

@@ -43,6 +43,7 @@
           <input id="crmFileSearch" type="search" placeholder="Search name, phone, or file #">
           <button type="button" id="crmSearchFile">Search</button>
           <button class="icon-button header-save-button" type="button" id="crmSaveDemo">Save</button>
+          <button class="icon-button" type="button" id="crmSaveTest">Save Test</button>
           <button class="icon-button header-restore-button" type="button" id="crmLoadCloud">Restore Backup</button>
           <button class="icon-button header-restore-button" type="button" id="crmImportBackupFile">Import Backup File</button>
           <input id="crmBackupFileUpload" type="file" accept=".json,application/json,text/json" hidden>
@@ -1011,7 +1012,7 @@
         caches.keys().then((keys) => keys.forEach((key) => caches.delete(key)));
       }
     </script>
-  <script src="crm.js?v=20260823-draft-save-delete"></script>
+  <script src="crm.js?v=20260823-safe-save-test"></script>
     <script src="calendar-upgrade.js?v=20260808-calendar-popups"></script>
     <script src="animus-shell.js?v=20260823-smooth-first-paint"></script>
     <script src="animus-dashboard.js?v=20260822-navigation-estimator-repair"></script>

@@ -1,10 +1,13 @@
 Upload every item in this folder to the root of the ANIMUS-V.1 GitHub repository.
 
-What this update does:
-- Keeps a new customer file draft when you switch away to copy information.
-- Adds More > Delete File on every Work File.
-- Delete File requires the passcode: D2.
-- Keeps the current Revenue cloud-save repair included with this upload.
+This update fixes the ordinary Save button so it saves Work Files, Payroll,
+and Price Database changes without touching Revenue data.
 
-After GitHub finishes publishing, open:
-https://animus-v-1.pages.dev/crm?update=20260823-draft-save-delete
+It also adds Save Test beside Save:
+- Save Test writes a complete test snapshot to Cloudflare.
+- It checks every current file and Revenue line against the returned cloud copy.
+- It does NOT replace the live Command Center snapshot.
+- A passed message means the full cloud path is safe to use.
+
+After Cloudflare has deployed the update, open:
+https://animus-v-1.pages.dev/crm?update=20260823-safe-save-test

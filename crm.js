@@ -808,14 +808,16 @@ function persistRestoredDashboardIfNeeded() {
 
 function buildDashboardSyncPayload(options = {}) {
   const includeRevenue = options.includeRevenue !== false;
-  captureCurrentDashboardEdits();
-  // Never allow an empty or partial browser copy to replace the verified
-  // historical ledger when the main Command Center Save button is used.
-  restoreVerifiedRevenueHistory();
+  const syncExpenses = options.syncExpenses !== false;
+  captureCurrentDashboardEdits({ includeRevenue });
+  // Revenue has its own cloud-save path. Do not even prepare or reconcile the
+  // ledger for a file-only Command Center save; that was allowing a stale
+  // browser table to interfere with otherwise unrelated file updates.
+  if (includeRevenue) restoreVerifiedRevenueHistory();
   crmFiles.forEach((file) => {
     syncExpenseFileForStorage(file);
   });
-  syncAllFileExpensesToRevenue();
+  if (includeRevenue && syncExpenses) syncAllFileExpensesToRevenue();
   const dashboard = {
     action: "dashboardSync",
     syncedAt: new Date().toISOString(),
@@ -894,8 +896,10 @@ function postPayloadToGoogle(payload) {
   return Promise.resolve(true);
 }
 
-async function postPayloadToCloudflare(payload) {
-  const response = await fetch(CLOUDFLARE_DASHBOARD_API, {
+async function postPayloadToCloudflare(payload, options = {}) {
+  const url = new URL(CLOUDFLARE_DASHBOARD_API, window.location.href);
+  if (options.testSnapshot) url.searchParams.set("testSnapshot", "1");
+  const response = await fetch(url.toString(), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     cache: "no-store",
@@ -913,8 +917,8 @@ async function postPayloadToCloudflare(payload) {
 // newer receipt list with an older snapshot.
 let cloudDashboardWriteQueue = Promise.resolve();
 
-function queueDashboardCloudSave(payload) {
-  const write = cloudDashboardWriteQueue.then(() => postPayloadToCloudflare(payload));
+function queueDashboardCloudSave(payload, options = {}) {
+  const write = cloudDashboardWriteQueue.then(() => postPayloadToCloudflare(payload, options));
   // Keep the next save available even when one request fails.
   cloudDashboardWriteQueue = write.catch(() => {});
   return write;
@@ -1113,7 +1117,8 @@ function captureVisibleFileExpenseEdits() {
   saveCrmFiles();
 }
 
-function captureCurrentDashboardEdits() {
+function captureCurrentDashboardEdits(options = {}) {
+  const includeRevenue = options.includeRevenue !== false;
   // The redesigned Revenue table has its own inline editor. Commit that value
   // before collecting the dashboard snapshot so a typed amount is not dropped.
   if (typeof window.animusCommitPendingRevenueEdit === "function") {
@@ -1125,8 +1130,10 @@ function captureCurrentDashboardEdits() {
   }
   saveActiveFile();
   captureOpenFinancialEdits();
-  captureVisibleFileExpenseEdits();
-  captureVisibleRevenueEdits();
+  if (includeRevenue) {
+    captureVisibleFileExpenseEdits();
+    captureVisibleRevenueEdits();
+  }
   captureVisiblePayrollEdits();
 }
 
@@ -1209,10 +1216,8 @@ function fetchDashboardFromGoogle() {
 }
 
 async function saveDashboardToGoogle() {
-  captureCurrentDashboardEdits();
-  restoreVerifiedRevenueHistory();
+  captureCurrentDashboardEdits({ includeRevenue: false });
   saveCrmFiles();
-  saveRevenueRows();
   savePayrollRows();
   savePriceRows();
   saveDeletedPriceIds();
@@ -1242,6 +1247,59 @@ async function saveDashboardToGoogle() {
     showDashboardSaveStatus(error.message || "Cloudflare save failed.", true);
   }
 }
+
+function dashboardTestTotals(rows = []) {
+  return rows.reduce((totals, row) => ({
+    gross: totals.gross + (Number(row?.gross) || 0),
+    expenses: totals.expenses + (Number(row?.expenses) || 0),
+    labor: totals.labor + (Number(row?.labor) || 0),
+  }), { gross: 0, expenses: 0, labor: 0 });
+}
+
+function dashboardTestValueMatches(left, right) {
+  return Math.abs((Number(left) || 0) - (Number(right) || 0)) < 0.005;
+}
+
+function verifyDashboardTestSnapshot(sent, received) {
+  const receivedFiles = Array.isArray(received?.dashboardFiles) ? received.dashboardFiles : [];
+  const receivedRevenue = Array.isArray(received?.revenueRows) ? received.revenueRows : [];
+  const missingFiles = (sent.dashboardFiles || []).filter((file) => !receivedFiles.some((saved) => String(saved.id || saved.fileNumber) === String(file.id || file.fileNumber)));
+  const mismatchedRevenue = (sent.revenueRows || []).filter((row) => {
+    const saved = receivedRevenue.find((entry) => revenueRowKey(entry) === revenueRowKey(row));
+    return !saved || !dashboardTestValueMatches(row.gross, saved.gross) || !dashboardTestValueMatches(row.expenses, saved.expenses) || !dashboardTestValueMatches(row.labor, saved.labor);
+  });
+  return { ok: !missingFiles.length && !mismatchedRevenue.length, missingFiles, mismatchedRevenue };
+}
+
+// Writes a separate Cloudflare test snapshot. It exercises the complete
+// dashboard payload, including Revenue, without changing dashboard/latest.json.
+async function saveDashboardTest() {
+  const testButton = $("crmSaveTest");
+  if (testButton) {
+    testButton.disabled = true;
+    testButton.textContent = "Testing...";
+  }
+  showDashboardSaveStatus("Testing the complete Command Center save without changing the live cloud copy...");
+  try {
+    const payload = buildDashboardSyncPayload({ includeRevenue: true, syncExpenses: false });
+    const result = await queueDashboardCloudSave(payload, { testSnapshot: true });
+    const verification = verifyDashboardTestSnapshot(payload, result.dashboard);
+    if (!verification.ok) {
+      throw new Error(`Save Test protected the live copy. ${verification.missingFiles.length} file(s) or ${verification.mismatchedRevenue.length} revenue line(s) did not match the test snapshot.`);
+    }
+    const totals = dashboardTestTotals(payload.revenueRows || []);
+    showDashboardSaveStatus(`Save Test passed. ${payload.dashboardFiles.length} files and ${payload.revenueRows.length} revenue lines verified in Cloudflare. Gross ${crmCurrency.format(totals.gross)} · Expenses ${crmCurrency.format(totals.expenses)}.`);
+  } catch (error) {
+    showDashboardSaveStatus(error.message || "Save Test could not be verified. The live cloud copy was not changed.", true);
+  } finally {
+    if (testButton) {
+      testButton.disabled = false;
+      testButton.textContent = "Save Test";
+    }
+  }
+}
+
+window.animusSaveDashboardTest = saveDashboardTest;
 
 function applyDashboardBackup(dashboard = {}, options = {}) {
   const preserveMissing = options.preserveMissing === true;
@@ -8094,6 +8152,9 @@ $("crmNewNote").addEventListener("keydown", (event) => {
 });
 $("crmSaveDemo").addEventListener("click", () => {
   saveDashboardToGoogle();
+});
+$("crmSaveTest")?.addEventListener("click", () => {
+  saveDashboardTest();
 });
 $("crmLoadCloud").addEventListener("click", () => {
   loadDashboardFromGoogle().catch((error) => {
