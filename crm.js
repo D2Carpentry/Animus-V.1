@@ -25,6 +25,8 @@ const CLOUDFLARE_DASHBOARD_API = "https://animus-v-1.pages.dev/api/dashboard";
 const CLOUDFLARE_RECEIPT_API = "https://animus-v-1.pages.dev/api/receipt";
 const NOTE_EDIT_WINDOW_MS = 12 * 60 * 60 * 1000;
 const DEFAULT_EXPENSE_TAX_RATE = 0.065;
+// A delayed initial cloud read must never overwrite edits made in this tab.
+let crmLocalChangeVersion = 0;
 
 const CRM_STATUS_DESCRIPTIONS = {
   "New Lead": "Inquiry received from your website, social media, or local referral.",
@@ -804,7 +806,8 @@ function persistRestoredDashboardIfNeeded() {
   crmRestoreAppliedThisLoad = false;
 }
 
-function buildDashboardSyncPayload() {
+function buildDashboardSyncPayload(options = {}) {
+  const includeRevenue = options.includeRevenue !== false;
   captureCurrentDashboardEdits();
   // Never allow an empty or partial browser copy to replace the verified
   // historical ledger when the main Command Center Save button is used.
@@ -818,8 +821,10 @@ function buildDashboardSyncPayload() {
     syncedAt: new Date().toISOString(),
     source: "D2 Command Center",
     dashboardFiles: crmFiles,
-    revenueRows: crmRevenueRows,
-    deletedRevenueKeys: Array.from(loadDeletedRevenueKeys()),
+    ...(includeRevenue ? {
+      revenueRows: crmRevenueRows,
+      deletedRevenueKeys: Array.from(loadDeletedRevenueKeys()),
+    } : {}),
     payrollRows: crmPayrollRows,
     priceRows: crmPriceRows,
     deletedPriceIds: crmDeletedPriceIds,
@@ -985,6 +990,24 @@ function saveExpenseChangeToCloud(message = "Expense saved to Cloudflare.") {
     .catch(() => showDashboardSaveStatus("Expense saved in this browser, but cloud save did not finish. Click Save when the connection is steady.", true));
 }
 
+// Revenue is saved on its own after a confirmed Revenue edit. Keeping it out
+// of the general Command Center Save prevents unrelated file saves from ever
+// replacing the job-profitability ledger.
+function saveRevenueChangeToCloud(message = "Revenue saved to Cloudflare.") {
+  saveRevenueRows();
+  const payload = buildDashboardSyncPayload({ includeRevenue: true });
+  return queueDashboardCloudSave(payload)
+    .then((result) => {
+      const cloudRows = Array.isArray(result?.dashboard?.revenueRows) ? result.dashboard.revenueRows : [];
+      crmRevenueRows = filterDeletedRevenueRows(dedupeRevenueRows(mergeRevenueRowsForSave(cloudRows, payload.revenueRows)));
+      saveRevenueRows();
+      showDashboardSaveStatus(message);
+    })
+    .catch(() => showDashboardSaveStatus("Revenue is saved in this browser, but cloud save did not finish. Try again when the connection is steady.", true));
+}
+
+window.animusSaveRevenueChangeToCloud = saveRevenueChangeToCloud;
+
 function showReceiptLoading(message = "ANIMUS is reviewing the image and preparing the expense lines.") {
   const modal = $("crmReceiptLoadingModal");
   if (!modal) return;
@@ -1091,6 +1114,12 @@ function captureVisibleFileExpenseEdits() {
 }
 
 function captureCurrentDashboardEdits() {
+  // The redesigned Revenue table has its own inline editor. Commit that value
+  // before collecting the dashboard snapshot so a typed amount is not dropped.
+  if (typeof window.animusCommitPendingRevenueEdit === "function") {
+    window.animusCommitPendingRevenueEdit();
+  }
+  crmLocalChangeVersion += 1;
   if (document.activeElement && typeof document.activeElement.blur === "function") {
     document.activeElement.blur();
   }
@@ -1191,12 +1220,13 @@ async function saveDashboardToGoogle() {
   saveButton.disabled = true;
   saveButton.textContent = "Saving...";
   showDashboardSaveStatus("Saving current Command Center...");
-  const payload = buildDashboardSyncPayload();
+  // Revenue has its own save path. A general Command Center save must never
+  // replace the ledger with a stale browser snapshot.
+  const payload = buildDashboardSyncPayload({ includeRevenue: false });
   try {
     const saved = await queueDashboardCloudSave(payload);
-    const savedRevenueRows = Array.isArray(saved.dashboard?.revenueRows) ? saved.dashboard.revenueRows : [];
-    crmRevenueRows = filterDeletedRevenueRows(dedupeRevenueRows(mergeRevenueRows(savedRevenueRows, payload.revenueRows)));
-    saveRevenueRows();
+    // Do not load revenue from this response. Revenue is already saved by its
+    // dedicated pathway and remains untouched by the main Save control.
     saveButton.disabled = false;
     saveButton.textContent = "Saved";
     renderCrm();
@@ -1345,9 +1375,14 @@ function shouldAutoRestoreFromCloud() {
 
 async function autoRestoreDashboardFromCloud() {
   if (!shouldAutoRestoreFromCloud()) return;
+  const openingChangeVersion = crmLocalChangeVersion;
   showDashboardSaveStatus("Loading the current Command Center from Cloudflare...");
   try {
     const dashboard = await fetchDashboardFromCloudflare();
+    if (crmLocalChangeVersion !== openingChangeVersion) {
+      showDashboardSaveStatus("Kept changes made while Command Center was opening.");
+      return;
+    }
     const files = Array.isArray(dashboard?.dashboardFiles) ? dashboard.dashboardFiles : [];
     if (!dashboard || !files.length) {
       showDashboardSaveStatus("Cloudflare does not have a saved Command Center yet. Showing this browser's temporary copy.", true);
@@ -2865,6 +2900,27 @@ function mergeRevenueRows(primary = [], secondary = []) {
     }
   });
   return merged;
+}
+
+// Used only during an explicit Save. It keeps cloud-only rows, while the
+// just-captured browser snapshot wins for rows the user actively changed.
+function mergeRevenueRowsForSave(cloudRows = [], currentRows = []) {
+  const merged = new Map();
+  cloudRows.forEach((row) => {
+    const key = revenueRowKey(row);
+    if (key) merged.set(key, { ...row });
+  });
+  currentRows.forEach((row) => {
+    const key = revenueRowKey(row);
+    if (!key) return;
+    const prior = merged.get(key) || {};
+    merged.set(key, {
+      ...prior,
+      ...row,
+      expenseLines: mergeExpenseLineArrays(prior.expenseLines, row.expenseLines),
+    });
+  });
+  return [...merged.values()];
 }
 
 function dedupeRevenueRows(rows = []) {
@@ -5409,6 +5465,7 @@ function deleteRevenueRow(rowId) {
   saveCrmFiles();
   saveRevenueRows();
   renderRevenue();
+  saveRevenueChangeToCloud("Revenue row deleted from Cloudflare.");
 }
 
 function parseRevenueImport(text) {
