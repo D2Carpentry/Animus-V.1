@@ -1,16 +1,20 @@
-Upload and replace these two files in the main folder of the ANIMUS repository:
+Upload and replace all four files in the GitHub repository root:
 
-crm.html
-expenses-v6.js
+1. crm.html
+2. crm.js
+3. revenue-history-restore.js
+4. financial-data.js
 
-Every ANIMUS page now uses this same sidebar order:
+This is a revenue-only recovery.
 
-Dashboard
-Calendar
-Estimates
-Work Files
-Revenue
-Expenses
-Payroll
-Price Database
-Business Performance
+Verified history restored:
+- 40 revenue records
+- $101,476.00 gross revenue
+- $25,050.67 expenses
+
+No customer/work-file data is included in this recovery, so it will not alter file numbers, customer details, or file statuses.
+
+After upload, open:
+https://animus-v-1.pages.dev/crm?revenueRecovery=20260822
+
+The first open will restore the verified ledger and clear only old stale deletion markers. Future rows you delete after this update will still remain deleted.

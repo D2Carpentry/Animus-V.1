@@ -13,6 +13,7 @@ const CRM_STORAGE_BACKUP_KEY = "d2CrmDemoFilesBackup";
 const CRM_REVENUE_BACKUP_KEY = "d2CrmRevenueRowsBackup";
 const CRM_PAYROLL_BACKUP_KEY = "d2CrmPayrollRowsBackup";
 const CRM_REVENUE_DELETED_KEY = "d2CrmRevenueDeletedIds";
+const CRM_REVENUE_HISTORY_RECOVERY_KEY = "d2CrmRevenueHistoryRecoveryV2";
 const CRM_PRICE_BACKUP_KEY = "d2PriceDatabaseBackup";
 const CRM_RECEIPT_DRAFT_KEY = "d2ReceiptScannerDraft";
 const CRM_RESTORE_VERSION_KEY = "d2CrmRestoreVersion";
@@ -506,7 +507,20 @@ function loadRevenueRows() {
   const restoredRows = Array.isArray(window.D2_DASHBOARD_RESTORE?.revenue)
     ? window.D2_DASHBOARD_RESTORE.revenue.map((row) => ({ ...row }))
     : [];
-  const spreadsheetRows = defaultRevenueRows();
+  const verifiedHistoryRows = Array.isArray(window.D2_REVENUE_HISTORY_ROWS)
+    ? window.D2_REVENUE_HISTORY_ROWS.map((row) => ({ ...row }))
+    : [];
+  const baselineRows = verifiedHistoryRows.length ? verifiedHistoryRows : defaultRevenueRows();
+  try {
+    // Clear only stale deletions once so the verified historical ledger can return.
+    // New deletions made after this recovery remain respected.
+    if (localStorage.getItem(CRM_REVENUE_HISTORY_RECOVERY_KEY) !== "20260822") {
+      localStorage.removeItem(CRM_REVENUE_DELETED_KEY);
+      localStorage.setItem(CRM_REVENUE_HISTORY_RECOVERY_KEY, "20260822");
+    }
+  } catch (error) {
+    // Storage can be unavailable in private browser modes.
+  }
   const deletedKeys = loadDeletedRevenueKeys();
   try {
     const saved = localStorage.getItem(CRM_REVENUE_STORAGE_KEY);
@@ -516,17 +530,18 @@ function loadRevenueRows() {
         if (!rows.length) {
           const backup = localStorage.getItem(CRM_REVENUE_BACKUP_KEY);
           const backupRows = backup ? JSON.parse(backup) : [];
-          if (Array.isArray(backupRows) && backupRows.length) return filterDeletedRevenueRows(dedupeRevenueRows(backupRows), deletedKeys);
-          if (restoredRows.length) return filterDeletedRevenueRows(dedupeRevenueRows(restoredRows), deletedKeys);
+          if (Array.isArray(backupRows) && backupRows.length) {
+            return filterDeletedRevenueRows(dedupeRevenueRows(mergeRevenueRows(backupRows, baselineRows)), deletedKeys);
+          }
         }
-        const baselineRows = mergeRevenueRows(restoredRows, spreadsheetRows);
-        return filterDeletedRevenueRows(dedupeRevenueRows(mergeRevenueRows(rows, baselineRows)), deletedKeys);
+        const mergedBaseline = mergeRevenueRows(restoredRows, baselineRows);
+        return filterDeletedRevenueRows(dedupeRevenueRows(mergeRevenueRows(rows, mergedBaseline)), deletedKeys);
       }
     }
   } catch (error) {
     // Local demo storage may be unavailable in some browsers.
   }
-  return filterDeletedRevenueRows(dedupeRevenueRows(mergeRevenueRows(restoredRows, spreadsheetRows)), deletedKeys);
+  return filterDeletedRevenueRows(dedupeRevenueRows(mergeRevenueRows(restoredRows, baselineRows)), deletedKeys);
 }
 
 function loadPriceRows() {
@@ -1182,7 +1197,13 @@ function applyDashboardBackup(dashboard = {}, options = {}) {
   const hasPayroll = Array.isArray(dashboard.payrollRows) && dashboard.payrollRows.length;
   const hasPrices = Array.isArray(dashboard.priceRows) && dashboard.priceRows.length;
   const files = hasFiles ? dashboard.dashboardFiles : (preserveMissing ? crmFiles : []);
-  const revenueRows = hasRevenue ? dashboard.revenueRows : (preserveMissing ? crmRevenueRows : []);
+  const verifiedHistoryRows = Array.isArray(window.D2_REVENUE_HISTORY_ROWS)
+    ? window.D2_REVENUE_HISTORY_ROWS
+    : defaultRevenueRows();
+  const revenueRows = mergeRevenueRows(
+    hasRevenue ? dashboard.revenueRows : (preserveMissing ? crmRevenueRows : []),
+    verifiedHistoryRows,
+  );
   const payrollRows = hasPayroll ? dashboard.payrollRows : (preserveMissing ? crmPayrollRows : []);
   const priceRows = hasPrices ? dashboard.priceRows : (preserveMissing ? crmPriceRows : []);
   const deletedPriceIds = Array.isArray(dashboard.deletedPriceIds) ? dashboard.deletedPriceIds : (preserveMissing ? crmDeletedPriceIds : []);
@@ -2792,9 +2813,7 @@ function rememberDeletedRevenueRow(row) {
 }
 
 function filterDeletedRevenueRows(rows = [], deletedKeys = loadDeletedRevenueKeys()) {
-  // The original spreadsheet history is part of the application's baseline.
-  // A stale browser deletion list must never hide those manual records.
-  return rows.filter((row) => String(row?.id || "").startsWith("rev-sheet-") || !deletedKeys.has(revenueRowKey(row)));
+  return rows.filter((row) => !deletedKeys.has(revenueRowKey(row)));
 }
 
 function mergeRevenueRows(primary = [], secondary = []) {
