@@ -552,13 +552,15 @@ body.animus-unified-ui .animus-work-files-layout .crm-file-workspace { gap: 16px
 .animus-recent-activity-card { margin-top: 14px; }
 
 .animus-tab-panel { min-width: 0; }
-.animus-detail-grid { display: grid; grid-template-columns: repeat(3, minmax(240px, 1fr)); gap: 14px; padding: 16px; }
+.animus-detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; padding: 18px; }
 .animus-detail-card { min-width: 0; min-height: 0; overflow: hidden; border: 1px solid #e2e8f0; border-radius: 9px; background: #fbfcfe; }
+.animus-detail-card:last-child { grid-column: 1 / -1; }
 .animus-detail-card h4 { margin: 0; padding: 13px 14px; border-bottom: 1px solid #e7edf5; color: #17345f; font-size: 13px; font-weight: 800; }
 .animus-detail-card .animus-info-list { padding: 0 14px 6px; }
-.animus-detail-card .animus-info-row { min-height: 58px; }
-.animus-detail-card .animus-info-row dt { font-size: 11px; }
-.animus-detail-card .animus-info-row dd { font-size: 13px; }
+.animus-detail-pair { display: grid; grid-template-columns: minmax(145px, .85fr) minmax(180px, 1.15fr); align-items: center; gap: 18px; min-height: 60px; border-bottom: 1px solid #e8edf4; }
+.animus-detail-pair:last-child { border-bottom: 0; }
+.animus-detail-pair dt { margin: 0; color: #60708a; font-size: 12px; font-weight: 780; }
+.animus-detail-pair dd { margin: 0; color: #152d56; font-size: 14px; font-weight: 760; line-height: 1.35; overflow-wrap: anywhere; }
 .animus-empty-panel { padding: 36px; border: 1px dashed #cfd8e7; border-radius: 10px; background: #fff; color: #6b7a91; text-align: center; }
 .animus-financial-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
 .animus-financial-value { padding: 18px; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; }
@@ -581,7 +583,6 @@ body.animus-unified-ui .animus-work-files-layout .crm-file-workspace { gap: 16px
   .animus-summary-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .animus-summary-cell:nth-child(3) { border-right: 0; }
   .animus-summary-cell:nth-child(-n+3) { border-bottom: 1px solid #e6ebf3; }
-  .animus-detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .animus-inline-editor-details .animus-inline-editor-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .animus-work-grid-focused { grid-template-columns: minmax(0, 1.45fr) minmax(270px, .85fr); }
 }
@@ -595,4 +596,5 @@ body.animus-unified-ui .animus-work-files-layout .crm-file-workspace { gap: 16px
   .animus-summary-cell:nth-child(-n+4) { border-bottom: 1px solid #e6ebf3; }
   .animus-financial-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .animus-work-grid-focused { grid-template-columns: 1fr; }
+  .animus-detail-pair { grid-template-columns: 1fr; gap: 4px; padding: 12px 0; }
 }
