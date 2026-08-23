@@ -42,8 +42,7 @@
         <div class="crm-header-search">
           <input id="crmFileSearch" type="search" placeholder="Search name, phone, or file #">
           <button type="button" id="crmSearchFile">Search</button>
-          <button class="icon-button header-save-button" type="button" id="crmSaveDemo">Save</button>
-          <button class="icon-button" type="button" id="crmSaveTest">Save Test</button>
+          <button class="icon-button header-save-button" type="button" id="crmSaveDemo">Save All</button>
           <button class="icon-button header-restore-button" type="button" id="crmLoadCloud">Restore Backup</button>
           <button class="icon-button header-restore-button" type="button" id="crmImportBackupFile">Import Backup File</button>
           <input id="crmBackupFileUpload" type="file" accept=".json,application/json,text/json" hidden>
@@ -1012,13 +1011,13 @@
         caches.keys().then((keys) => keys.forEach((key) => caches.delete(key)));
       }
     </script>
-  <script src="crm.js?v=20260823-safe-save-test"></script>
+  <script src="crm.js?v=20260823-verified-save-all"></script>
     <script src="calendar-upgrade.js?v=20260808-calendar-popups"></script>
     <script src="animus-shell.js?v=20260823-smooth-first-paint"></script>
     <script src="animus-dashboard.js?v=20260822-navigation-estimator-repair"></script>
     <link rel="stylesheet" href="animus-business-performance.css?v=20260822-business-performance">
     <script src="animus-business-performance.js?v=20260822-business-performance"></script>
-    <script src="expenses-v6.js?v=20260822-consistent-sidebar"></script>
+    <script src="expenses-v6.js?v=20260823-receipt-photo-cloud-backup"></script>
     <link rel="stylesheet" href="animus-revenue.css?v=20260822-revenue-actions">
     <script src="animus-revenue.js?v=20260823-revenue-isolated-save"></script>
     <script src="animus-work-file.js?v=20260823-draft-save-delete"></script>

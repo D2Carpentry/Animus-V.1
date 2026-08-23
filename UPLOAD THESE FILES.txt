@@ -1,13 +1,9 @@
-Upload every item in this folder to the root of the ANIMUS-V.1 GitHub repository.
+Upload all three items in this folder to the ANIMUS repository, keeping the folders exactly as shown:
 
-This update fixes the ordinary Save button so it saves Work Files, Payroll,
-and Price Database changes without touching Revenue data.
+1. crm.html
+2. expenses-v6.js
+3. functions/api/expenses.js
 
-It also adds Save Test beside Save:
-- Save Test writes a complete test snapshot to Cloudflare.
-- It checks every current file and Revenue line against the returned cloud copy.
-- It does NOT replace the live Command Center snapshot.
-- A passed message means the full cloud path is safe to use.
+After Cloudflare finishes deploying, every newly saved receipt photo is stored as its own file in ANIMUS cloud storage. The expense record keeps a link to that photo, so the main Command Center backup stays small.
 
-After Cloudflare has deployed the update, open:
-https://animus-v-1.pages.dev/crm?update=20260823-safe-save-test
+Existing receipt photos are left alone. They will continue to display. New photos use the separate receipt-photo backup area.
