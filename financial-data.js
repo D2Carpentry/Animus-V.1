@@ -28,7 +28,7 @@ window.D2_REVENUE_ROWS = [
   { id: "rev-sheet-27", date: "2026-05-25", clientJob: "Laurie - Concrete Counters", gross: 3162, expenses: 393.72, labor: 1000, profit: 1768.28, receiptNotes: "SW: $18.09\nHD: $364.99\nAmazon: $10.64", laborAssigns: "Nesto" },
   { id: "rev-sheet-28", date: "2026-06-01", clientJob: "Deb-Fan and Lights", gross: 542, expenses: 272.04, labor: 0, profit: 269.96, receiptNotes: "", laborAssigns: "" },
   { id: "rev-sheet-29", date: "2026-06-11", clientJob: "Ana - Abi Closet", gross: 1850, expenses: 573.62, labor: 0, profit: 1276.38, receiptNotes: "IMECA-$237.96 + 72.85\nHD: $38.04 + 7.43 + 11.98\nAmazon: $125.57\nSW: 54.78", laborAssigns: "" },
-  { id: "rev-sheet-30", date: "", clientJob: "Reese-Pantry/Console/Closets", gross: 7500, expenses: 765.16, labor: 1250, profit: 5484.84, receiptNotes: "Tools: 656.19\nHD: 74.28\nAmazon: 34.69", laborAssigns: "" },
+  { id: "rev-sheet-30", date: "", clientJob: "Reese-Pantry/Console/Closets", gross: 8000, expenses: 2470, labor: 2200, profit: 3330, receiptNotes: "Tools: 656.19\nHD: 74.28\nAmazon: 34.69", laborAssigns: "" },
   { id: "rev-sheet-31", date: "", clientJob: "Brian- Welks", gross: 0, expenses: 12.34, labor: 0, profit: -12.34, receiptNotes: "SW: 12.34 (Paint Sample)", laborAssigns: "" },
 ];
 

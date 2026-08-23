@@ -2792,7 +2792,9 @@ function rememberDeletedRevenueRow(row) {
 }
 
 function filterDeletedRevenueRows(rows = [], deletedKeys = loadDeletedRevenueKeys()) {
-  return rows.filter((row) => !deletedKeys.has(revenueRowKey(row)));
+  // The original spreadsheet history is part of the application's baseline.
+  // A stale browser deletion list must never hide those manual records.
+  return rows.filter((row) => String(row?.id || "").startsWith("rev-sheet-") || !deletedKeys.has(revenueRowKey(row)));
 }
 
 function mergeRevenueRows(primary = [], secondary = []) {

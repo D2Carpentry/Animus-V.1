@@ -2,14 +2,12 @@ Upload and replace these five files in the main folder of the ANIMUS repository:
 
 crm.html
 crm.js
-expenses-v6.js
+financial-data.js
+animus-shell.js
 animus-work-file.js
-animus-work-file.css
 
-This update includes:
-- ANIMUS-style Add File Note dialog
-- Expense Center records mirrored into each Work File and Revenue
-- historical Revenue rows protected from zero-only browser copies
-- Work Files and Revenue are available from the Expenses sidebar again
-- Work File list thumbnails remain removed, with slightly larger file names
-- Assigned To now shows only the employee name, with separate Edit and Payroll buttons
+This update:
+- Makes Paid and Balance open the Financials tab.
+- Makes Start Date open Job Details.
+- Removes the duplicate sidebar search.
+- Restores the protected manual revenue history, including the saved Reese figures.
