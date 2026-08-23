@@ -1061,6 +1061,11 @@ function captureOpenFinancialEdits() {
 
 function captureVisibleRevenueEdits() {
   document.querySelectorAll("[data-revenue-edit]").forEach((field) => {
+    // The redesigned Revenue center uses data-revenue-edit on its Edit
+    // buttons. Only actual, visible form fields may change ledger amounts.
+    // Treating those buttons as inputs returned an empty value and turned
+    // saved Revenue rows into $0 during a general Command Center save.
+    if (!field.matches("input, select, textarea") || field.closest("[hidden]") || field.offsetParent === null) return;
     const row = crmRevenueRows.find((entry) => entry.id === field.dataset.revenueEdit);
     if (!row) return;
     const key = field.dataset.revenueField;

@@ -1,10 +1,11 @@
-Upload every file in this folder to the main folder of the ANIMUS-V.1 GitHub repository.
+Upload both files in this folder to the main folder of the ANIMUS-V.1 repository.
 
-This update adds:
-- Contacts in the left sidebar
-- Add Contact form that creates a normal New Lead work file
-- One sleek top command bar with Search, New File, Save, and Notifications
-- Dashboard cleanup so its greeting does not repeat those controls
+This fixes the Save button turning Revenue values into zero. The new Revenue page's Edit buttons can no longer be mistaken for blank money inputs during a full Command Center save.
 
-After GitHub finishes processing the upload, open:
-https://animus-v-1.pages.dev/crm?contacts-topbar=20260823
+After GitHub/Cloudflare finishes deploying, use:
+https://animus-v-1.pages.dev/crm?revenue-save-repair=20260823
+
+Test after deployment:
+1. Open Revenue and confirm your amounts.
+2. Click Save once.
+3. Refresh the page and confirm the amounts remain.
