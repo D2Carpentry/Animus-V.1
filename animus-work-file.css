@@ -142,20 +142,6 @@ body.animus-unified-ui .animus-work-files-layout .crm-file-workspace {
 .animus-work-files-layout .crm-file-card:hover { background: #f8fbff; }
 .animus-work-files-layout .crm-file-card.active { margin:3px 0; padding:8px; border:1px solid #8ab5ff; border-radius:8px; background:linear-gradient(105deg,#f3f7ff,#fff); box-shadow:0 3px 10px rgba(37,99,235,.08); }
 
-.animus-file-avatar {
-  display: grid;
-  width: 36px;
-  height: 36px;
-  place-items: center;
-  border-radius: 11px;
-  background: #eef2f8;
-  color: #193866 !important;
-  font-size: 14px !important;
-  font-weight: 850;
-}
-
-.animus-work-files-layout .crm-file-card .animus-file-avatar { display: none; }
-
 .animus-file-card-copy { min-width: 0; text-align: left; }
 .animus-file-card-copy strong,
 .animus-file-card-copy small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

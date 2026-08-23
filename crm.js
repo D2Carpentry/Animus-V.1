@@ -1474,7 +1474,6 @@ function renderFileList() {
   const initials = (name) => String(name || "?").split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
   $("crmFileList").innerHTML = files.map((file) => `
     <button type="button" class="crm-file-card ${file.id === activeFileId ? "active" : ""}" data-file-id="${file.id}">
-      <span class="animus-file-avatar">${escapeHtml(initials(file.clientName))}</span>
       <span class="animus-file-card-copy">
         <strong>${escapeHtml(file.clientName || "Unnamed Client")}</strong>
         <small>${escapeHtml(file.fileNumber || "No file number")}</small>
