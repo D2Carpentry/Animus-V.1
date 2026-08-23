@@ -1,16 +1,22 @@
-Upload and replace these four files in the ANIMUS repository root:
+Upload and replace every file in this folder in the ANIMUS repository root.
 
-1. crm.html
-2. animus-shell.js
-3. animus-payroll.js
-4. animus-payroll.css
+This package fixes the main Save button so it cannot save an empty or partial
+Revenue list over the verified revenue history.
 
-What this update changes:
-- Revenue moves into the Business section of the shared sidebar on every page.
-- Payroll receives the new ANIMUS dashboard-style layout.
-- Payroll continues to use the same saved labor entries, rates, work-file links, payment statuses, and totals.
+Included revenue recovery:
+- 40 verified historical revenue records
+- $101,476.00 gross revenue
+- $25,050.67 expenses
 
-No customer files, estimates, revenue rows, expenses, receipts, or Cloudflare data are included or modified by this package.
+The recovery is revenue-only. It does not contain customer file records,
+work-file statuses, estimates, expenses, or receipts.
+
+Also included are the current shared sidebar and Payroll files so the updated
+crm.html always has every script it needs.
 
 After upload, open:
-https://animus-v-1.pages.dev/crm?payrollCenter=20260822
+https://animus-v-1.pages.dev/crm?revenueSafeSave=20260822
+
+Then confirm the Revenue page has the historical rows before clicking Save.
+Once confirmed, click Save once. The new protection sends the complete ledger
+to Cloudflare instead of allowing a blank list to replace it.

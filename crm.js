@@ -709,6 +709,7 @@ function refreshCrmFilesFromStorage() {
 
 function saveRevenueRows() {
   try {
+    restoreVerifiedRevenueHistory();
     crmRevenueRows = dedupeRevenueRows(crmRevenueRows);
     if (Array.isArray(crmRevenueRows) && crmRevenueRows.length) {
       localStorage.setItem(CRM_REVENUE_BACKUP_KEY, JSON.stringify(crmRevenueRows));
@@ -717,6 +718,20 @@ function saveRevenueRows() {
   } catch (error) {
     // Google Drive will become the real storage layer.
   }
+}
+
+function verifiedRevenueHistoryRows() {
+  return Array.isArray(window.D2_REVENUE_HISTORY_ROWS)
+    ? window.D2_REVENUE_HISTORY_ROWS.map((row) => ({ ...row }))
+    : [];
+}
+
+function restoreVerifiedRevenueHistory() {
+  const verifiedRows = verifiedRevenueHistoryRows();
+  if (!verifiedRows.length) return false;
+  const before = JSON.stringify(crmRevenueRows || []);
+  crmRevenueRows = filterDeletedRevenueRows(dedupeRevenueRows(mergeRevenueRows(crmRevenueRows || [], verifiedRows)));
+  return before !== JSON.stringify(crmRevenueRows);
 }
 
 function loadPayrollRows() {
@@ -791,6 +806,9 @@ function persistRestoredDashboardIfNeeded() {
 
 function buildDashboardSyncPayload() {
   captureCurrentDashboardEdits();
+  // Never allow an empty or partial browser copy to replace the verified
+  // historical ledger when the main Command Center Save button is used.
+  restoreVerifiedRevenueHistory();
   crmFiles.forEach((file) => {
     syncExpenseFileForStorage(file);
   });
@@ -1162,6 +1180,7 @@ function fetchDashboardFromGoogle() {
 
 async function saveDashboardToGoogle() {
   captureCurrentDashboardEdits();
+  restoreVerifiedRevenueHistory();
   saveCrmFiles();
   saveRevenueRows();
   savePayrollRows();
@@ -1174,6 +1193,9 @@ async function saveDashboardToGoogle() {
   const payload = buildDashboardSyncPayload();
   try {
     const saved = await queueDashboardCloudSave(payload);
+    const savedRevenueRows = Array.isArray(saved.dashboard?.revenueRows) ? saved.dashboard.revenueRows : [];
+    crmRevenueRows = filterDeletedRevenueRows(dedupeRevenueRows(mergeRevenueRows(savedRevenueRows, payload.revenueRows)));
+    saveRevenueRows();
     saveButton.disabled = false;
     saveButton.textContent = "Saved";
     renderCrm();
