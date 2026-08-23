@@ -10,5 +10,6 @@ This update includes:
 - ANIMUS-style Add File Note dialog
 - Expense Center records mirrored into each Work File and Revenue
 - historical Revenue rows protected from zero-only browser copies
-- duplicate CRM / Files and Jobs buttons removed from Expenses
-- Work File list thumbnails hidden to give the file list more room
+- Work Files and Revenue are available from the Expenses sidebar again
+- Work File list thumbnails remain removed, with slightly larger file names
+- Assigned To now shows only the employee name, with separate Edit and Payroll buttons

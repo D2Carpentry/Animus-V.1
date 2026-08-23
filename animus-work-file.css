@@ -145,7 +145,7 @@ body.animus-unified-ui .animus-work-files-layout .crm-file-workspace {
 .animus-file-card-copy { min-width: 0; text-align: left; }
 .animus-file-card-copy strong,
 .animus-file-card-copy small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.animus-file-card-copy strong { margin-bottom:2px; color:#15284a; font-size:13px; font-weight:850; }
+.animus-file-card-copy strong { margin-bottom:2px; color:#15284a; font-size:14px; font-weight:850; }
 .animus-file-card-copy small { color:#1d559f; font-size:11px; font-weight:800; }
 
 .animus-file-card-meta { display:grid; justify-items:end; min-width:0; }
@@ -535,9 +535,10 @@ body.animus-unified-ui .animus-work-files-layout .crm-file-workspace { gap: 16px
 .animus-next-empty { margin: 16px; color: #66758c; font-size: 13px; }
 
 .animus-assigned-card { min-height: 118px; }
+.animus-assigned-actions { display: flex; gap: 7px; }
 .animus-assigned-person {
   display: grid;
-  grid-template-columns: 38px minmax(0, 1fr) auto;
+  grid-template-columns: 38px minmax(0, 1fr);
   width: calc(100% - 32px);
   align-items: center;
   gap: 10px;
@@ -548,13 +549,11 @@ body.animus-unified-ui .animus-work-files-layout .crm-file-workspace { gap: 16px
   background: #f8fbff;
   color: #153460;
   text-align: left;
-  cursor: pointer;
+  cursor: default;
 }
-.animus-assigned-person:hover { border-color: #9dbfff; background: #f2f7ff; }
 .animus-assigned-icon { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 10px; color: #b97206; background: #fff2dc; font-size: 17px; }
 .animus-assigned-person small { display: block; margin-bottom: 3px; color: #70809a; font-size: 10px; font-weight: 750; }
 .animus-assigned-person strong { display: block; overflow: hidden; color: #14325e; font-size: 14px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
-.animus-assigned-person b { color: #1b5bc1; font-size: 10px; white-space: nowrap; }
 
 .animus-important-note { margin: 16px; padding: 15px; border: 1px solid #f2d08c; border-radius: 8px; background: #fffaf0; }
 .animus-important-note p { margin: 0; color: #243653; font-size: 13px; line-height: 1.55; white-space: pre-wrap; }

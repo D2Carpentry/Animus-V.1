@@ -118,7 +118,7 @@
 
   function assignedToCard(file) {
     const employee = assignment(file);
-    return `<section class="animus-info-card animus-assigned-card"><div class="animus-card-head"><h3><span class="card-mark">&#9787;</span> Assigned To</h3><button class="animus-record-button small" data-animus-open="payroll">Payroll</button></div><button class="animus-assigned-person" data-animus-open="payroll"><span class="animus-assigned-icon">&#9787;</span><span><small>Employee</small><strong>${escape(employee)}</strong></span><b>Manage in Payroll &rsaquo;</b></button></section>`;
+    return `<section class="animus-info-card animus-assigned-card"><div class="animus-card-head"><h3><span class="card-mark">&#9787;</span> Assigned To</h3><div class="animus-assigned-actions"><button class="animus-record-button small" data-animus-edit="assigned">Edit</button><button class="animus-record-button small" data-animus-open="payroll">Payroll</button></div></div><div class="animus-assigned-person"><span class="animus-assigned-icon">&#9787;</span><span><small>Employee</small><strong>${escape(employee)}</strong></span></div></section>`;
   }
 
   function summaryMarkup(file) {
@@ -194,9 +194,10 @@
       fields = select("fileStatus", selectedStatus, statuses) + select("statusDetail", field(file, "statusDetail"), statusDetails[selectedStatus] || [field(file, "statusDetail")]);
     }
     if (state.editor === "action") fields = input("nextAction", "Next Action", field(file, "nextAction"), "text", "wide") + input("nextActionDate", "Due Date", field(file, "nextActionDate") || field(file, "followUpDate"), "date") + input("assignedTo", "Assigned To", assignment(file));
+    if (state.editor === "assigned") fields = input("assignedTo", "Employee name", assignment(file), "text", "wide");
     if (state.editor === "financials") fields = input("estimateTotal", "Estimate Amount", Number(file.estimateTotal) || "", "number") + input("materialTotal", "Materials", Number(file.materialTotal) || "", "number") + input("initialDeposit", "Initial Deposit", Number(file.initialDeposit) || "", "number") + input("midpointDeposit", "Midpoint Deposit", Number(file.midpointDeposit) || "", "number") + input("finalPaymentAmount", "Final Payment", Number(file.finalPaymentAmount) || "", "number");
     if (state.editor === "details") fields = input("inspectionDate", "Inspection Date", field(file, "inspectionDate"), "date") + input("inspectionTime", "Inspection Time", field(file, "inspectionTime"), "time") + input("startDate", "Start Date", field(file, "startDate"), "date") + input("followUpDate", "Follow-Up Date", field(file, "followUpDate"), "date") + input("anticipatedCompletionDate", "Anticipated Completion", field(file, "anticipatedCompletionDate"), "date") + select("arrivalWindow", field(file, "arrivalWindow", "Open"), ["Open", "7:00 AM", "8:00 AM", "9:00 AM", "10:00 AM", "Afternoon"]);
-    title = state.editor === "financials" ? "Edit Financials" : state.editor === "details" ? "Edit Job Details" : "Edit File";
+    title = state.editor === "financials" ? "Edit Financials" : state.editor === "details" ? "Edit Job Details" : state.editor === "assigned" ? "Assign Employee" : "Edit File";
     return `<section class="animus-inline-editor animus-inline-editor-${state.editor}"><h3>${title}</h3><div class="animus-inline-editor-grid">${fields}</div><div class="animus-action-row"><button class="animus-record-button primary" data-animus-save-editor>Save Changes</button><button class="animus-record-button" data-animus-cancel-editor>Cancel</button></div></section>`;
   }
 
