@@ -1,11 +1,14 @@
-Upload every file in this folder to the main folder of the ANIMUS-V.1 repository.
+Upload all four files in this folder to the root of the ANIMUS repository:
 
-New File now opens a complete intake popup before a record is created.
-The intake includes customer information, project/status, contact/scheduling,
-financials, deposits, invoice/review, closing call, and warranty details.
+- crm.html
+- crm.js
+- animus-shell.css
+- animus-contacts.js
 
-The popup keeps a temporary draft while it is open. A work file is created only
-when Create Work File is pressed.
+What this update fixes:
+- Create Work File now creates the entered record first, closes the form, and opens that new work file.
+- The Next Action Date is optional. Check "Set a Next Action Date" only when you want one.
+- The form keeps entered details while it is open, so information is not lost if you briefly leave the page.
 
-After deployment, open:
-https://animus-v-1.pages.dev/crm?complete-new-file-intake=20260823
+After the deployment completes, open:
+https://animus-v-1.pages.dev/crm?new-work-file-popup-repair=20260823
