@@ -4,4 +4,9 @@ crm.html
 animus-work-file.css
 animus-work-file.js
 
-This update makes the top Estimate / Paid / Balance summary strip more compact and clean, and makes Job Details wider and easier to read.
+This update reorganizes the desktop Work File screen:
+- Customer Info is now a compact header button.
+- Project Type and Lead Source are in the header.
+- Important Notes is now File Notes below Job Progress.
+- Recent Activity is at the bottom.
+- Assigned To opens Payroll, where an employee can be added or assigned.
