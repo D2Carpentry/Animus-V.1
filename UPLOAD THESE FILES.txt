@@ -1,11 +1,11 @@
 Upload both files in this folder to the main folder of the ANIMUS-V.1 repository.
 
-This fixes the Save button turning Revenue values into zero. The new Revenue page's Edit buttons can no longer be mistaken for blank money inputs during a full Command Center save.
+This update:
+- Opens a new file directly in Work Files, ready for input
+- Focuses the Customer Name field automatically
+- Saves each typed new-file field immediately as a quiet local draft
+- Saves again when you switch to another browser tab or webpage
+- Prevents hidden fields from another ANIMUS page from changing the active file
 
-After GitHub/Cloudflare finishes deploying, use:
-https://animus-v-1.pages.dev/crm?revenue-save-repair=20260823
-
-Test after deployment:
-1. Open Revenue and confirm your amounts.
-2. Click Save once.
-3. Refresh the page and confirm the amounts remain.
+After deployment, use:
+https://animus-v-1.pages.dev/crm?new-file-draft-safety=20260823

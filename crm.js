@@ -1769,11 +1769,32 @@ function saveActiveFile() {
   saveCrmFiles();
 }
 
+function isActiveFileEditorVisible() {
+  const editor = document.querySelector(".animus-work-files-layout");
+  // Preserve the legacy editor's behavior when the ANIMUS shell is unavailable.
+  if (!editor) return true;
+  return !editor.closest("[hidden]") && editor.offsetParent !== null;
+}
+
+// Capture a draft without adding a timeline note for every character typed.
+// This runs immediately, before the normal debounced save, so copying details
+// from another web page cannot discard an unfinished new customer file.
+function persistActiveFileDraftNow() {
+  const file = normalizeCrmFile(activeFile());
+  if (!file || !isActiveFileEditorVisible()) return;
+  crmFields.forEach((field) => {
+    const element = $(`crm${field[0].toUpperCase()}${field.slice(1)}`);
+    if (element) file[field] = element.value;
+  });
+  saveCrmFiles();
+}
+
 // Keep a partially completed new file safe when the user switches away to copy
 // customer information. The visible Save button remains the cloud-save action.
 let crmDraftSaveTimer;
 function saveActiveFileDraft() {
   if (!activeFile()) return;
+  persistActiveFileDraftNow();
   window.clearTimeout(crmDraftSaveTimer);
   crmLocalChangeVersion += 1;
   crmDraftSaveTimer = window.setTimeout(() => {
@@ -1784,7 +1805,8 @@ function saveActiveFileDraft() {
 function flushActiveFileDraft() {
   if (!activeFile()) return;
   window.clearTimeout(crmDraftSaveTimer);
-  saveActiveFile();
+  persistActiveFileDraftNow();
+  if (isActiveFileEditorVisible()) saveActiveFile();
 }
 
 function toggleEstimateAmountEdit() {
@@ -2068,7 +2090,9 @@ function editCrmNote(index) {
 }
 
 function newCrmFile() {
-  saveActiveFile();
+  // Never read hidden form fields from another ANIMUS view. Those values can
+  // be stale while the user is on the Dashboard, Contacts, or Revenue page.
+  if (isActiveFileEditorVisible()) flushActiveFileDraft();
   const file = {
     id: makeCrmId("file"),
     fileNumber: makeCrmFileNumber(),
@@ -2118,7 +2142,9 @@ function newCrmFile() {
   crmFiles.unshift(file);
   activeFileId = file.id;
   saveCrmFiles();
+  if (typeof switchCrmView === "function") switchCrmView("files");
   renderCrm();
+  window.setTimeout(() => $("crmClientName")?.focus(), 0);
 }
 
 function deleteActiveFile() {
@@ -8415,6 +8441,10 @@ crmFields.forEach((field) => {
 });
 
 window.addEventListener("pagehide", flushActiveFileDraft);
+window.addEventListener("blur", flushActiveFileDraft);
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) flushActiveFileDraft();
+});
 
 document.querySelectorAll("input, select, textarea").forEach((element) => {
   if (element.closest("#crmExpensesView")) return;
