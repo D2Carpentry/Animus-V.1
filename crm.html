@@ -9,11 +9,11 @@
     <link rel="stylesheet" href="styles.css?v=20260821-expense-v5-clean">
     <link rel="stylesheet" href="calendar-upgrade.css?v=20260808-calendar-popups">
     <link rel="stylesheet" href="expenses-v6.css?v=20260822-expense-home-file-scope">
-    <link rel="stylesheet" href="animus-shell.css?v=20260822-unified-ui">
+    <link rel="stylesheet" href="animus-shell.css?v=20260823-topbar-actions">
     <link rel="stylesheet" href="animus-dashboard.css?v=20260822-command-center-home">
     <link rel="stylesheet" href="animus-work-file.css?v=20260822-work-files-assignment">
     <link rel="stylesheet" href="animus-operations.css?v=20260822-operations-layout">
-    <link rel="stylesheet" href="animus-contacts.css?v=20260823-contacts">
+    <link rel="stylesheet" href="animus-contacts.css?v=20260823-manual-add-contact">
     <style>
       body.crm-booting .crm-shell,
       body.crm-booting .animus-global-sidebar { visibility: hidden; }
@@ -41,9 +41,11 @@
           </div>
         </div>
         <div class="crm-header-search">
-          <input id="crmFileSearch" type="search" placeholder="Search name, phone, or file #">
-          <button type="button" id="crmSearchFile">Search</button>
+          <label class="animus-topbar-search" for="crmFileSearch"><span aria-hidden="true">⌕</span><input id="crmFileSearch" type="search" placeholder="Search customers, jobs, invoices..."></label>
+          <button type="button" class="animus-topbar-search-button" id="crmSearchFile" aria-label="Search">Search</button>
+          <button type="button" class="icon-button primary-action animus-topbar-new" id="crmNewFile">+ New File</button>
           <button class="icon-button header-save-button" type="button" id="crmSaveDemo">Save All</button>
+          <button type="button" class="animus-topbar-notification" id="crmTopNotifications" aria-label="View notifications">&#128276;</button>
           <button class="icon-button header-restore-button" type="button" id="crmLoadCloud">Restore Backup</button>
           <button class="icon-button header-restore-button" type="button" id="crmImportBackupFile">Import Backup File</button>
           <input id="crmBackupFileUpload" type="file" accept=".json,application/json,text/json" hidden>
@@ -52,7 +54,6 @@
       </header>
 
       <nav class="crm-actions crm-nav-actions" aria-label="Command Center actions">
-        <button type="button" class="icon-button primary-action" id="crmNewFile">+ New File</button>
         <button type="button" class="icon-button active" data-crm-view="dashboard">Command Center</button>
         <button type="button" class="icon-button" data-crm-view="calendar">Calendar</button>
         <button type="button" class="icon-button" data-crm-view="revenue">Revenue</button>
@@ -1016,17 +1017,17 @@
         caches.keys().then((keys) => keys.forEach((key) => caches.delete(key)));
       }
     </script>
-  <script src="crm.js?v=20260823-verified-save-all"></script>
+  <script src="crm.js?v=20260823-topbar-notifications"></script>
     <script src="calendar-upgrade.js?v=20260808-calendar-popups"></script>
     <script src="animus-shell.js?v=20260823-smooth-first-paint"></script>
-    <script src="animus-dashboard.js?v=20260822-navigation-estimator-repair"></script>
+    <script src="animus-dashboard.js?v=20260823-topbar-actions"></script>
     <link rel="stylesheet" href="animus-business-performance.css?v=20260822-business-performance">
     <script src="animus-business-performance.js?v=20260822-business-performance"></script>
     <script src="expenses-v6.js?v=20260823-receipt-photo-cloud-backup"></script>
     <link rel="stylesheet" href="animus-revenue.css?v=20260822-revenue-actions">
     <script src="animus-revenue.js?v=20260823-revenue-isolated-save"></script>
     <script src="animus-work-file.js?v=20260823-draft-save-delete"></script>
-    <script src="animus-contacts.js?v=20260823-contacts"></script>
+    <script src="animus-contacts.js?v=20260823-manual-add-contact"></script>
     <link rel="stylesheet" href="animus-payroll.css?v=20260822-payroll-center">
     <script src="animus-payroll.js?v=20260822-payroll-center"></script>
   </body>

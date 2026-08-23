@@ -1,10 +1,10 @@
-Upload every file in this folder to the main ANIMUS repository.
+Upload every file in this folder to the main folder of the ANIMUS-V.1 GitHub repository.
 
-This adds Contacts below Work Files in the sidebar. Contacts is a live directory made from your existing CRM work files; it does not create a second customer list.
+This update adds:
+- Contacts in the left sidebar
+- Add Contact form that creates a normal New Lead work file
+- One sleek top command bar with Search, New File, Save, and Notifications
+- Dashboard cleanup so its greeting does not repeat those controls
 
-On Contacts:
-- Click a name to open that customer's work file.
-- Call opens the phone action.
-- Text opens the text action.
-- Email opens the email action.
-- Address opens the location in Maps.
+After GitHub finishes processing the upload, open:
+https://animus-v-1.pages.dev/crm?contacts-topbar=20260823

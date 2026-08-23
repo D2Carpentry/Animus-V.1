@@ -8168,6 +8168,14 @@ $("crmNewNote").addEventListener("keydown", (event) => {
 $("crmSaveDemo").addEventListener("click", () => {
   saveDashboardToGoogle();
 });
+$("crmTopNotifications")?.addEventListener("click", () => {
+  if (document.body.dataset.animusView !== "dashboard") {
+    switchCrmView("dashboard");
+    window.setTimeout(() => document.querySelector(".animus-attention-card")?.scrollIntoView({ behavior:"smooth", block:"start" }), 0);
+    return;
+  }
+  document.querySelector(".animus-attention-card")?.scrollIntoView({ behavior:"smooth", block:"start" });
+});
 $("crmLoadCloud").addEventListener("click", () => {
   loadDashboardFromGoogle().catch((error) => {
     window.alert(error?.message || "Command Center could not be restored from Cloudflare.");

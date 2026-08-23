@@ -82,7 +82,7 @@
     const upcoming = active.map((file) => ({ file, date:file.startDate || file.anticipatedCompletionDate || "" })).filter((item) => item.date).sort((a,b) => String(a.date).localeCompare(String(b.date))).slice(0,5);
     const recent = activity(); const notificationCount = alertList.length;
     return `<section class="animus-dashboard-home" id="animusDashboardHome">
-      <header class="animus-home-header"><div><h1>${greeting()}, D2 Team <span aria-hidden="true">&#128075;</span></h1><p>Here's what's happening with your business today.</p></div><div class="animus-home-tools"><div class="animus-global-search"><span>⌕</span><input id="animusHomeSearch" placeholder="Search customers, jobs, invoices..."></div><div class="animus-quick-add"><button class="animus-home-primary" id="animusQuickAdd">+ New</button><div class="animus-quick-menu" id="animusQuickMenu" hidden><button data-animus-quick="file">New Customer File</button><button data-animus-quick="estimate">New Estimate</button><button data-animus-quick="expense">New Expense</button><button data-animus-quick="calendar">New Calendar Event</button></div></div><button class="animus-notification" id="animusNotifications" aria-label="Attention required">&#128276;${notificationCount ? `<b>${notificationCount}</b>` : ""}</button></div></header>
+      <header class="animus-home-header"><div><h1>${greeting()}, D2 Team <span aria-hidden="true">&#128075;</span></h1><p>Here's what's happening with your business today.</p></div></header>
       <section class="animus-kpi-grid">
         ${kpi("◉","New Leads",crmFiles.filter((file) => status(file) === "New Lead").length,"blue","Open customer inquiries","files:new")}
         ${kpi("☎","Pending Contact",crmFiles.filter((file) => ["Contact Established", "Contact Attempted"].includes(status(file))).length,"amber","Contact needs attention","files:contact")}
@@ -117,13 +117,9 @@
   }
   function render() { const shell = document.querySelector(".crm-dashboard"); if (!shell) return; document.querySelector("#animusDashboardHome")?.remove(); shell.insertAdjacentHTML("afterbegin", template()); bind(); }
   function bind() {
-    document.querySelector("#animusHomeSearch")?.addEventListener("keydown", (event) => { if (event.key !== "Enter") return; const field = document.querySelector("#crmFileSearch"); if (field) { field.value = event.target.value; document.querySelector("#crmSearchFile")?.click(); } });
-    document.querySelector("#animusQuickAdd")?.addEventListener("click", () => { const menu = document.querySelector("#animusQuickMenu"); if (menu) menu.hidden = !menu.hidden; });
-    document.querySelectorAll("[data-animus-quick]").forEach((button) => button.addEventListener("click", () => { const action = button.dataset.animusQuick; if (action === "file") { document.querySelector("#crmNewFile")?.click(); switchCrmView("files"); } else if (action === "estimate") openView("estimator"); else if (action === "expense") openView("expenses"); else if (action === "calendar") openView("calendar"); }));
     document.querySelectorAll("[data-animus-open]").forEach((button) => button.addEventListener("click", () => openView(button.dataset.animusOpen)));
     document.querySelectorAll("[data-animus-file]").forEach((button) => button.addEventListener("click", () => openFile(button.dataset.animusFile)));
     document.querySelectorAll("[data-animus-stage]").forEach((button) => button.addEventListener("click", () => { const stage = button.dataset.animusStage; const map = { "New Lead":"new", Contacted:"contact", Inspection:"estimate", "Estimate Sent":"estimate", Negotiation:"negotiation", Won:"active" }; activateCrmFilter(map[stage] || "new"); switchCrmView("files"); renderCrm(); }));
-    document.querySelector("#animusNotifications")?.addEventListener("click", () => document.querySelector(".animus-attention-card")?.scrollIntoView({ behavior:"smooth", block:"start" }));
   }
   const baseSwitchView = switchCrmView;
   switchCrmView = function animusSwitchCrmView(view) {
