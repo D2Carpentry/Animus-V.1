@@ -151,11 +151,14 @@ body.animus-unified-ui .animus-work-files-layout .crm-file-workspace {
 .animus-file-card-meta { display:grid; justify-items:end; min-width:0; }
 .animus-file-status { max-width:84px; overflow:hidden; padding:4px 6px; border-radius:999px; font-size:9px; font-weight:850; text-overflow:ellipsis; white-space:nowrap; }
 .animus-file-status-inline { display:inline-block; max-width:100%; overflow:hidden; margin-top:5px; padding:3px 6px; border-radius:999px; font-size:9px; font-weight:850; line-height:1.1; text-overflow:ellipsis; white-space:nowrap; }
-.animus-file-status.open { background: #e9f1ff; color: #1e57c8; }
-.animus-file-status.warning { background: #fff2dc; color: #b46a00; }
-.animus-file-status.active { background: #e5f8ee; color: #148047; }
-.animus-file-status.closed { background: #f1f3f7; color: #53647c; }
-.animus-file-status-inline.open { background:#e9f1ff; color:#1e57c8; }.animus-file-status-inline.warning { background:#fff2dc; color:#b46a00; }.animus-file-status-inline.active { background:#e5f8ee; color:#148047; }.animus-file-status-inline.closed { background:#f1f3f7; color:#53647c; }
+.animus-file-status.new-lead,.animus-file-status-inline.new-lead { background:#dcfce7; color:#15803d; }
+.animus-file-status.contact-established,.animus-file-status-inline.contact-established { background:#fee2e2; color:#c2410c; }
+.animus-file-status.contact-attempted,.animus-file-status-inline.contact-attempted { background:#991b1b; color:#fff; }
+.animus-file-status.inspection-completed,.animus-file-status-inline.inspection-completed { background:#efe7ff; color:#6d28d9; }
+.animus-file-status.negotiation,.animus-file-status-inline.negotiation { background:#ffedd5; color:#c2410c; }
+.animus-file-status.in-progress,.animus-file-status-inline.in-progress { background:#123d7a; color:#fff; }
+.animus-file-status.lost-closed,.animus-file-status-inline.lost-closed { background:#e5e7eb; color:#4b5563; }
+.animus-file-status.closed-paid,.animus-file-status-inline.closed-paid { background:#374151; color:#fff; }
 .animus-file-chevron { color: #6d7f98 !important; font-size: 24px !important; font-weight: 300; }
 
 .sr-only {
@@ -308,10 +311,14 @@ body.animus-unified-ui .animus-work-files-layout .crm-file-workspace {
   content: "";
 }
 
-.animus-status-open { background: #e9f1ff; color: #1c5ec9; }
-.animus-status-active { background: #e7f8ef; color: #16824b; }
-.animus-status-warning { background: #fff4df; color: #bd7610; }
-.animus-status-closed { background: #fff0f0; color: #d32929; }
+.animus-status-new-lead { background:#dcfce7; color:#15803d; }
+.animus-status-contact-established { background:#fee2e2; color:#c2410c; }
+.animus-status-contact-attempted { background:#991b1b; color:#fff; }
+.animus-status-inspection-completed { background:#efe7ff; color:#6d28d9; }
+.animus-status-negotiation { background:#ffedd5; color:#c2410c; }
+.animus-status-in-progress { background:#123d7a; color:#fff; }
+.animus-status-lost-closed { background:#e5e7eb; color:#4b5563; }
+.animus-status-closed-paid { background:#374151; color:#fff; }
 
 .animus-record-actions {
   display: flex;

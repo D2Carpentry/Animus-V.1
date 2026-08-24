@@ -18,10 +18,16 @@
   const initials = (name) => String(name || "?").split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
 
   function statusTone(status) {
-    if (["Closed / Paid", "Job Lost / Closed"].includes(status)) return "closed";
-    if (["In Progress", "Job Won", "Work Completed"].includes(status)) return "active";
-    if (["In Negotiation", "Contact Attempted"].includes(status)) return "warning";
-    return "open";
+    return {
+      "New Lead": "new-lead",
+      "Contact Established": "contact-established",
+      "Contact Attempted": "contact-attempted",
+      "Inspection Completed": "inspection-completed",
+      "In Negotiation": "negotiation",
+      "In Progress": "in-progress",
+      "Closed / Paid": "closed-paid",
+      "Job Lost / Closed": "lost-closed",
+    }[status] || "new-lead";
   }
 
   function assignment(file) {
@@ -82,9 +88,8 @@
     if (["Contact Established", "Contact Attempted"].includes(status)) return 1;
     if (status === "Inspection Completed") return 2;
     if (status === "In Negotiation") return 3;
-    if (status === "Job Won") return 4;
     if (status === "In Progress") return 5;
-    if (["Work Completed", "Closed / Paid"].includes(status)) return 6;
+    if (status === "Closed / Paid") return 6;
     return -1;
   }
 
@@ -192,8 +197,8 @@
     if (state.editor === "customer") fields = input("clientName", "Name", field(file, "clientName")) + input("clientPhone", "Phone", field(file, "clientPhone")) + input("clientEmail", "Email", field(file, "clientEmail"), "email") + input("projectAddress", "Address", field(file, "projectAddress"), "text", "wide");
     if (state.editor === "project") fields = select("projectType", field(file, "projectType", "Other"), window.CRM_PROJECT_TYPES || ["Closet", "Pantry", "Cabinetry", "Refinishing", "Built-In", "Other"]) + select("leadSource", field(file, "leadSource", "Manual"), ["Manual", "Angi", "Website", "Phone", "Text", "Referral", "Repeat Customer", "Other"]) + (field(file, "leadSource").toLowerCase() === "angi" ? input("leadFee", "Lead Fee", Number(file.leadFee) || "", "number") : "");
     if (state.editor === "progress") {
-      const statuses = ["New Lead", "Contact Established", "Contact Attempted", "Inspection Completed", "In Negotiation", "Job Won", "In Progress", "Work Completed", "Closed / Paid", "Job Lost / Closed"];
-      const statusDetails = { "New Lead":["Needs Contact", "Contact Scheduled"], "Contact Established":["Inspection Date Set", "Inspection Pending"], "Contact Attempted":["Follow Up Tomorrow"], "Inspection Completed":["Estimate Pending", "Estimate Sent"], "In Negotiation":["Follow-Up Scheduled", "Waiting on Customer"], "Job Won":["Start Date Established", "Start Date Pending"], "In Progress":["On Schedule", "Completion Date Needed"], "Work Completed":["Closing Call Made", "Closing Call Needed"], "Closed / Paid":["Invoice Sent", "Invoice Not Sent"], "Job Lost / Closed":["Future Marketing Follow-Up"] };
+      const statuses = ["New Lead", "Contact Established", "Contact Attempted", "Inspection Completed", "In Negotiation", "In Progress", "Closed / Paid", "Job Lost / Closed"];
+      const statusDetails = { "New Lead":["Needs Contact", "Contact Scheduled"], "Contact Established":["Inspection Date Set", "Inspection Pending"], "Contact Attempted":["Follow Up Tomorrow"], "Inspection Completed":["Estimate Pending", "Estimate Sent"], "In Negotiation":["Follow-Up Scheduled", "Waiting on Customer"], "In Progress":["On Schedule", "Completion Date Needed"], "Closed / Paid":["Invoice Sent", "Invoice Not Sent"], "Job Lost / Closed":["Future Marketing Follow-Up"] };
       const selectedStatus = field(file, "fileStatus", "New Lead");
       fields = select("fileStatus", selectedStatus, statuses) + select("statusDetail", field(file, "statusDetail"), statusDetails[selectedStatus] || [field(file, "statusDetail")]);
     }

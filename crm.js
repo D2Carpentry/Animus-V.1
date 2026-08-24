@@ -35,9 +35,7 @@ const CRM_STATUS_DESCRIPTIONS = {
   "Contact Attempted": "A contact attempt was made. Set a next-day follow-up reminder.",
   "Inspection Completed": "You met the client, took site dimensions, and discussed wood types/finishes.",
   "In Negotiation": "Customer is considering the estimate. Set a follow-up date and keep it out of active jobs.",
-  "Job Won": "The customer approved the job. Confirm whether the start date is established.",
   "In Progress": "Job has started. Confirm expected completion date and midpoint deposit.",
-  "Work Completed": "Work is complete. Confirm closing call, review request, and final payment.",
   "Closed / Paid": "Job folder is archived and contact info is saved for future marketing.",
   "Job Lost / Closed": "Archive the file and save contact info for future marketing.",
 };
@@ -48,9 +46,7 @@ const CRM_STATUS_DETAILS = {
   "Contact Attempted": ["Follow Up Tomorrow"],
   "Inspection Completed": ["Estimate Pending", "Estimate Sent"],
   "In Negotiation": ["Follow-Up Scheduled", "Waiting on Customer"],
-  "Job Won": ["Start Date Established", "Start Date Pending"],
   "In Progress": ["On Schedule", "Completion Date Needed"],
-  "Work Completed": ["Closing Call Made", "Closing Call Needed"],
   "Closed / Paid": ["Invoice Sent", "Invoice Not Sent"],
   "Job Lost / Closed": ["Future Marketing Follow-Up"],
 };
@@ -75,7 +71,7 @@ function crmFileCategory(file = {}) {
   const status = file.fileStatus || "New Lead";
   if (["Job Lost / Closed", "Closed / Paid"].includes(status)) return CRM_FILE_CATEGORY_RULES.archive;
   if (status === "In Negotiation") return CRM_FILE_CATEGORY_RULES.negotiation;
-  if (["Job Won", "In Progress", "Work Completed"].includes(status)) return CRM_FILE_CATEGORY_RULES.active;
+  if (status === "In Progress") return CRM_FILE_CATEGORY_RULES.active;
   if (["Scheduled", "In Progress", "Completed"].includes(file.projectStage)) return CRM_FILE_CATEGORY_RULES.active;
   if (hasEstimateWorkflowDetail(file) || status === "Inspection Completed") return CRM_FILE_CATEGORY_RULES.estimate;
   if (["Contact Established", "Contact Attempted"].includes(status)) return CRM_FILE_CATEGORY_RULES.contact;
@@ -1500,6 +1496,12 @@ function normalizeCrmFile(file) {
   if (!Array.isArray(file.freshExpenseReceipts)) file.freshExpenseReceipts = [];
   if (!Array.isArray(file.animusManualExpenses)) file.animusManualExpenses = [];
   syncExpenseFileForStorage(file);
+  // These two stages were retired from the working workflow. Keep every
+  // record intact while placing old labels into the remaining active stage.
+  if (["Job Won", "Work Completed"].includes(file.fileStatus)) {
+    file.fileStatus = "In Progress";
+    file.statusDetail = "Completion Date Needed";
+  }
   file.projectStage = file.projectStage || inferProjectStage(file.fileStatus);
   file.projectType = normalizeProjectType(file.projectType);
   file.leadFee = Number.isFinite(Number(file.leadFee)) ? Number(file.leadFee) : 0;
@@ -1533,9 +1535,7 @@ function normalizeCrmFile(file) {
 }
 
 function inferProjectStage(status = "") {
-  if (["Job Won"].includes(status)) return "Scheduled";
   if (status === "In Progress") return "In Progress";
-  if (status === "Work Completed") return "Completed";
   if (status === "Closed / Paid") return "Paid";
   if (status === "In Negotiation") return "Estimate";
   if (["Contact Established", "Inspection Completed"].includes(status)) return "Inspection";
@@ -1548,7 +1548,7 @@ function inferEstimateStatus(status = "", detail = "") {
   if (detail === "Estimate Pending") return "Pending";
   if (detail === "Estimate Sent") return "Sent";
   if (status === "In Negotiation") return "Sent";
-  if (["Job Won", "In Progress", "Work Completed", "Closed / Paid"].includes(status)) return "Approved";
+  if (["In Progress", "Closed / Paid"].includes(status)) return "Approved";
   if (status === "Job Lost / Closed") return "Declined";
   return "Not Started";
 }
@@ -1623,12 +1623,16 @@ function renderFileList() {
   if (filterMenu) {
     filterMenu.innerHTML = filters.map(([value, label, count]) => `<button type="button" class="animus-work-file-filter-option ${$("crmFileFilter").value === value ? "active" : ""}" data-animus-file-filter="${value}"><span>${label}</span><b>${count}</b></button>`).join("");
   }
-  const statusTone = (file) => {
-    if (["Closed / Paid", "Job Lost / Closed"].includes(file.fileStatus)) return "closed";
-    if (["In Progress", "Job Won", "Work Completed"].includes(file.fileStatus)) return "active";
-    if (["In Negotiation", "Contact Attempted"].includes(file.fileStatus)) return "warning";
-    return "open";
-  };
+  const statusTone = (file) => ({
+    "New Lead": "new-lead",
+    "Contact Established": "contact-established",
+    "Contact Attempted": "contact-attempted",
+    "Inspection Completed": "inspection-completed",
+    "In Negotiation": "negotiation",
+    "In Progress": "in-progress",
+    "Closed / Paid": "closed-paid",
+    "Job Lost / Closed": "lost-closed",
+  }[file.fileStatus] || "new-lead");
   const initials = (name) => String(name || "?").split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
   $("crmFileList").innerHTML = files.map((file) => `
     <button type="button" class="crm-file-card ${file.id === activeFileId ? "active" : ""}" data-file-id="${file.id}">
@@ -1973,15 +1977,6 @@ function handleStatusWorkflow() {
     $("crmNextAction").value = "Follow up on negotiation";
   }
 
-  if (status === "Job Won" && detail === "Start Date Pending") {
-    $("crmNextAction").value = "Establish start date";
-  }
-
-  if (status === "Job Won" && detail === "Start Date Established" && !$("crmStartDate").value) {
-    $("crmNextAction").value = "Set start date";
-    openDateField("crmStartDate");
-  }
-
   if (status === "In Progress") {
     file.revenueExcluded = false;
     if (!$("crmAnticipatedCompletionDate").value) {
@@ -1990,15 +1985,6 @@ function handleStatusWorkflow() {
     }
     if (!$("crmMidpointDeposit").value) {
       $("crmNextAction").value = "Confirm midpoint deposit";
-    }
-  }
-
-  if (status === "Work Completed") {
-    if (detail === "Closing Call Made") {
-      $("crmClosingCallCompleted").value = "Yes";
-    }
-    if (detail === "Closing Call Needed" || $("crmClosingCallCompleted").value !== "Yes") {
-      $("crmNextAction").value = "Complete closing call";
     }
   }
 
@@ -2973,9 +2959,9 @@ function dashboardApprovedFileFromEstimate(data, row) {
   const importedAt = new Date().toISOString();
   return {
     ...file,
-    fileStatus: "Job Won",
-    statusDetail: "Start Date Pending",
-    projectStage: "Scheduled",
+    fileStatus: "In Progress",
+    statusDetail: "On Schedule",
+    projectStage: "In Progress",
     estimateStatus: "Approved",
     invoiceStatus: "Not Created",
     nextAction: "Set start date, create invoice, and prepare assignment",
@@ -3384,7 +3370,7 @@ function findFileForRevenue(row) {
 function revenueEligibleFile(file) {
   return !!file
     && file.revenueExcluded !== true
-    && ["In Progress", "Work Completed", "Closed / Paid"].includes(file.fileStatus);
+    && ["In Progress", "Closed / Paid"].includes(file.fileStatus);
 }
 
 function revenueEstimateForFile(file) {
