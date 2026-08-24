@@ -2,14 +2,15 @@ Upload all four files in this folder to the root of the ANIMUS repository:
 
 - crm.html
 - crm.js
+- animus-work-file.js
 - animus-shell.css
-- animus-contacts.js
 
-What this update fixes:
-- Create Work File now creates the entered record first, closes the form, and opens that new work file.
-- The view-change order is protected so the previously open file cannot overwrite the new file's details.
-- The Next Action Date is optional. Check "Set a Next Action Date" only when you want one.
-- The form keeps entered details while it is open, so information is not lost if you briefly leave the page.
+This update adds Angi lead-fee tracking.
+
+- Selecting Angi in New Work File reveals an optional Lead Fee amount.
+- Existing Angi work files show Lead Tracking in Job Details.
+- Use Edit Job Details to update the fee for an older Angi file.
+- The fee is tracked separately and does not change existing project revenue or expense totals.
 
 After the deployment completes, open:
-https://animus-v-1.pages.dev/crm?new-work-file-popup-repair=20260823
+https://animus-v-1.pages.dev/crm?angi-lead-fee=20260823

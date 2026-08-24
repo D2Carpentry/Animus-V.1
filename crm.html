@@ -305,6 +305,10 @@
                     Next Action
                     <input id="crmNextAction" placeholder="Follow up, send estimate, confirm start date">
                   </label>
+                  <label id="crmAngiLeadFeeField" hidden>
+                    Lead Fee
+                    <input id="crmLeadFee" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00">
+                  </label>
                 </div>
                 <input id="crmEstimateStatus" type="hidden" value="Not Started">
                 <input id="crmInvoiceStatus" type="hidden" value="Not Created">
@@ -1017,7 +1021,7 @@
         caches.keys().then((keys) => keys.forEach((key) => caches.delete(key)));
       }
     </script>
-<script src="crm.js?v=20260823-new-file-intake-create-fix"></script>
+<script src="crm.js?v=20260823-angi-lead-fee"></script>
     <script src="calendar-upgrade.js?v=20260808-calendar-popups"></script>
     <script src="animus-shell.js?v=20260823-smooth-first-paint"></script>
     <script src="animus-dashboard.js?v=20260823-topbar-actions"></script>
@@ -1026,7 +1030,7 @@
     <script src="expenses-v6.js?v=20260823-receipt-photo-cloud-backup"></script>
     <link rel="stylesheet" href="animus-revenue.css?v=20260822-revenue-actions">
     <script src="animus-revenue.js?v=20260823-revenue-isolated-save"></script>
-    <script src="animus-work-file.js?v=20260823-draft-save-delete"></script>
+    <script src="animus-work-file.js?v=20260823-angi-lead-fee"></script>
     <script src="animus-contacts.js?v=20260823-new-file-intake"></script>
     <link rel="stylesheet" href="animus-payroll.css?v=20260822-payroll-center">
     <script src="animus-payroll.js?v=20260822-payroll-center"></script>
