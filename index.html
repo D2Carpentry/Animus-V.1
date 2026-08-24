@@ -174,13 +174,19 @@
               <label>
                 Project Type
                 <select id="projectType">
-                  <option>Closet</option>
-                  <option>Pantry</option>
+                  <option>Built-in</option>
                   <option>Cabinetry</option>
-                  <option>Refinishing</option>
-                  <option>Built-In</option>
+                  <option>Closet</option>
                   <option>Other</option>
+                  <option>Other Carpentry</option>
+                  <option>Pantry</option>
+                  <option>Refacing</option>
+                  <option>Refinishing</option>
                 </select>
+              </label>
+              <label id="projectTypeOtherWrap" hidden>
+                Other Project Type
+                <input id="projectTypeOther" placeholder="Describe this project">
               </label>
               <label data-project-pricing>
                 Finish
@@ -631,6 +637,6 @@
     <script src="vendor/jspdf.umd.min.js"></script>
     <script src="vendor/html2canvas.min.js"></script>
     <script src="materials-database.js?v=20260804-price-update-2"></script>
-    <script src="app.js?v=20260823-reliable-work-file-estimate"></script>
+    <script src="app.js?v=20260823-project-type-other"></script>
   </body>
 </html>

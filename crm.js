@@ -52,7 +52,7 @@ const CRM_STATUS_DETAILS = {
   "Job Lost / Closed": ["Future Marketing Follow-Up"],
 };
 
-const CRM_PROJECT_TYPES = ["Closet", "Pantry", "Cabinetry", "Refinishing", "Built-In", "Other"];
+const CRM_PROJECT_TYPES = ["Built-in", "Cabinetry", "Closet", "Other", "Other Carpentry", "Pantry", "Refacing", "Refinishing"];
 
 const CRM_FILE_CATEGORY_RULES = {
   new: "new",
@@ -93,6 +93,7 @@ function repairCrmFileCategories(files = crmFiles) {
 
 function normalizeProjectType(value) {
   const cleaned = String(value || "").trim().toLowerCase();
+  if (["built-in", "built in", "builtin"].includes(cleaned)) return "Built-in";
   const match = CRM_PROJECT_TYPES.find((type) => type.toLowerCase() === cleaned);
   return match || "Other";
 }
@@ -107,6 +108,7 @@ const crmFields = [
   "fileStatus",
   "statusDetail",
   "projectType",
+  "otherProjectType",
   "contactEmailSent",
   "contactTextSent",
   "inspectionDateSet",
@@ -2165,8 +2167,8 @@ function closeNewCrmFileModal() {
 
 function intakeValuesForFile(file = {}) {
   return {
-    clientName: "", clientPhone: "", clientEmail: "", projectAddress: "", leadSource: "Manual", leadFee: "", projectType: "Other",
-    fileStatus: "New Lead", statusDetail: "Needs Contact", nextAction: "Contact customer", hasNextActionDate: false, nextActionDate: "",
+    clientName: "", clientPhone: "", clientEmail: "", projectAddress: "", leadSource: "Manual", leadFee: "", projectType: "Other", otherProjectType: "",
+    fileStatus: "New Lead", statusDetail: "Needs Contact", nextAction: "", hasNextActionDate: false, nextActionDate: "",
     contactEmailSent: "No", contactTextSent: "No", inspectionDateSet: "No", inspectionDate: "", inspectionTime: "", arrivalWindow: "Open", startDate: "", followUpDate: "", anticipatedCompletionDate: "",
     estimateTotal: "", materialTotal: "", initialDepositSecured: "No", initialDeposit: "", midpointDepositSecured: "No", midpointDeposit: "", finalPaymentSecured: "No", finalPaymentAmount: "", invoiceSent: "No", reviewRequested: "No", closingCallCompleted: "No", warrantyStatus: "Not Sent",
     ...file,
@@ -2197,6 +2199,8 @@ function populateCrmFileIntakeModal(modal, file = null) {
   }
   const leadFeeWrap = modal.querySelector("#animusNewFileLeadFeeWrap");
   if (leadFeeWrap) leadFeeWrap.hidden = !isAngiLeadSource(values.leadSource);
+  const otherProjectWrap = modal.querySelector("#animusNewFileOtherProjectWrap");
+  if (otherProjectWrap) otherProjectWrap.hidden = values.projectType !== "Other";
   const nextActionDateWrap = modal.querySelector("#animusNewFileNextActionDateWrap");
   if (nextActionDateWrap) nextActionDateWrap.hidden = !values.hasNextActionDate;
   const error = $("animusNewFileError");
@@ -2218,7 +2222,7 @@ function openNewCrmFileModal(fileToEdit = null) {
       <header><div><p>NEW WORK FILE</p><h2 id="animusNewFileTitle">Create a Customer File</h2><span>Enter the information you have now. Everything can be updated later.</span></div><button type="button" class="animus-new-file-close" data-new-file-close aria-label="Close">×</button></header>
       <form id="animusNewFileForm">
         <section><h3>Customer</h3><div class="animus-new-file-grid"><label class="wide">Customer Name<input data-new-file-field="clientName" value="${escapeHtml(draft.clientName || "")}" autocomplete="name" required placeholder="Customer name"></label><label>Phone<input data-new-file-field="clientPhone" value="${escapeHtml(draft.clientPhone || "")}" autocomplete="tel" type="tel" placeholder="(239) 555-0100"></label><label>Email<input data-new-file-field="clientEmail" value="${escapeHtml(draft.clientEmail || "")}" autocomplete="email" type="email" placeholder="name@email.com"></label><label class="wide">Project Address<input data-new-file-field="projectAddress" value="${escapeHtml(draft.projectAddress || "")}" autocomplete="street-address" placeholder="Street, city, state, ZIP"></label></div></section>
-        <section><h3>Project & Status</h3><div class="animus-new-file-grid"><label>Lead Source<select data-new-file-field="leadSource" id="animusNewFileLeadSource">${newFileOptionMarkup(["Manual", "Phone", "Website", "Angi", "Referral", "Social Media"], draft.leadSource || "Manual")}</select></label><label id="animusNewFileLeadFeeWrap"${isAngiLeadSource(draft.leadSource) ? "" : " hidden"}>Lead Fee<input data-new-file-field="leadFee" value="${escapeHtml(draft.leadFee || "")}" inputmode="decimal" type="number" min="0" step="0.01" placeholder="0.00"></label><label>Project Type<select data-new-file-field="projectType">${newFileOptionMarkup(CRM_PROJECT_TYPES, draft.projectType || "Other")}</select></label><label>File Status<select data-new-file-field="fileStatus" id="animusNewFileStatus">${newFileOptionMarkup(Object.keys(CRM_STATUS_DETAILS), status)}</select></label><label>Status Detail<select data-new-file-field="statusDetail" id="animusNewFileStatusDetail">${newFileOptionMarkup(CRM_STATUS_DETAILS[status] || [], detail)}</select></label><label class="wide">Next Action<input data-new-file-field="nextAction" value="${escapeHtml(draft.nextAction || "Contact customer")}" placeholder="Follow up, send estimate, set inspection"></label><label class="animus-new-file-check"><input data-new-file-field="hasNextActionDate" id="animusNewFileHasNextActionDate" type="checkbox"${hasNextActionDate ? " checked" : ""}><span>Set a Next Action Date</span></label><label id="animusNewFileNextActionDateWrap"${hasNextActionDate ? "" : " hidden"}>Next Action Date<input data-new-file-field="nextActionDate" value="${escapeHtml(draft.nextActionDate || "")}" type="date"></label></div></section>
+        <section><h3>Project & Status</h3><div class="animus-new-file-grid"><label>Lead Source<select data-new-file-field="leadSource" id="animusNewFileLeadSource">${newFileOptionMarkup(["Manual", "Phone", "Website", "Angi", "Referral", "Social Media"], draft.leadSource || "Manual")}</select></label><label id="animusNewFileLeadFeeWrap"${isAngiLeadSource(draft.leadSource) ? "" : " hidden"}>Lead Fee<input data-new-file-field="leadFee" value="${escapeHtml(draft.leadFee || "")}" inputmode="decimal" type="number" min="0" step="0.01" placeholder="Enter fee"></label><label>Project Type<select data-new-file-field="projectType" id="animusNewFileProjectType">${newFileOptionMarkup(CRM_PROJECT_TYPES, draft.projectType || "Other")}</select></label><label id="animusNewFileOtherProjectWrap"${draft.projectType === "Other" ? "" : " hidden"}>Other Project Type<input data-new-file-field="otherProjectType" value="${escapeHtml(draft.otherProjectType || "")}" placeholder="Describe this project"></label><label>File Status<select data-new-file-field="fileStatus" id="animusNewFileStatus">${newFileOptionMarkup(Object.keys(CRM_STATUS_DETAILS), status)}</select></label><label>Status Detail<select data-new-file-field="statusDetail" id="animusNewFileStatusDetail">${newFileOptionMarkup(CRM_STATUS_DETAILS[status] || [], detail)}</select></label><label class="wide">Next Action<input data-new-file-field="nextAction" value="${escapeHtml(draft.nextAction || "")}" placeholder="Follow up, send estimate, set inspection"></label><label class="animus-new-file-check"><input data-new-file-field="hasNextActionDate" id="animusNewFileHasNextActionDate" type="checkbox"${hasNextActionDate ? " checked" : ""}><span>Set a Next Action Date</span></label><label id="animusNewFileNextActionDateWrap"${hasNextActionDate ? "" : " hidden"}>Next Action Date<input data-new-file-field="nextActionDate" value="${escapeHtml(draft.nextActionDate || "")}" type="date"></label></div></section>
         <section><h3>Contact & Schedule</h3><div class="animus-new-file-grid"><label>Contact Email Sent?<select data-new-file-field="contactEmailSent">${newFileOptionMarkup(["No", "Yes"], draft.contactEmailSent || "No")}</select></label><label>Contact Text Sent?<select data-new-file-field="contactTextSent">${newFileOptionMarkup(["No", "Yes"], draft.contactTextSent || "No")}</select></label><label>Inspection Date Set?<select data-new-file-field="inspectionDateSet">${newFileOptionMarkup(["No", "Yes"], draft.inspectionDateSet || "No")}</select></label><label>Inspection Date<input data-new-file-field="inspectionDate" value="${escapeHtml(draft.inspectionDate || "")}" type="date"></label><label>Inspection Time<input data-new-file-field="inspectionTime" value="${escapeHtml(draft.inspectionTime || "")}" type="time"></label><label>Arrival Window<select data-new-file-field="arrivalWindow">${newFileOptionMarkup(["Open", "7:00 AM", "8:00 AM", "9:00 AM", "10:00 AM", "Afternoon"], draft.arrivalWindow || "Open")}</select></label><label>Start Date<input data-new-file-field="startDate" value="${escapeHtml(draft.startDate || "")}" type="date"></label><label>Follow-Up Date<input data-new-file-field="followUpDate" value="${escapeHtml(draft.followUpDate || "")}" type="date"></label><label>Anticipated Completion<input data-new-file-field="anticipatedCompletionDate" value="${escapeHtml(draft.anticipatedCompletionDate || "")}" type="date"></label></div></section>
         <section><h3>Financials & Operations</h3><div class="animus-new-file-grid"><label>Estimate Amount<input data-new-file-field="estimateTotal" value="${escapeHtml(draft.estimateTotal || "")}" inputmode="decimal" type="number" min="0" step="0.01" placeholder="0.00"></label><label>Materials Amount<input data-new-file-field="materialTotal" value="${escapeHtml(draft.materialTotal || "")}" inputmode="decimal" type="number" min="0" step="0.01" placeholder="0.00"></label><label>Initial Deposit Secured?<select data-new-file-field="initialDepositSecured">${newFileOptionMarkup(["No", "Yes"], draft.initialDepositSecured || "No")}</select></label><label>Initial Deposit<input data-new-file-field="initialDeposit" value="${escapeHtml(draft.initialDeposit || "")}" inputmode="decimal" type="number" min="0" step="0.01" placeholder="0.00"></label><label>Midpoint Deposit Secured?<select data-new-file-field="midpointDepositSecured">${newFileOptionMarkup(["No", "Yes"], draft.midpointDepositSecured || "No")}</select></label><label>Midpoint Deposit<input data-new-file-field="midpointDeposit" value="${escapeHtml(draft.midpointDeposit || "")}" inputmode="decimal" type="number" min="0" step="0.01" placeholder="0.00"></label><label>Final Payment Secured?<select data-new-file-field="finalPaymentSecured">${newFileOptionMarkup(["No", "Yes"], draft.finalPaymentSecured || "No")}</select></label><label>Final Payment<input data-new-file-field="finalPaymentAmount" value="${escapeHtml(draft.finalPaymentAmount || "")}" inputmode="decimal" type="number" min="0" step="0.01" placeholder="0.00"></label><label>Invoice Sent?<select data-new-file-field="invoiceSent">${newFileOptionMarkup(["No", "Yes"], draft.invoiceSent || "No")}</select></label><label>Review Requested?<select data-new-file-field="reviewRequested">${newFileOptionMarkup(["No", "Yes"], draft.reviewRequested || "No")}</select></label><label>Closing Call Completed?<select data-new-file-field="closingCallCompleted">${newFileOptionMarkup(["No", "Yes"], draft.closingCallCompleted || "No")}</select></label><label>Warranty Details<select data-new-file-field="warrantyStatus">${newFileOptionMarkup(["Not Sent", "Sent"], draft.warrantyStatus || "Not Sent")}</select></label></div></section>
         <p class="animus-new-file-error" id="animusNewFileError" hidden></p><footer><button type="button" class="animus-new-file-cancel" data-new-file-close>Cancel</button><button type="submit" class="animus-new-file-create">Create Work File</button></footer>
@@ -2234,6 +2238,15 @@ function openNewCrmFileModal(fileToEdit = null) {
     modal.querySelector("#animusNewFileLeadSource")?.addEventListener("change", (event) => {
       const leadFeeWrap = modal.querySelector("#animusNewFileLeadFeeWrap");
       if (leadFeeWrap) leadFeeWrap.hidden = !isAngiLeadSource(event.target.value);
+      saveNewFileDraft();
+    });
+    modal.querySelector("#animusNewFileProjectType")?.addEventListener("change", (event) => {
+      const otherProjectWrap = modal.querySelector("#animusNewFileOtherProjectWrap");
+      if (otherProjectWrap) otherProjectWrap.hidden = event.target.value !== "Other";
+      if (event.target.value !== "Other") {
+        const otherProjectInput = otherProjectWrap?.querySelector("input");
+        if (otherProjectInput) otherProjectInput.value = "";
+      }
       saveNewFileDraft();
     });
     const nextActionDateToggle = modal.querySelector("#animusNewFileHasNextActionDate");
@@ -2288,7 +2301,7 @@ function openNewCrmFileModal(fileToEdit = null) {
 function updateCrmFileFromIntake(fileId, values = {}) {
   const file = crmFiles.find((entry) => entry.id === fileId);
   if (!file) throw new Error("That work file could not be found.");
-  const textFields = ["clientName", "clientPhone", "clientEmail", "projectAddress", "leadSource", "fileStatus", "statusDetail", "projectType", "contactEmailSent", "contactTextSent", "inspectionDateSet", "inspectionDate", "inspectionTime", "arrivalWindow", "startDate", "followUpDate", "anticipatedCompletionDate", "nextAction", "warrantyStatus", "initialDepositSecured", "midpointDepositSecured", "finalPaymentSecured", "invoiceSent", "reviewRequested", "closingCallCompleted"];
+  const textFields = ["clientName", "clientPhone", "clientEmail", "projectAddress", "leadSource", "fileStatus", "statusDetail", "projectType", "otherProjectType", "contactEmailSent", "contactTextSent", "inspectionDateSet", "inspectionDate", "inspectionTime", "arrivalWindow", "startDate", "followUpDate", "anticipatedCompletionDate", "nextAction", "warrantyStatus", "initialDepositSecured", "midpointDepositSecured", "finalPaymentSecured", "invoiceSent", "reviewRequested", "closingCallCompleted"];
   textFields.forEach((key) => { if (values[key] !== undefined) file[key] = String(values[key] || "").trim(); });
   file.projectType = normalizeProjectType(file.projectType || "Other");
   file.leadFee = parseMoney(values.leadFee || 0);
@@ -2327,6 +2340,7 @@ function newCrmFile(options = {}) {
     fileStatus: status,
     statusDetail: detail,
     projectType: normalizeProjectType(values.projectType || "Other"),
+    otherProjectType: values.projectType === "Other" ? String(values.otherProjectType || "").trim() : "",
     projectStage: "Lead",
     contactEmailSent: values.contactEmailSent || "No",
     contactTextSent: values.contactTextSent || "No",
@@ -2337,7 +2351,7 @@ function newCrmFile(options = {}) {
     arrivalWindow: values.arrivalWindow || "Open",
     followUpDate: values.followUpDate || "",
     anticipatedCompletionDate: values.anticipatedCompletionDate || "",
-    nextAction: values.nextAction || "Contact customer",
+    nextAction: values.nextAction || "",
     nextActionDate: values.hasNextActionDate ? (values.nextActionDate || todayIso(1)) : "",
     warrantyStatus: values.warrantyStatus || "Not Sent",
     depositSecured: values.initialDepositSecured || "No",
@@ -2538,6 +2552,7 @@ function attachEditableEstimateToFile(file, data, fileName = "") {
   file.clientEmail = file.clientEmail || data.clientEmail || "";
   file.projectAddress = file.projectAddress || data.projectAddress || data.clientAddress || "";
   file.projectType = normalizeProjectType(file.projectType || data.projectType);
+  file.otherProjectType = file.projectType === "Other" ? (file.otherProjectType || data.projectTypeOther || "") : "";
   file.estimateStatus = data.estimateStatus || file.estimateStatus || "Pending";
   addSystemNote(file, `Editable estimate attached${fileName ? ` from ${fileName}` : ""}.`);
 }

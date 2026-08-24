@@ -30,10 +30,11 @@ const COPY_MODE_LABELS = {
   supply: "Supplies",
 };
 
-const PROJECT_TYPES = ["Closet", "Pantry", "Cabinetry", "Refinishing", "Built-In", "Other"];
+const PROJECT_TYPES = ["Built-in", "Cabinetry", "Closet", "Other", "Other Carpentry", "Pantry", "Refacing", "Refinishing"];
 
 function normalizeProjectType(value) {
   const cleaned = String(value || "").trim().toLowerCase();
+  if (["built-in", "built in", "builtin"].includes(cleaned)) return "Built-in";
   const match = PROJECT_TYPES.find((type) => type.toLowerCase() === cleaned);
   return match || "Other";
 }
@@ -89,6 +90,7 @@ const fields = [
   "clientEmail",
   "projectAddress",
   "projectType",
+  "projectTypeOther",
   "finishLevel",
   "widthFeet",
   "heightFeet",
@@ -1292,6 +1294,7 @@ function getPaymentProjectDescription() {
     .map((item) => String(item.name || "").trim())
     .filter(Boolean);
   if (descriptions.length) return descriptions.join(", ");
+  if ($("projectType").value === "Other" && $("projectTypeOther")?.value.trim()) return $("projectTypeOther").value.trim();
   if ($("projectType").value && $("projectType").value !== "Other") return $("projectType").value;
   return "Project payment";
 }
@@ -2955,6 +2958,7 @@ function syncProjectMode() {
   document.querySelectorAll("[data-project-pricing]").forEach((element) => {
     element.hidden = isOther;
   });
+  if ($("projectTypeOtherWrap")) $("projectTypeOtherWrap").hidden = !isOther;
 }
 
 function clearManualEstimate() {
@@ -2993,6 +2997,7 @@ function resetEstimate() {
   $("clientEmail").value = "";
   $("projectAddress").value = "";
   $("projectType").value = "Other";
+  if ($("projectTypeOther")) $("projectTypeOther").value = "";
   $("estimateNumber").value = "";
   $("finishLevel").value = "";
   $("widthFeet").value = "";
