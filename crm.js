@@ -2535,7 +2535,35 @@ function uploadEstimateForActiveFile(file) {
       window.alert(`${error.message || "That file could not be uploaded."} Please choose an editable D2 estimate file ending in .d2estimate.`);
     }
   });
+  reader.addEventListener("error", () => {
+    window.alert("This estimate file could not be read. Please choose the editable .d2estimate file, not a PDF.");
+  });
   reader.readAsText(file);
+}
+
+function chooseEstimateFileForActiveWorkFile() {
+  // The old shared picker sits inside the Revenue view, which is hidden while
+  // a work file is open. A temporary picker attached to the page body works
+  // from every ANIMUS view and avoids the browser silently ignoring the click.
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = ".d2estimate,.json,.txt,application/json,text/plain";
+  input.style.position = "fixed";
+  input.style.left = "-10000px";
+  input.style.top = "-10000px";
+  input.addEventListener("change", () => {
+    const selectedFile = input.files?.[0];
+    input.remove();
+    if (selectedFile) uploadEstimateForActiveFile(selectedFile);
+  }, { once:true });
+  input.addEventListener("cancel", () => {
+    input.remove();
+    pendingEstimateUploadFileId = "";
+    openEstimateAfterUpload = false;
+    estimateChoiceTarget = "";
+  }, { once:true });
+  document.body.appendChild(input);
+  input.click();
 }
 
 function closeEstimateChoiceDialog() {
@@ -2550,7 +2578,7 @@ function startEstimateUploadForFile(file, target = "") {
   pendingEstimateUploadFileId = file.id;
   openEstimateAfterUpload = true;
   estimateChoiceTarget = target;
-  $("crmEstimateFileUpload").click();
+  chooseEstimateFileForActiveWorkFile();
 }
 
 function createEstimateForFile(file, target = "") {
