@@ -1809,6 +1809,10 @@ function saveActiveFile() {
 }
 
 function isActiveFileEditorVisible() {
+  // The record editor beneath the intake popup remains in the DOM. Treat it
+  // as inactive while the popup is open so dropdown blur events cannot save
+  // stale background fields over the values being edited in the popup.
+  if (!$("animusNewFileModal")?.hidden) return false;
   const editor = document.querySelector(".animus-work-files-layout");
   // Preserve the legacy editor's behavior when the ANIMUS shell is unavailable.
   if (!editor) return true;
@@ -2147,6 +2151,10 @@ function saveNewFileDraftNow() {
 }
 
 function saveNewFileDraft() {
+  const modal = $("animusNewFileModal");
+  // Edit File persists only when its Save Work File button is pressed. It
+  // should not schedule browser draft writes for every field change.
+  if (!modal || modal.hidden || modal.dataset.mode !== "new") return;
   // Browser storage is synchronous, so wait for a short pause while typing.
   window.clearTimeout(newFileDraftSaveTimer);
   newFileDraftSaveTimer = window.setTimeout(saveNewFileDraftNow, 350);
