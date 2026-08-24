@@ -1812,7 +1812,8 @@ function isActiveFileEditorVisible() {
   // The record editor beneath the intake popup remains in the DOM. Treat it
   // as inactive while the popup is open so dropdown blur events cannot save
   // stale background fields over the values being edited in the popup.
-  if (!$("animusNewFileModal")?.hidden) return false;
+  const intakeModal = $("animusNewFileModal");
+  if (intakeModal && !intakeModal.hidden) return false;
   const editor = document.querySelector(".animus-work-files-layout");
   // Preserve the legacy editor's behavior when the ANIMUS shell is unavailable.
   if (!editor) return true;
@@ -8755,7 +8756,8 @@ document.querySelectorAll("[data-crm-view]").forEach((button) => {
   button.addEventListener("click", () => switchCrmView(button.dataset.crmView));
 });
 window.addEventListener("focus", () => {
-  if (!$("animusNewFileModal")?.hidden) return;
+  const intakeModal = $("animusNewFileModal");
+  if (intakeModal && !intakeModal.hidden) return;
   if (refreshCrmFilesFromStorage()) renderCrm();
 });
 
