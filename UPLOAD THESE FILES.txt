@@ -7,6 +7,7 @@ Upload all four files in this folder to the root of the ANIMUS repository:
 
 What this update fixes:
 - Create Work File now creates the entered record first, closes the form, and opens that new work file.
+- The view-change order is protected so the previously open file cannot overwrite the new file's details.
 - The Next Action Date is optional. Check "Set a Next Action Date" only when you want one.
 - The form keeps entered details while it is open, so information is not lost if you briefly leave the page.
 

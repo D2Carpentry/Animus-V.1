@@ -2175,8 +2175,8 @@ function openNewCrmFileModal() {
         if (!file?.id) throw new Error("The work file was not created.");
         clearNewFileDraft();
         closeNewCrmFileModal();
-        activeFileId = file.id;
         if (typeof switchCrmView === "function") switchCrmView("files");
+        activeFileId = file.id;
         renderCrm();
         window.setTimeout(() => $("crmClientName")?.focus(), 0);
       } catch (createError) {
@@ -2246,10 +2246,13 @@ function newCrmFile(options = {}) {
     timeline: [{ at:new Date().toISOString(), text:"Work file created" }],
   };
   crmFiles.unshift(file);
-  activeFileId = file.id;
   saveCrmFiles();
   if (!options.skipRoute) {
+    // Route away from the current editor while its original file is still
+    // selected. This stops stale fields on that screen from overwriting the
+    // new file during the route's draft-save cleanup.
     if (typeof switchCrmView === "function") switchCrmView("files");
+    activeFileId = file.id;
     renderCrm();
     window.setTimeout(() => $("crmClientName")?.focus(), 0);
   }
