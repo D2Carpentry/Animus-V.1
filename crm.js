@@ -2120,7 +2120,7 @@ function newFileDraftValues() {
 
 function saveNewFileDraft() {
   const modal = $("animusNewFileModal");
-  if (!modal || modal.hidden) return;
+  if (!modal || modal.hidden || modal.dataset.mode !== "new") return;
   const draft = {};
   modal.querySelectorAll("[data-new-file-field]").forEach((field) => {
     draft[field.dataset.newFileField] = field.type === "checkbox" ? field.checked : field.value;
@@ -2134,12 +2134,56 @@ function clearNewFileDraft() {
 
 function closeNewCrmFileModal() {
   const modal = $("animusNewFileModal");
-  if (modal) modal.hidden = true;
+  if (modal) {
+    modal.hidden = true;
+    if (modal.dataset.mode === "new") clearNewFileDraft();
+  }
 }
 
-function openNewCrmFileModal() {
+function intakeValuesForFile(file = {}) {
+  return {
+    clientName: "", clientPhone: "", clientEmail: "", projectAddress: "", leadSource: "Manual", leadFee: "", projectType: "Other",
+    fileStatus: "New Lead", statusDetail: "Needs Contact", nextAction: "Contact customer", hasNextActionDate: false, nextActionDate: "",
+    contactEmailSent: "No", contactTextSent: "No", inspectionDateSet: "No", inspectionDate: "", inspectionTime: "", arrivalWindow: "Open", startDate: "", followUpDate: "", anticipatedCompletionDate: "",
+    estimateTotal: "", materialTotal: "", initialDepositSecured: "No", initialDeposit: "", midpointDepositSecured: "No", midpointDeposit: "", finalPaymentSecured: "No", finalPaymentAmount: "", invoiceSent: "No", reviewRequested: "No", closingCallCompleted: "No", warrantyStatus: "Not Sent",
+    ...file,
+    hasNextActionDate: Boolean(file?.nextActionDate),
+  };
+}
+
+function populateCrmFileIntakeModal(modal, file = null) {
+  const mode = file ? "edit" : "new";
+  const values = intakeValuesForFile(file || {});
+  modal.dataset.mode = mode;
+  modal.dataset.fileId = file?.id || "";
+  modal.querySelector("header p").textContent = mode === "edit" ? "EDIT WORK FILE" : "NEW WORK FILE";
+  modal.querySelector("header h2").textContent = mode === "edit" ? "Edit Customer File" : "Create a Customer File";
+  modal.querySelector("header span").textContent = mode === "edit" ? "Update any detail below, then save it back to this work file." : "Enter the information you have now. Everything can be updated later.";
+  modal.querySelector(".animus-new-file-create").textContent = mode === "edit" ? "Save Work File" : "Create Work File";
+  modal.querySelectorAll("[data-new-file-field]").forEach((field) => {
+    const value = values[field.dataset.newFileField];
+    if (field.type === "checkbox") field.checked = Boolean(value);
+    else field.value = value ?? "";
+  });
+  const status = values.fileStatus || "New Lead";
+  const detailSelect = modal.querySelector("#animusNewFileStatusDetail");
+  if (detailSelect) {
+    const details = CRM_STATUS_DETAILS[status] || [""];
+    detailSelect.innerHTML = newFileOptionMarkup(details, values.statusDetail || details[0]);
+    detailSelect.value = details.includes(values.statusDetail) ? values.statusDetail : details[0];
+  }
+  const leadFeeWrap = modal.querySelector("#animusNewFileLeadFeeWrap");
+  if (leadFeeWrap) leadFeeWrap.hidden = !isAngiLeadSource(values.leadSource);
+  const nextActionDateWrap = modal.querySelector("#animusNewFileNextActionDateWrap");
+  if (nextActionDateWrap) nextActionDateWrap.hidden = !values.hasNextActionDate;
+  const error = $("animusNewFileError");
+  if (error) error.hidden = true;
+}
+
+function openNewCrmFileModal(fileToEdit = null) {
   let modal = $("animusNewFileModal");
-  const draft = newFileDraftValues();
+  if (!fileToEdit) clearNewFileDraft();
+  const draft = fileToEdit ? intakeValuesForFile(fileToEdit) : {};
   if (!modal) {
     const status = draft.fileStatus || "New Lead";
     const detail = draft.statusDetail || CRM_STATUS_DETAILS[status]?.[0] || "Needs Contact";
@@ -2184,31 +2228,61 @@ function openNewCrmFileModal() {
       event.preventDefault();
       const values = {};
       modal.querySelectorAll("[data-new-file-field]").forEach((field) => { values[field.dataset.newFileField] = field.type === "checkbox" ? field.checked : field.value; });
-      if (!String(values.clientName || "").trim()) { const error = $("animusNewFileError"); error.hidden = false; error.textContent = "Enter the customer name before creating this work file."; return; }
+      if (!String(values.clientName || "").trim()) { const error = $("animusNewFileError"); error.hidden = false; error.textContent = modal.dataset.mode === "edit" ? "Enter the customer name before saving this work file." : "Enter the customer name before creating this work file."; return; }
       const button = modal.querySelector(".animus-new-file-create");
       const error = $("animusNewFileError");
       try {
         if (error) error.hidden = true;
-        if (button) { button.disabled = true; button.textContent = "Creating..."; }
-        const file = newCrmFile({ direct:true, values, skipRoute:true });
-        if (!file?.id) throw new Error("The work file was not created.");
+        const isEdit = modal.dataset.mode === "edit";
+        if (button) { button.disabled = true; button.textContent = isEdit ? "Saving..." : "Creating..."; }
+        const file = isEdit ? updateCrmFileFromIntake(modal.dataset.fileId, values) : newCrmFile({ direct:true, values, skipRoute:true });
+        if (!file?.id) throw new Error(isEdit ? "The work file was not updated." : "The work file was not created.");
         clearNewFileDraft();
         closeNewCrmFileModal();
-        if (typeof switchCrmView === "function") switchCrmView("files");
+        // A new file needs to leave the old editor before it is selected. An
+        // edit is already on the work-files screen, so routing would let the
+        // stale screen form overwrite the just-saved modal values.
+        if (!isEdit && typeof switchCrmView === "function") switchCrmView("files");
         activeFileId = file.id;
         renderCrm();
         window.setTimeout(() => $("crmClientName")?.focus(), 0);
       } catch (createError) {
-        if (error) { error.hidden = false; error.textContent = `Could not create this work file. ${createError?.message || "Please try again."}`; }
-        console.error("New work file creation failed", createError);
+        if (error) { error.hidden = false; error.textContent = `${modal.dataset.mode === "edit" ? "Could not save this work file." : "Could not create this work file."} ${createError?.message || "Please try again."}`; }
+        console.error("Work file intake save failed", createError);
       } finally {
-        if (button) { button.disabled = false; button.textContent = "Create Work File"; }
+        if (button) {
+          button.disabled = false;
+          button.textContent = modal.dataset.mode === "edit" ? "Save Work File" : "Create Work File";
+        }
       }
     });
   }
+  populateCrmFileIntakeModal(modal, fileToEdit);
   modal.hidden = false;
   window.setTimeout(() => modal.querySelector("[data-new-file-field='clientName']")?.focus(), 0);
 }
+
+function updateCrmFileFromIntake(fileId, values = {}) {
+  const file = crmFiles.find((entry) => entry.id === fileId);
+  if (!file) throw new Error("That work file could not be found.");
+  const textFields = ["clientName", "clientPhone", "clientEmail", "projectAddress", "leadSource", "fileStatus", "statusDetail", "projectType", "contactEmailSent", "contactTextSent", "inspectionDateSet", "inspectionDate", "inspectionTime", "arrivalWindow", "startDate", "followUpDate", "anticipatedCompletionDate", "nextAction", "warrantyStatus", "initialDepositSecured", "midpointDepositSecured", "finalPaymentSecured", "invoiceSent", "reviewRequested", "closingCallCompleted"];
+  textFields.forEach((key) => { if (values[key] !== undefined) file[key] = String(values[key] || "").trim(); });
+  file.projectType = normalizeProjectType(file.projectType || "Other");
+  file.leadFee = parseMoney(values.leadFee || 0);
+  file.nextActionDate = values.hasNextActionDate ? (values.nextActionDate || todayIso(1)) : "";
+  ["estimateTotal", "materialTotal", "initialDeposit", "midpointDeposit", "finalPaymentAmount"].forEach((key) => { file[key] = parseMoney(values[key] || 0); });
+  file.depositSecured = file.initialDepositSecured || "No";
+  file.updatedAt = new Date().toISOString();
+  file.timeline = [...(Array.isArray(file.timeline) ? file.timeline : []), { at:file.updatedAt, text:"Work file updated" }];
+  saveCrmFiles();
+  return file;
+}
+
+window.openCrmFileIntakeEditor = function openCrmFileIntakeEditor() {
+  const file = activeFile();
+  if (!file) return;
+  openNewCrmFileModal(file);
+};
 
 function newCrmFile(options = {}) {
   if (!options.direct) { openNewCrmFileModal(); return null; }
