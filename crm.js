@@ -125,6 +125,7 @@ const crmFields = [
   "depositSecured",
   "initialDepositSecured",
   "initialDeposit",
+  "totalPaidOverride",
   "midpointDepositSecured",
   "midpointDeposit",
   "paidInFull",
@@ -2623,30 +2624,34 @@ function createSupplementForFile(file = activeFile()) {
     ...(data.totals || {}), subtotal:0, discount:0, tax:0, total:0, deposit:0,
     lineSubtotal:0, showDiscount:false, showTax:false, showDeposit:false, showSubtotal:false, hasFlatTotal:false,
   };
-  file.supplements = Array.isArray(file.supplements) ? file.supplements : [];
-  file.supplements.push({
-    id: supplementId,
-    title: `Supplement ${supplementNumber}`,
-    estimateNumber: data.estimateNumber,
-    data,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  });
-  addSystemNote(file, `${data.estimateNumber} started as a supplement to the current estimate.`);
-  saveCrmFiles();
-  renderCrm();
+  // Keep the supplement as a draft until the estimator explicitly saves it.
+  // Closing or deleting the draft must not add anything to this work file.
   sendEstimateToEstimator(data);
 }
 
 function syncSupplementFromEstimator(data) {
   if (!data?.supplementFor || !data?.supplementId) return;
   const file = crmFiles.find((entry) => entry.id === data.supplementFor);
-  const supplement = file?.supplements?.find((entry) => entry.id === data.supplementId);
-  if (!file || !supplement) return;
+  if (!file) return;
+  file.supplements = Array.isArray(file.supplements) ? file.supplements : [];
+  let supplement = file.supplements.find((entry) => entry.id === data.supplementId);
+  if (!supplement) {
+    supplement = {
+      id: data.supplementId,
+      title: `Supplement ${file.supplements.length + 1}`,
+      estimateNumber: data.estimateNumber || `${file.fileNumber || "Estimate"}-S${file.supplements.length + 1}`,
+      data,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    file.supplements.push(supplement);
+    addSystemNote(file, `${supplement.estimateNumber} saved to this work file.`);
+  }
   supplement.data = data;
   supplement.estimateNumber = data.estimateNumber || supplement.estimateNumber;
   supplement.updatedAt = new Date().toISOString();
   saveCrmFiles();
+  renderCrm();
 }
 
 function showEstimateChoiceDialog(target = "") {
@@ -8516,8 +8521,17 @@ window.addEventListener("storage", (event) => {
   }
 });
 window.addEventListener("message", (event) => {
-  if (event.origin !== window.location.origin || event.data?.type !== "animus-supplement-saved") return;
-  syncSupplementFromEstimator(event.data.estimate);
+  if (event.origin !== window.location.origin) return;
+  if (event.data?.type === "animus-supplement-saved") {
+    syncSupplementFromEstimator(event.data.estimate);
+    return;
+  }
+  if (event.data?.type === "animus-supplement-discarded") {
+    const file = crmFiles.find((entry) => entry.id === event.data.fileId);
+    if (file) activeFileId = file.id;
+    switchCrmView("files");
+    renderCrm();
+  }
 });
 $("crmEstimateChoiceClose").addEventListener("click", closeEstimateChoiceDialog);
 $("crmEstimateChoiceModal").addEventListener("click", (event) => {

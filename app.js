@@ -2633,6 +2633,7 @@ function applyEstimateData(data) {
   state.dashboardFileId = data.dashboardFileId || "";
   state.supplementFor = data.supplementFor || "";
   state.supplementId = data.supplementId || "";
+  refreshSupplementActions();
   state.invoicePaid = data.invoicePaid === true || data.invoicePaid === "Yes";
   $("invoicePaidCheckbox").checked = state.invoicePaid;
   applyCompanyDefaults();
@@ -2756,16 +2757,44 @@ function saveEstimate(options = {}) {
     // Some direct file previews block storage; PDF saving still works.
   }
   syncEstimateToLinkedDashboard(estimate);
-  if (estimate.supplementFor && estimate.supplementId && window.parent !== window) {
-    window.parent.postMessage({ type: "animus-supplement-saved", estimate }, window.location.origin === "null" ? "*" : window.location.origin);
-  }
-
   if (!options.silent) {
     $("saveEstimate").textContent = "Saved";
     setTimeout(() => {
       $("saveEstimate").textContent = "Save";
     }, 1000);
   }
+}
+
+function refreshSupplementActions() {
+  const isSupplement = Boolean(state.supplementFor && state.supplementId);
+  const saveButton = $("saveSupplementToWorkFile");
+  const discardButton = $("discardSupplementDraft");
+  if (saveButton) saveButton.hidden = !isSupplement;
+  if (discardButton) discardButton.hidden = !isSupplement;
+}
+
+function saveSupplementToWorkFile() {
+  if (!state.supplementFor || !state.supplementId) return;
+  const estimate = serializeEstimate();
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(estimate)); } catch (error) { /* Local draft is optional. */ }
+  if (window.parent !== window) {
+    window.parent.postMessage({ type: "animus-supplement-saved", estimate }, window.location.origin === "null" ? "*" : window.location.origin);
+    setSubmitStatus("Supplement saved to this work file.");
+  } else {
+    setSubmitStatus("This supplement is ready. Open it from its linked work file to save it there.");
+  }
+}
+
+function discardSupplementDraft() {
+  const fileId = state.supplementFor;
+  if (!fileId) return;
+  if (!window.confirm("Delete this unsaved supplement draft? It has not been added to the work file.")) return;
+  if (window.parent !== window) {
+    window.parent.postMessage({ type: "animus-supplement-discarded", fileId }, window.location.origin === "null" ? "*" : window.location.origin);
+    return;
+  }
+  resetEstimate();
+  setSubmitStatus("Supplement draft deleted.");
 }
 
 function generateEstimatePreview() {
@@ -3002,6 +3031,7 @@ function resetEstimate() {
   state.dashboardFileId = "";
   state.supplementFor = "";
   state.supplementId = "";
+  refreshSupplementActions();
   renderLineItems();
   renderMaterialItems();
   renderPhotos();
@@ -3106,6 +3136,8 @@ $("saveEstimate").addEventListener("click", () => {
   closeEstimateActionMenu();
   runButtonAction(downloadEditableEstimate);
 });
+$("saveSupplementToWorkFile")?.addEventListener("click", saveSupplementToWorkFile);
+$("discardSupplementDraft")?.addEventListener("click", discardSupplementDraft);
 $("openEditableEstimate").addEventListener("click", () => {
   closeEstimateActionMenu();
   runButtonAction(openEditableEstimatePicker);
@@ -3202,6 +3234,7 @@ if (new URLSearchParams(window.location.search).has("invoice")) {
 if (window.location.hash === "#assignment") {
   window.requestAnimationFrame(() => generateAssignmentSheet());
 }
+refreshSupplementActions();
 
 if ("serviceWorker" in navigator && location.protocol === "https:") {
   navigator.serviceWorker.register("service-worker.js");
