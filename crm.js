@@ -17,6 +17,7 @@ const CRM_REVENUE_HISTORY_RECOVERY_KEY = "d2CrmRevenueHistoryRecoveryV2";
 const CRM_PRICE_BACKUP_KEY = "d2PriceDatabaseBackup";
 const CRM_RECEIPT_DRAFT_KEY = "d2ReceiptScannerDraft";
 const CRM_NEW_FILE_DRAFT_KEY = "animusNewWorkFileDraft";
+const CRM_ACTIVE_FILE_DRAFT_KEY = "animusActiveWorkFileDraft";
 const CRM_RESTORE_VERSION_KEY = "d2CrmRestoreVersion";
 const CRM_CLOUD_SYNC_AT_KEY = "d2CrmCloudSyncAt";
 const DEFAULT_GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzZkie1W4LplkKwFoMq19suIHWsamKYNUwCt9xjnihTdy_dN271ou3lscTgq09bAGIG2w/exec";
@@ -122,6 +123,7 @@ const crmFields = [
   "initialDepositSecured",
   "initialDeposit",
   "totalPaidOverride",
+  "laborTotal",
   "midpointDepositSecured",
   "midpointDeposit",
   "paidInFull",
@@ -1070,6 +1072,7 @@ function captureVisibleRevenueEdits() {
     const key = field.dataset.revenueField;
     if (["gross", "expenses", "labor"].includes(key)) {
       row[key] = parseMoney(field.value);
+      if (key === "labor") syncRevenueLaborToFile(row);
     } else if (key === "date") {
       row[key] = normalizeDate(field.value);
     } else {
@@ -1802,11 +1805,17 @@ function isActiveFileEditorVisible() {
 function persistActiveFileDraftNow() {
   const file = normalizeCrmFile(activeFile());
   if (!file || !isActiveFileEditorVisible()) return;
+  const draft = { id: file.id, fields: {} };
   crmFields.forEach((field) => {
     const element = $(`crm${field[0].toUpperCase()}${field.slice(1)}`);
-    if (element) file[field] = element.value;
+    if (element) {
+      file[field] = element.value;
+      draft.fields[field] = element.value;
+    }
   });
-  saveCrmFiles();
+  // Do not serialize every file, receipt, and photo for every character typed.
+  // A small draft keeps the current work safe until the full save runs.
+  try { localStorage.setItem(CRM_ACTIVE_FILE_DRAFT_KEY, JSON.stringify(draft)); } catch (error) { /* Draft storage is optional. */ }
 }
 
 // Keep a partially completed new file safe when the user switches away to copy
@@ -1819,14 +1828,18 @@ function saveActiveFileDraft() {
   crmLocalChangeVersion += 1;
   crmDraftSaveTimer = window.setTimeout(() => {
     saveActiveFile();
-  }, 180);
+    try { localStorage.removeItem(CRM_ACTIVE_FILE_DRAFT_KEY); } catch (error) { /* Draft storage is optional. */ }
+  }, 650);
 }
 
 function flushActiveFileDraft() {
   if (!activeFile()) return;
   window.clearTimeout(crmDraftSaveTimer);
   persistActiveFileDraftNow();
-  if (isActiveFileEditorVisible()) saveActiveFile();
+  if (isActiveFileEditorVisible()) {
+    saveActiveFile();
+    try { localStorage.removeItem(CRM_ACTIVE_FILE_DRAFT_KEY); } catch (error) { /* Draft storage is optional. */ }
+  }
 }
 
 function toggleEstimateAmountEdit() {
@@ -2105,7 +2118,9 @@ function newFileDraftValues() {
   }
 }
 
-function saveNewFileDraft() {
+let newFileDraftSaveTimer;
+
+function saveNewFileDraftNow() {
   const modal = $("animusNewFileModal");
   if (!modal || modal.hidden || modal.dataset.mode !== "new") return;
   const draft = {};
@@ -2115,6 +2130,12 @@ function saveNewFileDraft() {
   try { localStorage.setItem(CRM_NEW_FILE_DRAFT_KEY, JSON.stringify(draft)); } catch (error) { /* Draft storage is optional. */ }
 }
 
+function saveNewFileDraft() {
+  // Browser storage is synchronous, so wait for a short pause while typing.
+  window.clearTimeout(newFileDraftSaveTimer);
+  newFileDraftSaveTimer = window.setTimeout(saveNewFileDraftNow, 350);
+}
+
 function clearNewFileDraft() {
   try { localStorage.removeItem(CRM_NEW_FILE_DRAFT_KEY); } catch (error) { /* Draft storage is optional. */ }
 }
@@ -2122,6 +2143,7 @@ function clearNewFileDraft() {
 function closeNewCrmFileModal() {
   const modal = $("animusNewFileModal");
   if (modal) {
+    window.clearTimeout(newFileDraftSaveTimer);
     modal.hidden = true;
     if (modal.dataset.mode === "new") clearNewFileDraft();
   }
@@ -3302,7 +3324,7 @@ function ensureRevenueRowForFile(file) {
   const baseRow = existing || {
     id: makeCrmId("rev-file"),
     date: todayIso(0),
-    labor: 0,
+    labor: parseMoney(file.laborTotal),
     receiptNotes: "",
     laborAssigns: "",
   };
@@ -3313,7 +3335,7 @@ function ensureRevenueRowForFile(file) {
     clientJob: `${file.clientName || "Unnamed Client"} - ${fileNumber}`,
     gross: estimateTotal,
     expenses: materialTotal,
-    profit: estimateTotal - materialTotal - (Number(baseRow.labor) || 0),
+    profit: estimateTotal - materialTotal - (Number(file.laborTotal) || Number(baseRow.labor) || 0),
     attachedEstimate: {
       ...(baseRow.attachedEstimate || {}),
       ...(file.editableEstimate || {}),
@@ -3342,6 +3364,32 @@ function ensureRevenueRowForFile(file) {
   saveRevenueRows();
   return row;
 }
+
+// Labor is one shared financial value. Work-file Financials is the source when
+// editing a file; Revenue can also update it through this same linked record.
+function syncFileLaborToRevenue(file) {
+  if (!file) return null;
+  const row = revenueRowForDashboardFile(file) || ensureRevenueRowForFile(file);
+  if (!row) return null;
+  row.labor = parseMoney(file.laborTotal);
+  row.profit = revenueProfit(row);
+  saveRevenueRows();
+  return row;
+}
+
+function syncRevenueLaborToFile(row) {
+  if (!row) return null;
+  const file = row.dashboardFileId
+    ? crmFiles.find((entry) => entry.id === row.dashboardFileId)
+    : findFileForRevenue(row);
+  if (!file) return null;
+  file.laborTotal = parseMoney(row.labor);
+  saveCrmFiles();
+  return file;
+}
+
+window.syncFileLaborToRevenue = syncFileLaborToRevenue;
+window.syncRevenueLaborToFile = syncRevenueLaborToFile;
 
 function findFileForRevenue(row) {
   if (row.dashboardFileId) {
@@ -3410,8 +3458,8 @@ function repairRevenueRowsFromFiles() {
         clientJob: revenueLabelForFile(file),
         gross,
         expenses,
-        labor: 0,
-        profit: gross - expenses,
+        labor: parseMoney(file.laborTotal),
+        profit: gross - expenses - parseMoney(file.laborTotal),
         receiptNotes: "",
         laborAssigns: "",
         expenseLines: Array.isArray(file.expenseLines) ? file.expenseLines.map((line) => ({ ...line })) : [],
@@ -3430,6 +3478,7 @@ function repairRevenueRowsFromFiles() {
       date: existing.date,
       gross: existing.gross,
       expenses: existing.expenses,
+      labor: existing.labor,
       expenseLines: existing.expenseLines,
     });
 
@@ -3443,6 +3492,8 @@ function repairRevenueRowsFromFiles() {
       existing.expenseLines = Array.isArray(file.expenseLines) ? file.expenseLines.map((line) => ({ ...line })) : [];
       existing.expenses = recordedExpenses;
     }
+    if (file.laborTotal !== undefined && file.laborTotal !== "") existing.labor = parseMoney(file.laborTotal);
+    existing.profit = revenueProfit(existing);
     syncRevenueExpenseTotal(existing);
 
     if (before !== JSON.stringify({
@@ -3452,6 +3503,7 @@ function repairRevenueRowsFromFiles() {
       date: existing.date,
       gross: existing.gross,
       expenses: existing.expenses,
+      labor: existing.labor,
       expenseLines: existing.expenseLines,
     })) changed = true;
   });
@@ -5755,6 +5807,7 @@ function updateRevenueField(field) {
     row[key] = field.value;
   }
   row.profit = revenueProfit(row);
+  if (key === "labor") syncRevenueLaborToFile(row);
   activeRevenueId = row.id;
   saveRevenueRows();
   renderRevenue();
@@ -8658,6 +8711,7 @@ document.querySelectorAll("[data-crm-view]").forEach((button) => {
   button.addEventListener("click", () => switchCrmView(button.dataset.crmView));
 });
 window.addEventListener("focus", () => {
+  if (!$("animusNewFileModal")?.hidden) return;
   if (refreshCrmFilesFromStorage()) renderCrm();
 });
 
@@ -8675,8 +8729,8 @@ crmFields.forEach((field) => {
   element.addEventListener("change", saveActiveFileDraft);
 });
 
-window.addEventListener("pagehide", flushActiveFileDraft);
-window.addEventListener("blur", flushActiveFileDraft);
+window.addEventListener("pagehide", () => { saveNewFileDraftNow(); flushActiveFileDraft(); });
+window.addEventListener("blur", () => { saveNewFileDraftNow(); flushActiveFileDraft(); });
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) flushActiveFileDraft();
 });

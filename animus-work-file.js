@@ -157,8 +157,8 @@
   }
 
   function financialsPanel(file) {
-    const estimate = Number(file.estimateTotal) || 0, paid = paidTotal(file), balance = Math.max(estimate - paid, 0), material = Number(file.materialTotal) || 0;
-    const values = [["Estimate Amount", money(estimate), ""], ["Materials", money(material), ""], ["Total Paid", money(paid), ""], ["Balance Owed", money(balance), balance ? "danger" : ""]];
+    const estimate = Number(file.estimateTotal) || 0, paid = paidTotal(file), balance = Math.max(estimate - paid, 0), material = Number(file.materialTotal) || 0, labor = Number(file.laborTotal) || 0;
+    const values = [["Estimate Amount", money(estimate), ""], ["Materials", money(material), ""], ["Labor", money(labor), ""], ["Total Paid", money(paid), ""], ["Balance Owed", money(balance), balance ? "danger" : ""]];
     return `<div class="animus-tab-panel"><div class="animus-financial-grid">${values.map(([label, value, tone]) => `<article class="animus-financial-value ${tone}"><span>${label}</span><strong>${value}</strong></article>`).join("")}</div><div class="animus-action-row"><button class="animus-record-button primary" data-animus-edit="financials">Edit Financials</button><button class="animus-record-button" data-animus-open="invoice">Open Invoice</button></div></div>`;
   }
 
@@ -204,7 +204,7 @@
     }
     if (state.editor === "action") fields = input("nextAction", "Next Action", field(file, "nextAction"), "text", "wide") + input("nextActionDate", "Due Date", field(file, "nextActionDate") || field(file, "followUpDate"), "date") + input("assignedTo", "Assigned To", assignment(file));
     if (state.editor === "assigned") fields = input("assignedTo", "Employee name", assignment(file), "text", "wide");
-    if (state.editor === "financials") fields = input("estimateTotal", "Estimate Amount", Number(file.estimateTotal) || "", "number") + input("materialTotal", "Materials", Number(file.materialTotal) || "", "number") + input("totalPaidOverride", "Total Paid", file.totalPaidOverride !== undefined && file.totalPaidOverride !== "" ? Number(file.totalPaidOverride) : paidTotal(file), "number") + input("initialDeposit", "Initial Deposit", Number(file.initialDeposit) || "", "number") + input("midpointDeposit", "Midpoint Deposit", Number(file.midpointDeposit) || "", "number") + input("finalPaymentAmount", "Final Payment", Number(file.finalPaymentAmount) || "", "number");
+    if (state.editor === "financials") fields = input("estimateTotal", "Estimate Amount", Number(file.estimateTotal) || "", "number") + input("materialTotal", "Materials", Number(file.materialTotal) || "", "number") + input("laborTotal", "Labor", Number(file.laborTotal) || "", "number") + input("totalPaidOverride", "Total Paid", file.totalPaidOverride !== undefined && file.totalPaidOverride !== "" ? Number(file.totalPaidOverride) : paidTotal(file), "number") + input("initialDeposit", "Initial Deposit", Number(file.initialDeposit) || "", "number") + input("midpointDeposit", "Midpoint Deposit", Number(file.midpointDeposit) || "", "number") + input("finalPaymentAmount", "Final Payment", Number(file.finalPaymentAmount) || "", "number");
     if (state.editor === "details") fields = input("inspectionDate", "Inspection Date", field(file, "inspectionDate"), "date") + input("inspectionTime", "Inspection Time", field(file, "inspectionTime"), "time") + input("startDate", "Start Date", field(file, "startDate"), "date") + input("followUpDate", "Follow-Up Date", field(file, "followUpDate"), "date") + input("anticipatedCompletionDate", "Anticipated Completion", field(file, "anticipatedCompletionDate"), "date") + select("arrivalWindow", field(file, "arrivalWindow", "Open"), ["Open", "7:00 AM", "8:00 AM", "9:00 AM", "10:00 AM", "Afternoon"]) + (field(file, "leadSource").toLowerCase() === "angi" ? input("leadFee", "Lead Fee", Number(file.leadFee) || "", "number") : "");
     title = state.editor === "financials" ? "Edit Financials" : state.editor === "details" ? "Edit Job Details" : state.editor === "assigned" ? "Assign Employee" : "Edit File";
     return `<section class="animus-inline-editor animus-inline-editor-${state.editor}"><h3>${title}</h3><div class="animus-inline-editor-grid">${fields}</div><div class="animus-action-row"><button class="animus-record-button primary" data-animus-save-editor>Save Changes</button><button class="animus-record-button" data-animus-cancel-editor>Cancel</button></div></section>`;
@@ -240,6 +240,10 @@
     const file = currentFile();
     if (!file) return;
     document.querySelectorAll("[data-animus-field]").forEach((input) => { file[input.dataset.animusField] = input.value; });
+    if (state.editor === "financials") {
+      file.laborTotal = Number(file.laborTotal) || 0;
+      if (typeof window.syncFileLaborToRevenue === "function") window.syncFileLaborToRevenue(file);
+    }
     if (typeof window.addSystemNote === "function") window.addSystemNote(file, "Work file updated.");
     if (typeof window.saveCrmFiles === "function") window.saveCrmFiles();
     state.editor = "";
