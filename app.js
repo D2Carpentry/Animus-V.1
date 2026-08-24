@@ -3209,6 +3209,18 @@ document.querySelectorAll("[data-action-button]").forEach((button) => {
     closeEstimateActionMenu();
   });
 });
+
+// Work-file estimates are also sent directly from the Command Center iframe.
+// This avoids a browser storage timing race that could otherwise show a blank
+// estimate immediately after a file is uploaded.
+window.addEventListener("message", (event) => {
+  const samePage = event.origin === window.location.origin || event.origin === "null";
+  if (!samePage || event.data?.type !== "animus-open-estimate") return;
+  if (applyEstimateData(event.data.estimate)) {
+    $("submitStatus").textContent = "Current work-file estimate opened.";
+  }
+});
+
 setCopyMode("customer");
 
 const startupParams = new URLSearchParams(window.location.search);

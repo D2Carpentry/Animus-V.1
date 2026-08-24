@@ -810,11 +810,13 @@ function persistRestoredDashboardIfNeeded() {
 function buildDashboardSyncPayload(options = {}) {
   const includeRevenue = options.includeRevenue !== false;
   const syncExpenses = options.syncExpenses !== false;
-  captureCurrentDashboardEdits({ includeRevenue });
+  const captureEdits = options.captureEdits !== false;
+  const restoreRevenueHistory = options.restoreRevenueHistory !== false;
+  if (captureEdits) captureCurrentDashboardEdits({ includeRevenue });
   // Revenue has its own cloud-save path. Do not even prepare or reconcile the
   // ledger for a file-only Command Center save; that was allowing a stale
   // browser table to interfere with otherwise unrelated file updates.
-  if (includeRevenue) restoreVerifiedRevenueHistory();
+  if (includeRevenue && restoreRevenueHistory) restoreVerifiedRevenueHistory();
   crmFiles.forEach((file) => {
     syncExpenseFileForStorage(file);
   });
@@ -1224,13 +1226,31 @@ function fetchDashboardFromGoogle() {
 
 async function saveDashboardToGoogle() {
   const saveButton = $("crmSaveDemo");
+  const intakeModal = $("animusNewFileModal");
+  if (intakeModal && !intakeModal.hidden) {
+    showDashboardSaveStatus("Finish creating the work file or cancel the form before using Save All. This keeps the cloud snapshot exact.", true);
+    return;
+  }
   saveButton.disabled = true;
   saveButton.textContent = "Checking...";
-  showDashboardSaveStatus("Checking every file and Revenue line before saving the full Command Center...");
+  showDashboardSaveStatus("Preparing the current Command Center for a push-only cloud save...");
   try {
+    // Keep the visible work-file fields in the in-memory record, without
+    // invoking the legacy full-form save that can read stale hidden controls.
+    persistActiveFileDraftNow();
+
+    // Save All is deliberately push-only. It must never read stale hidden form
+    // controls, repair/merge older Revenue data, or apply a cloud response back
+    // into the page. Restore Backup is the only action that pulls data down.
+    const payload = buildDashboardSyncPayload({
+      includeRevenue: true,
+      syncExpenses: false,
+      captureEdits: false,
+      restoreRevenueHistory: false,
+    });
+
     // First, exercise the exact full snapshot against a separate test object.
     // Nothing live is changed until Cloudflare returns a matching result.
-    const payload = buildDashboardSyncPayload({ includeRevenue: true, syncExpenses: false });
     const tested = await queueDashboardCloudSave(payload, { testSnapshot: true });
     const testVerification = verifyDashboardTestSnapshot(payload, tested.dashboard);
     if (!testVerification.ok) {
@@ -1245,14 +1265,8 @@ async function saveDashboardToGoogle() {
       throw new Error(`Cloudflare protected existing data and did not accept ${liveVerification.missingFiles.length} file(s) or ${liveVerification.mismatchedRevenue.length} revenue line(s) exactly. Restore was not run.`);
     }
 
-    saveCrmFiles();
-    saveRevenueRows();
-    savePayrollRows();
-    savePriceRows();
-    saveDeletedPriceIds();
-    renderCrm();
-    const savedFiles = Array.isArray(saved.dashboard?.dashboardFiles) ? saved.dashboard.dashboardFiles : payload.dashboardFiles;
-    rememberCloudSync(saved.dashboard || payload);
+    const savedFiles = payload.dashboardFiles;
+    rememberCloudSync(payload);
     const totals = dashboardTestTotals(payload.revenueRows || []);
     showDashboardSaveStatus(`Saved all data to Cloudflare. ${savedFiles.length} files and ${payload.revenueRows.length} revenue lines verified. Gross ${crmCurrency.format(totals.gross)} · Expenses ${crmCurrency.format(totals.expenses)}.`);
     saveButton.textContent = "Saved";
@@ -2475,7 +2489,7 @@ function estimateDataFromCrmFile(file) {
   };
 }
 
-function openEstimatorInCommandCenter(url) {
+function openEstimatorInCommandCenter(url, estimateData = null) {
   const frame = $("crmEstimatorFrame");
   if (!frame) {
     window.location.href = url;
@@ -2484,6 +2498,11 @@ function openEstimatorInCommandCenter(url) {
   const estimatorUrl = new URL(url, window.location.href);
   estimatorUrl.searchParams.set("embedded", "1");
   estimatorUrl.searchParams.set("open", Date.now().toString());
+  if (estimateData) {
+    frame.addEventListener("load", () => {
+      frame.contentWindow?.postMessage({ type: "animus-open-estimate", estimate: estimateData }, window.location.origin);
+    }, { once: true });
+  }
   frame.src = estimatorUrl.toString();
   switchCrmView("estimator");
   $("crmEstimatorView")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -2501,7 +2520,9 @@ function sendEstimateToEstimator(estimateData, target = "") {
   estimatorUrl.searchParams.set("fromDashboard", "1");
   estimatorUrl.searchParams.set("embedded", "1");
   estimatorUrl.searchParams.set("open", Date.now().toString());
-  openEstimatorInCommandCenter(estimatorUrl.toString());
+  // The browser copy opens immediately, and the postMessage on iframe load
+  // guarantees the same estimate arrives even when storage timing is slow.
+  openEstimatorInCommandCenter(estimatorUrl.toString(), estimateData);
   return true;
 }
 
