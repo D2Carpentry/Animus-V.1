@@ -2393,9 +2393,12 @@ function openNewCrmFileModal(fileToEdit = null) {
     if (!String(formValues.clientName || "").trim()) { error.hidden = false; error.textContent = "Enter the customer name before saving this work file."; return; }
     const savedFile = mode === "edit" ? updateCrmFileFromIntake(fileToEdit.id, formValues) : newCrmFile({ direct: true, values: formValues, skipRoute: true });
     if (!savedFile?.id) { error.hidden = false; error.textContent = "The work file could not be saved."; return; }
-    activeFileId = savedFile.id;
     close();
-    if (typeof switchCrmView === "function") switchCrmView("files");
+    // Change views before selecting the new record. switchCrmView flushes the
+    // legacy page fields; selecting first let those stale fields overwrite the
+    // freshly created work file.
+    if (mode === "new" && typeof switchCrmView === "function") switchCrmView("files");
+    activeFileId = savedFile.id;
     renderCrm();
   });
   modal.hidden = false;
