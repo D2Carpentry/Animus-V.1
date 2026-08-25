@@ -264,6 +264,9 @@ function rememberCloudSync(dashboard = {}) {
 }
 
 function fileRecordKey(file = {}) {
+  // File numbers are the business identity shown to the user. Use the same
+  // precedence as the Cloudflare Worker so a cloud save cannot create a second
+  // record simply because one device generated a different internal id.
   return String(file.fileNumber || file.id || file.clientName || "").trim().toLowerCase();
 }
 
@@ -477,19 +480,13 @@ function loadCrmFiles() {
     if (saved) {
       const files = JSON.parse(saved);
       if (Array.isArray(files) && files.length) {
-        if (applyRestore && restoredFiles.length) {
-          crmRestoreAppliedThisLoad = true;
-          return repairCrmFileCategories(mergeDashboardFiles(restoredFiles, files).map((file) => normalizeCrmFile({ ...file })));
-        }
+        // Never silently blend a baked-in recovery list into live browser data.
+        // That legacy merge was a direct source of duplicate work files.
         return repairCrmFileCategories(files.map((file) => normalizeCrmFile({ ...file })));
       }
       const backup = localStorage.getItem(CRM_STORAGE_BACKUP_KEY);
       const backupFiles = backup ? JSON.parse(backup) : [];
       if (Array.isArray(backupFiles) && backupFiles.length) {
-        if (applyRestore && restoredFiles.length) {
-          crmRestoreAppliedThisLoad = true;
-          return repairCrmFileCategories(mergeDashboardFiles(restoredFiles, backupFiles).map((file) => normalizeCrmFile({ ...file })));
-        }
         return repairCrmFileCategories(backupFiles.map((file) => normalizeCrmFile({ ...file })));
       }
       if (restoredFiles.length) {
@@ -910,6 +907,7 @@ function postPayloadToGoogle(payload) {
 async function postPayloadToCloudflare(payload, options = {}) {
   const url = new URL(CLOUDFLARE_DASHBOARD_API, window.location.href);
   if (options.testSnapshot) url.searchParams.set("testSnapshot", "1");
+  if (options.replaceLatest) url.searchParams.set("replaceLatest", "1");
   if (options.backupOnly) url.searchParams.set("backupOnly", "1");
   if (options.backupName) url.searchParams.set("backupName", options.backupName);
   const response = await fetch(url.toString(), {
@@ -1261,7 +1259,7 @@ async function saveDashboardToGoogle() {
 
     // First, exercise the exact full snapshot against a separate test object.
     // Nothing live is changed until Cloudflare returns a matching result.
-    const tested = await queueDashboardCloudSave(payload, { testSnapshot: true });
+    const tested = await queueDashboardCloudSave(payload, { testSnapshot: true, replaceLatest: true });
     const testVerification = verifyDashboardTestSnapshot(payload, tested.dashboard);
     if (!testVerification.ok) {
       throw new Error(`Save All stopped before changing the live cloud copy. ${testVerification.missingFiles.length} file(s) or ${testVerification.mismatchedRevenue.length} revenue line(s) did not match.`);
@@ -1269,7 +1267,7 @@ async function saveDashboardToGoogle() {
 
     saveButton.textContent = "Saving...";
     showDashboardSaveStatus("Save check passed. Saving the verified full Command Center to Cloudflare...");
-    const saved = await queueDashboardCloudSave(payload);
+    const saved = await queueDashboardCloudSave(payload, { replaceLatest: true });
     const liveVerification = verifyDashboardTestSnapshot(payload, saved.dashboard);
     if (!liveVerification.ok) {
       throw new Error(`Cloudflare protected existing data and did not accept ${liveVerification.missingFiles.length} file(s) or ${liveVerification.mismatchedRevenue.length} revenue line(s) exactly. Restore was not run.`);
