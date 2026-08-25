@@ -1342,6 +1342,51 @@ function currentBackupLabel() {
   return `Current Command Center Backup - ${stamp}`;
 }
 
+// This export is intentionally local-only. It freezes the exact browser state
+// without invoking a cloud merge, so it is the safest first step before a UI
+// change, browser reset, or restore operation.
+function exportCurrentDashboardSnapshot() {
+  persistActiveFileDraftNow();
+  const exportedAt = new Date().toISOString();
+  const snapshot = {
+    format: "animus-current-snapshot-v1",
+    exportedAt,
+    label: currentBackupLabel(),
+    audit: {
+      totalFiles: crmFiles.length,
+      categories: dashboardCloudCounts(crmFiles),
+      revenueLines: crmRevenueRows.length,
+      payrollRows: crmPayrollRows.length,
+      priceLines: crmPriceRows.length,
+    },
+    dashboard: buildDashboardSyncPayload({ includeRevenue: true, syncExpenses: false, captureEdits: false, restoreRevenueHistory: false }),
+    browserStorage: {
+      files: localStorage.getItem(CRM_STORAGE_KEY),
+      filesBackup: localStorage.getItem(CRM_STORAGE_BACKUP_KEY),
+      revenue: localStorage.getItem(CRM_REVENUE_STORAGE_KEY),
+      revenueBackup: localStorage.getItem(CRM_REVENUE_BACKUP_KEY),
+      prices: localStorage.getItem(CRM_PRICE_DATABASE_KEY),
+      pricesBackup: localStorage.getItem(CRM_PRICE_BACKUP_KEY),
+      payroll: localStorage.getItem(CRM_PAYROLL_STORAGE_KEY),
+      payrollBackup: localStorage.getItem(CRM_PAYROLL_BACKUP_KEY),
+      calendar: localStorage.getItem(CRM_EXTERNAL_CALENDAR_KEY),
+    },
+  };
+  const fileName = `ANIMUS Current Snapshot ${exportedAt.slice(0, 10)} ${exportedAt.slice(11, 16).replace(":", "-")}.json`;
+  const url = URL.createObjectURL(new Blob([JSON.stringify(snapshot, null, 2)], { type: "application/json" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  const counts = dashboardCloudCountSummary(crmFiles);
+  showDashboardSaveStatus(`Snapshot downloaded. ${crmFiles.length} files preserved locally. ${counts}.`);
+}
+
+window.animusExportCurrentDashboardSnapshot = exportCurrentDashboardSnapshot;
+
 // Snapshot-only: does not restore, merge, or overwrite dashboard/latest.json.
 async function createCurrentDashboardBackup() {
   const button = $("crmCreateBackup");
@@ -8675,6 +8720,9 @@ $("crmSaveDemo").addEventListener("click", () => {
 });
 $("crmCreateBackup")?.addEventListener("click", () => {
   createCurrentDashboardBackup();
+});
+$("crmExportCurrentSnapshot")?.addEventListener("click", () => {
+  exportCurrentDashboardSnapshot();
 });
 $("crmTopNotifications")?.addEventListener("click", () => {
   if (document.body.dataset.animusView !== "dashboard") {
