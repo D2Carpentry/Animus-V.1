@@ -239,9 +239,17 @@
   function saveEditor() {
     const file = currentFile();
     if (!file) return;
-    document.querySelectorAll("[data-animus-field]").forEach((input) => { file[input.dataset.animusField] = input.value; });
+    document.querySelectorAll("[data-animus-field]").forEach((input) => {
+      const key = input.dataset.animusField;
+      const numericField = ["estimateTotal", "materialTotal", "laborTotal", "totalPaidOverride", "initialDeposit", "midpointDeposit", "finalPaymentAmount", "leadFee"].includes(key);
+      file[key] = numericField ? (input.value === "" ? "" : Number(input.value) || 0) : input.value;
+    });
     if (state.editor === "financials") {
       file.laborTotal = Number(file.laborTotal) || 0;
+      // The Total Paid field is intentionally authoritative when the owner
+      // corrects it. Keeping it numeric prevents an older deposit total from
+      // reappearing after the work file re-renders.
+      if (file.totalPaidOverride !== "") file.totalPaidOverride = Number(file.totalPaidOverride) || 0;
       if (typeof window.syncFileLaborToRevenue === "function") window.syncFileLaborToRevenue(file);
     }
     if (typeof window.addSystemNote === "function") window.addSystemNote(file, "Work file updated.");

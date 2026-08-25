@@ -1723,6 +1723,22 @@ function renderStatusDetailOptions(file) {
   select.value = options.includes(current) ? current : options[0] || "";
 }
 
+// Keep the legacy Financials card and the ANIMUS work-file Financials tab on
+// one definition of "paid". A manually corrected Total Paid is authoritative;
+// otherwise the three recorded payments determine the total.
+function totalPaidForFile(file = {}) {
+  const hasManualTotal = file.totalPaidOverride !== "" && file.totalPaidOverride !== undefined && file.totalPaidOverride !== null;
+  const manualTotal = Number(file.totalPaidOverride);
+  if (hasManualTotal && Number.isFinite(manualTotal)) return Math.max(manualTotal, 0);
+  const estimateTotal = Number(file.estimateTotal) || 0;
+  if (file.paidInFull === "Yes") return estimateTotal;
+  return Math.max(0,
+    (Number(file.initialDeposit) || Number(file.depositTotal) || 0)
+    + (Number(file.midpointDeposit) || 0)
+    + (Number(file.finalPaymentAmount) || 0)
+  );
+}
+
 function renderActiveFile() {
   const file = normalizeCrmFile(activeFile());
   if (!file) {
@@ -1758,11 +1774,7 @@ function renderActiveFile() {
   toggleAngiLeadFeeField();
   renderStatusDetailOptions(file);
   const estimateTotal = Number(file.estimateTotal) || 0;
-  const initialDeposit = Number(file.initialDeposit) || Number(file.depositTotal) || 0;
-  const midpointDeposit = Number(file.midpointDeposit) || 0;
-  const finalPayment = Number(file.finalPaymentAmount) || 0;
-  const paidInFull = file.paidInFull === "Yes";
-  const securedTotal = paidInFull ? estimateTotal : initialDeposit + midpointDeposit + finalPayment;
+  const securedTotal = totalPaidForFile(file);
   $("crmEstimateTotal").textContent = crmCurrency.format(estimateTotal);
   $("crmEstimateAmountInput").value = estimateTotal ? estimateTotal.toFixed(2) : "";
   $("crmMaterialTotal").textContent = crmCurrency.format(Number(file.materialTotal) || 0);
