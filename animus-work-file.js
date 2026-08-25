@@ -192,7 +192,7 @@
   function editorMarkup(file) {
     if (!state.editor) return "";
     const select = (name, value, options) => `<label>${name}<select data-animus-field="${name}">${options.map((option) => `<option${option === value ? " selected" : ""}>${escape(option)}</option>`).join("")}</select></label>`;
-    const input = (name, label, value, type = "text", wide = "") => `<label class="${wide}">${label}<input data-animus-field="${name}" type="${type}" value="${escape(value)}"></label>`;
+    const input = (name, label, value, type = "text", wide = "") => `<label class="${wide}">${label}<input data-animus-field="${name}" data-animus-original="${escape(value)}" type="${type}" value="${escape(value)}"></label>`;
     let title = "Edit File", fields = "";
     if (state.editor === "customer") fields = input("clientName", "Name", field(file, "clientName")) + input("clientPhone", "Phone", field(file, "clientPhone")) + input("clientEmail", "Email", field(file, "clientEmail"), "email") + input("projectAddress", "Address", field(file, "projectAddress"), "text", "wide");
     if (state.editor === "project") fields = select("projectType", field(file, "projectType", "Other"), window.CRM_PROJECT_TYPES || ["Closet", "Pantry", "Cabinetry", "Refinishing", "Built-In", "Other"]) + select("leadSource", field(file, "leadSource", "Manual"), ["Manual", "Angi", "Website", "Phone", "Text", "Referral", "Repeat Customer", "Other"]) + (field(file, "leadSource").toLowerCase() === "angi" ? input("leadFee", "Lead Fee", Number(file.leadFee) || "", "number") : "");
@@ -239,7 +239,11 @@
   function saveEditor() {
     const file = currentFile();
     if (!file) return;
-    document.querySelectorAll("[data-animus-field]").forEach((input) => {
+    const fields = [...document.querySelectorAll("[data-animus-field]")];
+    const paymentEdited = state.editor === "financials" && fields.some((input) => ["initialDeposit", "midpointDeposit", "finalPaymentAmount"].includes(input.dataset.animusField) && input.value !== (input.dataset.animusOriginal || ""));
+    const totalPaidField = fields.find((input) => input.dataset.animusField === "totalPaidOverride");
+    const totalPaidEdited = totalPaidField && totalPaidField.value !== (totalPaidField.dataset.animusOriginal || "");
+    fields.forEach((input) => {
       const key = input.dataset.animusField;
       const numericField = ["estimateTotal", "materialTotal", "laborTotal", "totalPaidOverride", "initialDeposit", "midpointDeposit", "finalPaymentAmount", "leadFee"].includes(key);
       file[key] = numericField ? (input.value === "" ? "" : Number(input.value) || 0) : input.value;
@@ -250,6 +254,7 @@
       // corrects it. Keeping it numeric prevents an older deposit total from
       // reappearing after the work file re-renders.
       if (file.totalPaidOverride !== "") file.totalPaidOverride = Number(file.totalPaidOverride) || 0;
+      if (paymentEdited && !totalPaidEdited) file.totalPaidOverride = "";
       if (typeof window.syncFileLaborToRevenue === "function") window.syncFileLaborToRevenue(file);
     }
     if (typeof window.addSystemNote === "function") window.addSystemNote(file, "Work file updated.");

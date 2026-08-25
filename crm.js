@@ -1806,6 +1806,7 @@ function saveActiveFile(options = {}) {
   const file = normalizeCrmFile(activeFile());
   if (!file) return;
   const changeNotes = [];
+  let paymentChanged = false;
   crmFields.forEach((field) => {
     const element = $(`crm${field[0].toUpperCase()}${field.slice(1)}`);
     if (!element) return;
@@ -1813,6 +1814,7 @@ function saveActiveFile(options = {}) {
     const newValue = element.value;
     file[field] = newValue;
     if (oldValue !== newValue) {
+      if (["initialDeposit", "midpointDeposit", "finalPaymentAmount", "paidInFull"].includes(field)) paymentChanged = true;
       const label = trackedStatusFields[field] || field.replace(/([A-Z])/g, " $1").replace(/^./, (letter) => letter.toUpperCase());
       changeNotes.push(`${label} changed from ${oldValue || "blank"} to ${newValue || "blank"}`);
     }
@@ -1820,6 +1822,9 @@ function saveActiveFile(options = {}) {
       file.timeline.push(`${trackedStatusFields[field]} changed from ${oldValue} to ${newValue} on ${formatNoteTimestamp(new Date().toISOString())}`);
     }
   });
+  // A deposit or payment change means the old manually entered total is no
+  // longer authoritative. Recalculate Total Paid from the current payments.
+  if (paymentChanged) file.totalPaidOverride = "";
   if (!file.timeline) file.timeline = [];
   if (changeNotes.length) {
     const timestamp = new Date().toISOString();
@@ -2408,12 +2413,15 @@ function openNewCrmFileModal(fileToEdit = null) {
 function updateCrmFileFromIntake(fileId, values = {}) {
   const file = crmFiles.find((entry) => entry.id === fileId);
   if (!file) throw new Error("That work file could not be found.");
+  const paymentFields = ["initialDeposit", "midpointDeposit", "finalPaymentAmount"];
+  const paymentChanged = paymentFields.some((key) => values[key] !== undefined && parseMoney(values[key] || 0) !== parseMoney(file[key] || 0));
   const textFields = ["clientName", "clientPhone", "clientEmail", "projectAddress", "leadSource", "fileStatus", "statusDetail", "projectType", "otherProjectType", "contactEmailSent", "contactTextSent", "inspectionDateSet", "inspectionDate", "inspectionTime", "arrivalWindow", "startDate", "followUpDate", "anticipatedCompletionDate", "nextAction", "warrantyStatus", "initialDepositSecured", "midpointDepositSecured", "finalPaymentSecured", "invoiceSent", "reviewRequested", "closingCallCompleted"];
   textFields.forEach((key) => { if (values[key] !== undefined) file[key] = String(values[key] || "").trim(); });
   file.projectType = normalizeProjectType(file.projectType || "Other");
   file.leadFee = parseMoney(values.leadFee || 0);
   file.nextActionDate = values.hasNextActionDate ? (values.nextActionDate || todayIso(1)) : "";
   ["estimateTotal", "materialTotal", "initialDeposit", "midpointDeposit", "finalPaymentAmount"].forEach((key) => { file[key] = parseMoney(values[key] || 0); });
+  if (paymentChanged) file.totalPaidOverride = "";
   file.depositSecured = file.initialDepositSecured || "No";
   file.updatedAt = new Date().toISOString();
   file.timeline = [...(Array.isArray(file.timeline) ? file.timeline : []), { at:file.updatedAt, text:"Work file updated" }];
