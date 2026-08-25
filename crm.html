@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="expenses-v6.css?v=20260822-expense-home-file-scope">
 <link rel="stylesheet" href="animus-shell.css?v=20260823-new-file-intake-fix">
     <link rel="stylesheet" href="animus-dashboard.css?v=20260822-command-center-home">
-    <link rel="stylesheet" href="animus-work-file.css?v=20260823-status-colors">
+    <link rel="stylesheet" href="animus-work-file.css?v=20260824-active-workfiles-status-colors">
     <link rel="stylesheet" href="animus-operations.css?v=20260822-operations-layout">
     <link rel="stylesheet" href="animus-contacts.css?v=20260823-manual-add-contact">
     <style>
@@ -120,12 +120,12 @@
                 <h2 id="crmListTitle">All Work Files</h2>
               </div>
               <select id="crmFileFilter" class="animus-work-file-filter" aria-label="File filter">
-                <option value="all" selected>All Work Files</option>
+                <option value="all">All Work Files</option>
                 <option value="new">New Leads</option>
                 <option value="contact">Pending Contact</option>
                 <option value="estimate">Pending Estimates</option>
                 <option value="negotiation">In Negotiation</option>
-                <option value="active">Active Jobs</option>
+                <option value="active" selected>Active Jobs</option>
                 <option value="archive">Closed Files</option>
               </select>
             </div>
@@ -1022,9 +1022,9 @@
         caches.keys().then((keys) => keys.forEach((key) => caches.delete(key)));
       }
     </script>
-<script src="crm.js?v=20260824-current-backup"></script>
+<script src="crm.js?v=20260824-active-workfiles-status-colors"></script>
     <script src="calendar-upgrade.js?v=20260808-calendar-popups"></script>
-    <script src="animus-shell.js?v=20260824-current-backup"></script>
+    <script src="animus-shell.js?v=20260824-active-workfiles-status-colors"></script>
     <script src="animus-dashboard.js?v=20260823-topbar-actions"></script>
     <link rel="stylesheet" href="animus-business-performance.css?v=20260822-business-performance">
     <script src="animus-business-performance.js?v=20260822-business-performance"></script>
