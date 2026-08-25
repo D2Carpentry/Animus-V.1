@@ -35,11 +35,9 @@
   }
 
   function paidTotal(file) {
-    const estimate = Number(file?.estimateTotal) || 0;
     const manualTotal = Number(file?.totalPaidOverride);
     if (file?.totalPaidOverride !== "" && file?.totalPaidOverride !== undefined && Number.isFinite(manualTotal)) return manualTotal;
-    if (field(file, "paidInFull") === "Yes") return estimate;
-    return (Number(file?.initialDeposit) || Number(file?.depositTotal) || 0) + (Number(file?.midpointDeposit) || 0) + (Number(file?.finalPaymentAmount) || 0);
+    return 0;
   }
 
   function currentFile() {
@@ -204,7 +202,7 @@
     }
     if (state.editor === "action") fields = input("nextAction", "Next Action", field(file, "nextAction"), "text", "wide") + input("nextActionDate", "Due Date", field(file, "nextActionDate") || field(file, "followUpDate"), "date") + input("assignedTo", "Assigned To", assignment(file));
     if (state.editor === "assigned") fields = input("assignedTo", "Employee name", assignment(file), "text", "wide");
-    if (state.editor === "financials") fields = input("estimateTotal", "Estimate Amount", Number(file.estimateTotal) || "", "number") + input("materialTotal", "Materials", Number(file.materialTotal) || "", "number") + input("laborTotal", "Labor", Number(file.laborTotal) || "", "number") + input("totalPaidOverride", "Total Paid", file.totalPaidOverride !== undefined && file.totalPaidOverride !== "" ? Number(file.totalPaidOverride) : paidTotal(file), "number") + input("initialDeposit", "Initial Deposit", Number(file.initialDeposit) || "", "number") + input("midpointDeposit", "Midpoint Deposit", Number(file.midpointDeposit) || "", "number") + input("finalPaymentAmount", "Final Payment", Number(file.finalPaymentAmount) || "", "number");
+    if (state.editor === "financials") fields = input("estimateTotal", "Estimate Amount", Number(file.estimateTotal) || "", "number") + input("materialTotal", "Materials", Number(file.materialTotal) || "", "number") + input("laborTotal", "Labor", Number(file.laborTotal) || "", "number") + input("totalPaidOverride", "Total Paid (Manual)", file.totalPaidOverride !== undefined && file.totalPaidOverride !== "" ? Number(file.totalPaidOverride) : paidTotal(file), "number") + input("initialDeposit", "Initial Deposit", Number(file.initialDeposit) || "", "number") + input("midpointDeposit", "Midpoint Deposit", Number(file.midpointDeposit) || "", "number") + input("finalPaymentAmount", "Final Payment", Number(file.finalPaymentAmount) || "", "number");
     if (state.editor === "details") fields = input("inspectionDate", "Inspection Date", field(file, "inspectionDate"), "date") + input("inspectionTime", "Inspection Time", field(file, "inspectionTime"), "time") + input("startDate", "Start Date", field(file, "startDate"), "date") + input("followUpDate", "Follow-Up Date", field(file, "followUpDate"), "date") + input("anticipatedCompletionDate", "Anticipated Completion", field(file, "anticipatedCompletionDate"), "date") + select("arrivalWindow", field(file, "arrivalWindow", "Open"), ["Open", "7:00 AM", "8:00 AM", "9:00 AM", "10:00 AM", "Afternoon"]) + (field(file, "leadSource").toLowerCase() === "angi" ? input("leadFee", "Lead Fee", Number(file.leadFee) || "", "number") : "");
     title = state.editor === "financials" ? "Edit Financials" : state.editor === "details" ? "Edit Job Details" : state.editor === "assigned" ? "Assign Employee" : "Edit File";
     return `<section class="animus-inline-editor animus-inline-editor-${state.editor}"><h3>${title}</h3><div class="animus-inline-editor-grid">${fields}</div><div class="animus-action-row"><button class="animus-record-button primary" data-animus-save-editor>Save Changes</button><button class="animus-record-button" data-animus-cancel-editor>Cancel</button></div></section>`;
@@ -240,9 +238,7 @@
     const file = currentFile();
     if (!file) return;
     const fields = [...document.querySelectorAll("[data-animus-field]")];
-    const paymentEdited = state.editor === "financials" && fields.some((input) => ["initialDeposit", "midpointDeposit", "finalPaymentAmount"].includes(input.dataset.animusField) && input.value !== (input.dataset.animusOriginal || ""));
     const totalPaidField = fields.find((input) => input.dataset.animusField === "totalPaidOverride");
-    const totalPaidEdited = totalPaidField && totalPaidField.value !== (totalPaidField.dataset.animusOriginal || "");
     fields.forEach((input) => {
       const key = input.dataset.animusField;
       const numericField = ["estimateTotal", "materialTotal", "laborTotal", "totalPaidOverride", "initialDeposit", "midpointDeposit", "finalPaymentAmount", "leadFee"].includes(key);
@@ -254,7 +250,6 @@
       // corrects it. Keeping it numeric prevents an older deposit total from
       // reappearing after the work file re-renders.
       if (file.totalPaidOverride !== "") file.totalPaidOverride = Number(file.totalPaidOverride) || 0;
-      if (paymentEdited && !totalPaidEdited) file.totalPaidOverride = "";
       if (typeof window.syncFileLaborToRevenue === "function") window.syncFileLaborToRevenue(file);
     }
     if (typeof window.addSystemNote === "function") window.addSystemNote(file, "Work file updated.");
