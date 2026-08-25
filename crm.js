@@ -2240,7 +2240,7 @@ function populateCrmFileIntakeModal(modal, file = null) {
   if (error) error.hidden = true;
 }
 
-function openNewCrmFileModal(fileToEdit = null) {
+function openLegacyNewCrmFileModal(fileToEdit = null) {
   let modal = $("animusNewFileModal");
   if (!fileToEdit) clearNewFileDraft();
   const draft = fileToEdit ? intakeValuesForFile(fileToEdit) : {};
@@ -2331,6 +2331,73 @@ function openNewCrmFileModal(fileToEdit = null) {
     });
   }
   populateCrmFileIntakeModal(modal, fileToEdit);
+  modal.hidden = false;
+  window.setTimeout(() => modal.querySelector("[data-new-file-field='clientName']")?.focus(), 0);
+}
+
+// Lightweight replacement for the original intake dialog. It deliberately
+// has no per-field persistence or background render work: the record changes
+// only after the user presses Create Work File or Save Work File.
+function openNewCrmFileModal(fileToEdit = null) {
+  const existing = $("animusNewFileModal");
+  if (existing) existing.remove();
+
+  const mode = fileToEdit ? "edit" : "new";
+  const values = intakeValuesForFile(fileToEdit || {});
+  const status = values.fileStatus || "New Lead";
+  const detailOptions = CRM_STATUS_DETAILS[status] || [""];
+  const optionList = (options, value) => newFileOptionMarkup(options, value || "");
+  const input = (key, label, type = "text", extra = "") => `<label>${label}<input data-new-file-field="${key}" type="${type}" value="${escapeHtml(values[key] ?? "")}" ${extra}></label>`;
+  const select = (key, label, options, extra = "") => `<label ${extra}>${label}<select data-new-file-field="${key}" id="animusIntake${key[0].toUpperCase()}${key.slice(1)}">${optionList(options, values[key])}</select></label>`;
+
+  const modal = document.createElement("div");
+  modal.id = "animusNewFileModal";
+  modal.className = "animus-new-file-modal-backdrop";
+  modal.dataset.mode = mode;
+  modal.dataset.fileId = fileToEdit?.id || "";
+  modal.innerHTML = `<section class="animus-new-file-modal" role="dialog" aria-modal="true" aria-labelledby="animusNewFileTitle">
+    <header><div><p>${mode === "edit" ? "EDIT WORK FILE" : "NEW WORK FILE"}</p><h2 id="animusNewFileTitle">${mode === "edit" ? "Edit Customer File" : "Create a Customer File"}</h2><span>Enter the details below. Nothing is changed until you save this form.</span></div><button type="button" class="animus-new-file-close" data-intake-close aria-label="Close">×</button></header>
+    <form id="animusSimpleFileForm">
+      <section><h3>Customer</h3><div class="animus-new-file-grid">${input("clientName", "Customer Name", "text", "autocomplete=\"name\" required placeholder=\"Customer name\"")}${input("clientPhone", "Phone", "tel", "autocomplete=\"tel\" placeholder=\"(239) 555-0100\"")}${input("clientEmail", "Email", "email", "autocomplete=\"email\" placeholder=\"name@email.com\"")}<label class="wide">Project Address<input data-new-file-field="projectAddress" value="${escapeHtml(values.projectAddress ?? "")}" autocomplete="street-address" placeholder="Street, city, state, ZIP"></label></div></section>
+      <section><h3>Project &amp; Status</h3><div class="animus-new-file-grid">${select("leadSource", "Lead Source", ["Manual", "Phone", "Website", "Angi", "Referral", "Social Media"])}<label id="animusIntakeLeadFeeWrap"${isAngiLeadSource(values.leadSource) ? "" : " hidden"}>Lead Fee<input data-new-file-field="leadFee" type="number" min="0" step="0.01" inputmode="decimal" value="${escapeHtml(values.leadFee ?? "")}" placeholder="Enter fee"></label>${select("projectType", "Project Type", CRM_PROJECT_TYPES)}<label id="animusIntakeOtherProjectWrap"${values.projectType === "Other" ? "" : " hidden"}>Other Project Type<input data-new-file-field="otherProjectType" value="${escapeHtml(values.otherProjectType ?? "")}" placeholder="Describe this project"></label>${select("fileStatus", "File Status", Object.keys(CRM_STATUS_DETAILS))}<label>Status Detail<select data-new-file-field="statusDetail" id="animusIntakeStatusDetail">${optionList(detailOptions, values.statusDetail)}</select></label><label class="wide">Next Action<input data-new-file-field="nextAction" value="${escapeHtml(values.nextAction ?? "")}" placeholder="Follow up, send estimate, set inspection"></label><label class="animus-new-file-check"><input data-new-file-field="hasNextActionDate" id="animusIntakeHasNextActionDate" type="checkbox"${values.hasNextActionDate ? " checked" : ""}><span>Set a Next Action Date</span></label><label id="animusIntakeNextActionDateWrap"${values.hasNextActionDate ? "" : " hidden"}>Next Action Date<input data-new-file-field="nextActionDate" type="date" value="${escapeHtml(values.nextActionDate ?? "")}"></label></div></section>
+      <section><h3>Contact &amp; Schedule</h3><div class="animus-new-file-grid">${select("contactEmailSent", "Contact Email Sent?", ["No", "Yes"])}${select("contactTextSent", "Contact Text Sent?", ["No", "Yes"])}${select("inspectionDateSet", "Inspection Date Set?", ["No", "Yes"])}${input("inspectionDate", "Inspection Date", "date")}${input("inspectionTime", "Inspection Time", "time")}${select("arrivalWindow", "Arrival Window", ["Open", "7:00 AM", "8:00 AM", "9:00 AM", "10:00 AM", "Afternoon"])}${input("startDate", "Start Date", "date")}${input("followUpDate", "Follow-Up Date", "date")}${input("anticipatedCompletionDate", "Anticipated Completion", "date")}</div></section>
+      <section><h3>Financials &amp; Operations</h3><div class="animus-new-file-grid">${input("estimateTotal", "Estimate Amount", "number", "min=\"0\" step=\"0.01\"")}${input("materialTotal", "Materials Amount", "number", "min=\"0\" step=\"0.01\"")}${select("initialDepositSecured", "Initial Deposit Secured?", ["No", "Yes"])}${input("initialDeposit", "Initial Deposit", "number", "min=\"0\" step=\"0.01\"")}${select("midpointDepositSecured", "Midpoint Deposit Secured?", ["No", "Yes"])}${input("midpointDeposit", "Midpoint Deposit", "number", "min=\"0\" step=\"0.01\"")}${select("finalPaymentSecured", "Final Payment Secured?", ["No", "Yes"])}${input("finalPaymentAmount", "Final Payment", "number", "min=\"0\" step=\"0.01\"")}${select("invoiceSent", "Invoice Sent?", ["No", "Yes"])}${select("reviewRequested", "Review Requested?", ["No", "Yes"])}${select("closingCallCompleted", "Closing Call Completed?", ["No", "Yes"])}${select("warrantyStatus", "Warranty Details", ["Not Sent", "Sent"])}</div></section>
+      <p class="animus-new-file-error" id="animusNewFileError" hidden></p><footer><button type="button" class="animus-new-file-cancel" data-intake-close>Cancel</button><button type="submit" class="animus-new-file-create">${mode === "edit" ? "Save Work File" : "Create Work File"}</button></footer>
+    </form>
+  </section>`;
+  document.body.appendChild(modal);
+
+  const close = () => modal.remove();
+  modal.querySelectorAll("[data-intake-close]").forEach((button) => button.addEventListener("click", close));
+  modal.addEventListener("click", (event) => { if (event.target === modal) close(); });
+  modal.querySelector("#animusIntakeLeadSource")?.addEventListener("change", (event) => { modal.querySelector("#animusIntakeLeadFeeWrap").hidden = !isAngiLeadSource(event.target.value); });
+  modal.querySelector("#animusIntakeProjectType")?.addEventListener("change", (event) => {
+    const wrap = modal.querySelector("#animusIntakeOtherProjectWrap");
+    wrap.hidden = event.target.value !== "Other";
+    if (wrap.hidden) wrap.querySelector("input").value = "";
+  });
+  modal.querySelector("#animusIntakeFileStatus")?.addEventListener("change", (event) => {
+    const details = CRM_STATUS_DETAILS[event.target.value] || [""];
+    modal.querySelector("#animusIntakeStatusDetail").innerHTML = optionList(details, details[0]);
+  });
+  modal.querySelector("#animusIntakeHasNextActionDate")?.addEventListener("change", (event) => {
+    const wrap = modal.querySelector("#animusIntakeNextActionDateWrap");
+    wrap.hidden = !event.target.checked;
+    if (!event.target.checked) wrap.querySelector("input").value = "";
+  });
+  modal.querySelector("form").addEventListener("submit", (event) => {
+    event.preventDefault();
+    const formValues = {};
+    modal.querySelectorAll("[data-new-file-field]").forEach((control) => { formValues[control.dataset.newFileField] = control.type === "checkbox" ? control.checked : control.value; });
+    const error = modal.querySelector("#animusNewFileError");
+    if (!String(formValues.clientName || "").trim()) { error.hidden = false; error.textContent = "Enter the customer name before saving this work file."; return; }
+    const savedFile = mode === "edit" ? updateCrmFileFromIntake(fileToEdit.id, formValues) : newCrmFile({ direct: true, values: formValues, skipRoute: true });
+    if (!savedFile?.id) { error.hidden = false; error.textContent = "The work file could not be saved."; return; }
+    activeFileId = savedFile.id;
+    close();
+    if (typeof switchCrmView === "function") switchCrmView("files");
+    renderCrm();
+  });
   modal.hidden = false;
   window.setTimeout(() => modal.querySelector("[data-new-file-field='clientName']")?.focus(), 0);
 }
