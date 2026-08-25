@@ -2261,17 +2261,23 @@ function openNewCrmFileModal(fileToEdit = null) {
         <p class="animus-new-file-error" id="animusNewFileError" hidden></p><footer><button type="button" class="animus-new-file-cancel" data-new-file-close>Cancel</button><button type="submit" class="animus-new-file-create">Create Work File</button></footer>
       </form></section>`;
     document.body.appendChild(modal);
-    modal.querySelectorAll("[data-new-file-field]").forEach((field) => { field.addEventListener("input", saveNewFileDraft); field.addEventListener("change", saveNewFileDraft); });
+    modal.querySelectorAll("[data-new-file-field]").forEach((field) => {
+      // Selects only change the visible form controls. Saving every dropdown
+      // change synchronously is unnecessary and was causing a noticeable stall
+      // on the Project Type picker. Text entry still gets a debounced draft;
+      // page-hide saves the complete form if the user switches away to copy.
+      if (field.matches("select, input[type='checkbox']")) return;
+      field.addEventListener("input", saveNewFileDraft);
+      field.addEventListener("change", saveNewFileDraft);
+    });
     modal.querySelector("#animusNewFileStatus")?.addEventListener("change", (event) => {
       const details = CRM_STATUS_DETAILS[event.target.value] || [""];
       const target = modal.querySelector("#animusNewFileStatusDetail");
       target.innerHTML = newFileOptionMarkup(details, details[0]);
-      saveNewFileDraft();
     });
     modal.querySelector("#animusNewFileLeadSource")?.addEventListener("change", (event) => {
       const leadFeeWrap = modal.querySelector("#animusNewFileLeadFeeWrap");
       if (leadFeeWrap) leadFeeWrap.hidden = !isAngiLeadSource(event.target.value);
-      saveNewFileDraft();
     });
     modal.querySelector("#animusNewFileProjectType")?.addEventListener("change", (event) => {
       const otherProjectWrap = modal.querySelector("#animusNewFileOtherProjectWrap");
@@ -2280,7 +2286,6 @@ function openNewCrmFileModal(fileToEdit = null) {
         const otherProjectInput = otherProjectWrap?.querySelector("input");
         if (otherProjectInput) otherProjectInput.value = "";
       }
-      saveNewFileDraft();
     });
     const nextActionDateToggle = modal.querySelector("#animusNewFileHasNextActionDate");
     const nextActionDateWrap = modal.querySelector("#animusNewFileNextActionDateWrap");
@@ -2289,7 +2294,6 @@ function openNewCrmFileModal(fileToEdit = null) {
       const dateInput = nextActionDateWrap?.querySelector("input");
       if (!nextActionDateToggle.checked && dateInput) dateInput.value = "";
       if (nextActionDateToggle.checked && dateInput && !dateInput.value) dateInput.value = todayIso(1);
-      saveNewFileDraft();
     });
     modal.querySelectorAll("[data-new-file-close]").forEach((button) => button.addEventListener("click", closeNewCrmFileModal));
     modal.addEventListener("click", (event) => { if (event.target === modal) closeNewCrmFileModal(); });
