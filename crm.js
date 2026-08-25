@@ -1546,13 +1546,19 @@ async function loadDashboardFromGoogle() {
 
 async function importDashboardBackupFile(file) {
   if (!file) return;
-  let dashboard;
+  let parsed;
   try {
-    dashboard = JSON.parse(await file.text());
+    parsed = JSON.parse(await file.text());
   } catch (error) {
     window.alert("That backup file could not be read. Please choose a Cloudflare dashboard JSON backup.");
     return;
   }
+  // A Current Snapshot export keeps the complete dashboard under `dashboard`
+  // alongside an audit trail and raw browser copies. Cloud backups are already
+  // dashboard-shaped, so both formats can restore through one safe path.
+  const dashboard = parsed?.format === "animus-current-snapshot-v1" && parsed?.dashboard
+    ? parsed.dashboard
+    : parsed;
   const files = Array.isArray(dashboard.dashboardFiles) ? dashboard.dashboardFiles : [];
   if (!files.length) {
     window.alert("That backup does not contain Command Center files.");

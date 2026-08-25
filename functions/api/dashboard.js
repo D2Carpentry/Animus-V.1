@@ -18,8 +18,9 @@ function jsonResponse(body, status = 200) {
   });
 }
 
-function backupKey() {
-  return `${BACKUP_PREFIX}${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
+function backupKey(label = "") {
+  const suffix = label ? `-${String(label).replace(/[^a-z0-9-]/gi, "").slice(0, 32)}` : "";
+  return `${BACKUP_PREFIX}${new Date().toISOString().replace(/[:.]/g, "-")}${suffix}.json`;
 }
 
 function namedBackupKey(name = "") {
@@ -39,7 +40,9 @@ function missingBucketResponse() {
 }
 
 function fileMergeKey(file = {}) {
-  return String(file.id || file.fileNumber || file.clientName || "").trim().toLowerCase();
+  // Match the client key exactly. Project/file number is the user-visible
+  // identity, while an internal id can differ between a restore and a device.
+  return String(file.fileNumber || file.id || file.clientName || "").trim().toLowerCase();
 }
 
 function rowMergeKey(row = {}) {
@@ -366,12 +369,13 @@ async function handlePost(context) {
   const url = new URL(request.url);
   const isTestSnapshot = url.searchParams.get("testSnapshot") === "1";
   const isBackupOnly = url.searchParams.get("backupOnly") === "1";
-  const existing = isBackupOnly ? null : await readExistingDashboard(env);
-  const dashboard = isBackupOnly ? {
+  const replaceLatest = url.searchParams.get("replaceLatest") === "1";
+  const existing = (isBackupOnly || isTestSnapshot || replaceLatest) ? null : await readExistingDashboard(env);
+  const dashboard = (isBackupOnly || isTestSnapshot || replaceLatest) ? {
     ...payload,
     action: "dashboardSync",
     syncedAt: new Date().toISOString(),
-    savedTo: "Cloudflare R2 backup",
+    savedTo: isBackupOnly ? "Cloudflare R2 backup" : "Cloudflare R2",
   } : {
     ...mergeDashboard(existing || {}, payload),
     action: "dashboardSync",
@@ -383,11 +387,21 @@ async function handlePost(context) {
   const writeKey = isBackupOnly ? namedBackupKey(url.searchParams.get("backupName")) : (isTestSnapshot ? testSnapshotKey() : DASHBOARD_KEY);
 
   if (!dryRun) {
+    // Preserve the previous live version before replacing it. A broken browser
+    // can never overwrite the only recoverable cloud copy.
+    if (!isTestSnapshot && !isBackupOnly && replaceLatest) {
+      const prior = await readExistingDashboard(env);
+      if (prior) {
+        await env.ANIMUS_BUCKET.put(backupKey("before-save"), JSON.stringify(prior), {
+          httpMetadata: { contentType: "application/json; charset=utf-8" },
+        });
+      }
+    }
     await env.ANIMUS_BUCKET.put(writeKey, body, {
       httpMetadata: { contentType: "application/json; charset=utf-8" },
     });
     if (!isTestSnapshot && !isBackupOnly) {
-      await env.ANIMUS_BUCKET.put(backupKey(), body, {
+      await env.ANIMUS_BUCKET.put(backupKey("after-save"), body, {
         httpMetadata: { contentType: "application/json; charset=utf-8" },
       });
     }
@@ -403,6 +417,7 @@ async function handlePost(context) {
     dryRun,
     testSnapshot: isTestSnapshot,
     backupOnly: isBackupOnly,
+    replaceLatest,
     backupKey: isBackupOnly ? writeKey : "",
     dashboard,
     summary: dashboardSummary(dashboard, DASHBOARD_KEY),
