@@ -119,6 +119,8 @@ body.animus-unified-ui .animus-work-files-layout .crm-file-workspace {
   display: grid;
   flex: 1;
   gap: 0;
+  grid-auto-rows: min-content;
+  align-content: start;
   max-height: none;
   overflow: auto;
   padding: 0;
