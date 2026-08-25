@@ -679,11 +679,17 @@ function syncExpenseFileForStorage(file) {
   syncReceiptHistoryFromExpenseLines(file);
 }
 
-function saveCrmFiles() {
+function saveCrmFiles(options = {}) {
+  const syncExpenses = options.syncExpenses !== false;
   try {
-    crmFiles.forEach((file) => {
-      syncExpenseFileForStorage(file);
-    });
+    // New/edit work-file intake does not modify receipts. Skipping this
+    // expensive rebuild there keeps the focused form responsive, while every
+    // receipt/expense workflow continues to use the normal full sync.
+    if (syncExpenses) {
+      crmFiles.forEach((file) => {
+        syncExpenseFileForStorage(file);
+      });
+    }
     if (Array.isArray(crmFiles) && crmFiles.length) {
       localStorage.setItem(CRM_STORAGE_BACKUP_KEY, JSON.stringify(crmFiles));
     }
@@ -1780,7 +1786,11 @@ function toggleAngiLeadFeeField() {
   wrap.hidden = !isAngiLeadSource($("crmLeadSource")?.value || activeFile()?.leadSource);
 }
 
-function saveActiveFile() {
+function saveActiveFile(options = {}) {
+  const intakeModal = $("animusNewFileModal");
+  // A delayed save from the page beneath the modal must never run while the
+  // user is entering a new file or editing a file in the focused popup.
+  if (!options.allowWhileIntakeOpen && intakeModal && !intakeModal.hidden) return;
   const file = normalizeCrmFile(activeFile());
   if (!file) return;
   const changeNotes = [];
@@ -1848,6 +1858,8 @@ function saveActiveFileDraft() {
   window.clearTimeout(crmDraftSaveTimer);
   crmLocalChangeVersion += 1;
   crmDraftSaveTimer = window.setTimeout(() => {
+    const intakeModal = $("animusNewFileModal");
+    if (intakeModal && !intakeModal.hidden) return;
     saveActiveFile();
     try { localStorage.removeItem(CRM_ACTIVE_FILE_DRAFT_KEY); } catch (error) { /* Draft storage is optional. */ }
   }, 650);
@@ -2319,7 +2331,7 @@ function updateCrmFileFromIntake(fileId, values = {}) {
   file.depositSecured = file.initialDepositSecured || "No";
   file.updatedAt = new Date().toISOString();
   file.timeline = [...(Array.isArray(file.timeline) ? file.timeline : []), { at:file.updatedAt, text:"Work file updated" }];
-  saveCrmFiles();
+  saveCrmFiles({ syncExpenses: false });
   return file;
 }
 
@@ -2386,7 +2398,7 @@ function newCrmFile(options = {}) {
     timeline: [{ at:new Date().toISOString(), text:"Work file created" }],
   };
   crmFiles.unshift(file);
-  saveCrmFiles();
+  saveCrmFiles({ syncExpenses: false });
   if (!options.skipRoute) {
     // Route away from the current editor while its original file is still
     // selected. This stops stale fields on that screen from overwriting the
