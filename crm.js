@@ -910,6 +910,8 @@ function postPayloadToGoogle(payload) {
 async function postPayloadToCloudflare(payload, options = {}) {
   const url = new URL(CLOUDFLARE_DASHBOARD_API, window.location.href);
   if (options.testSnapshot) url.searchParams.set("testSnapshot", "1");
+  if (options.backupOnly) url.searchParams.set("backupOnly", "1");
+  if (options.backupName) url.searchParams.set("backupName", options.backupName);
   const response = await fetch(url.toString(), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -1311,6 +1313,63 @@ function verifyDashboardTestSnapshot(sent, received) {
   });
   return { ok: !missingFiles.length && !mismatchedRevenue.length, missingFiles, mismatchedRevenue };
 }
+
+function dashboardBackupVerification(sent, received) {
+  const sentFiles = Array.isArray(sent?.dashboardFiles) ? sent.dashboardFiles : [];
+  const receivedFiles = Array.isArray(received?.dashboardFiles) ? received.dashboardFiles : [];
+  const sentRevenue = Array.isArray(sent?.revenueRows) ? sent.revenueRows : [];
+  const receivedRevenue = Array.isArray(received?.revenueRows) ? received.revenueRows : [];
+  const sentPayroll = Array.isArray(sent?.payrollRows) ? sent.payrollRows : [];
+  const receivedPayroll = Array.isArray(received?.payrollRows) ? received.payrollRows : [];
+  const sentPrices = Array.isArray(sent?.priceRows) ? sent.priceRows : [];
+  const receivedPrices = Array.isArray(received?.priceRows) ? received.priceRows : [];
+  const fileKeys = new Set(receivedFiles.map((file) => String(file?.id || file?.fileNumber || "").trim()));
+  const missingFiles = sentFiles.filter((file) => !fileKeys.has(String(file?.id || file?.fileNumber || "").trim()));
+  const revenueMatches = verifyDashboardTestSnapshot(sent, received).mismatchedRevenue;
+  const payrollKeys = new Set(receivedPayroll.map((row) => String(row?.id || row?.employee || "").trim()));
+  const priceKeys = new Set(receivedPrices.map((row) => String(row?.id || row?.name || "").trim()));
+  const missingPayroll = sentPayroll.filter((row) => !payrollKeys.has(String(row?.id || row?.employee || "").trim()));
+  const missingPrices = sentPrices.filter((row) => !priceKeys.has(String(row?.id || row?.name || "").trim()));
+  const countsMatch = sentFiles.length === receivedFiles.length
+    && sentRevenue.length === receivedRevenue.length
+    && sentPayroll.length === receivedPayroll.length
+    && sentPrices.length === receivedPrices.length;
+  return { ok: countsMatch && !missingFiles.length && !revenueMatches.length && !missingPayroll.length && !missingPrices.length, missingFiles, revenueMatches, missingPayroll, missingPrices };
+}
+
+function currentBackupLabel() {
+  const stamp = new Intl.DateTimeFormat("en-US", { year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: true }).format(new Date()).replace(/,/g, "");
+  return `Current Command Center Backup - ${stamp}`;
+}
+
+// Snapshot-only: does not restore, merge, or overwrite dashboard/latest.json.
+async function createCurrentDashboardBackup() {
+  const button = $("crmCreateBackup");
+  const intakeModal = $("animusNewFileModal");
+  if (intakeModal && !intakeModal.hidden) {
+    showDashboardSaveStatus("Finish creating the work file or cancel the form before making a backup.", true);
+    return;
+  }
+  if (button) { button.disabled = true; button.textContent = "Backing up..."; }
+  showDashboardSaveStatus("Checking the current Command Center and creating a separate Cloudflare backup...");
+  try {
+    persistActiveFileDraftNow();
+    const payload = buildDashboardSyncPayload({ includeRevenue: true, syncExpenses: false, captureEdits: false, restoreRevenueHistory: false });
+    payload.backupLabel = currentBackupLabel();
+    const result = await queueDashboardCloudSave(payload, { backupOnly: true, backupName: payload.backupLabel });
+    const verification = dashboardBackupVerification(payload, result?.dashboard);
+    if (!verification.ok) throw new Error("Backup was not marked complete because Cloudflare did not return an exact copy of the current Command Center.");
+    const totals = dashboardTestTotals(payload.revenueRows || []);
+    showDashboardSaveStatus(`Current backup created and verified. ${payload.dashboardFiles.length} files, ${payload.revenueRows.length} revenue lines, ${payload.payrollRows.length} payroll rows, and ${payload.priceRows.length} price lines are safely stored as a separate Cloudflare snapshot. Gross ${crmCurrency.format(totals.gross)}.`);
+    if (button) button.textContent = "Backup Created";
+  } catch (error) {
+    showDashboardSaveStatus(error.message || "Current backup could not be verified. Nothing was restored or changed.", true);
+  } finally {
+    if (button) { button.disabled = false; window.setTimeout(() => { button.textContent = "Create Current Backup"; }, 1800); }
+  }
+}
+
+window.animusCreateCurrentDashboardBackup = createCurrentDashboardBackup;
 
 // Writes a separate Cloudflare test snapshot. It exercises the complete
 // dashboard payload, including Revenue, without changing dashboard/latest.json.
@@ -8613,6 +8672,9 @@ $("crmNewNote").addEventListener("keydown", (event) => {
 });
 $("crmSaveDemo").addEventListener("click", () => {
   saveDashboardToGoogle();
+});
+$("crmCreateBackup")?.addEventListener("click", () => {
+  createCurrentDashboardBackup();
 });
 $("crmTopNotifications")?.addEventListener("click", () => {
   if (document.body.dataset.animusView !== "dashboard") {

@@ -22,6 +22,11 @@ function backupKey() {
   return `${BACKUP_PREFIX}${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
 }
 
+function namedBackupKey(name = "") {
+  const safeName = String(name || "current-backup").trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 72) || "current-backup";
+  return `${BACKUP_PREFIX}${new Date().toISOString().replace(/[:.]/g, "-")}-${safeName}.json`;
+}
+
 function testSnapshotKey() {
   return `dashboard/tests/${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
 }
@@ -360,8 +365,14 @@ async function handlePost(context) {
 
   const url = new URL(request.url);
   const isTestSnapshot = url.searchParams.get("testSnapshot") === "1";
-  const existing = await readExistingDashboard(env);
-  const dashboard = {
+  const isBackupOnly = url.searchParams.get("backupOnly") === "1";
+  const existing = isBackupOnly ? null : await readExistingDashboard(env);
+  const dashboard = isBackupOnly ? {
+    ...payload,
+    action: "dashboardSync",
+    syncedAt: new Date().toISOString(),
+    savedTo: "Cloudflare R2 backup",
+  } : {
     ...mergeDashboard(existing || {}, payload),
     action: "dashboardSync",
     syncedAt: new Date().toISOString(),
@@ -369,13 +380,13 @@ async function handlePost(context) {
   };
   const body = JSON.stringify(dashboard);
   const dryRun = url.searchParams.has("dryRun");
+  const writeKey = isBackupOnly ? namedBackupKey(url.searchParams.get("backupName")) : (isTestSnapshot ? testSnapshotKey() : DASHBOARD_KEY);
 
   if (!dryRun) {
-    const writeKey = isTestSnapshot ? testSnapshotKey() : DASHBOARD_KEY;
     await env.ANIMUS_BUCKET.put(writeKey, body, {
       httpMetadata: { contentType: "application/json; charset=utf-8" },
     });
-    if (!isTestSnapshot) {
+    if (!isTestSnapshot && !isBackupOnly) {
       await env.ANIMUS_BUCKET.put(backupKey(), body, {
         httpMetadata: { contentType: "application/json; charset=utf-8" },
       });
@@ -391,6 +402,8 @@ async function handlePost(context) {
     ok: true,
     dryRun,
     testSnapshot: isTestSnapshot,
+    backupOnly: isBackupOnly,
+    backupKey: isBackupOnly ? writeKey : "",
     dashboard,
     summary: dashboardSummary(dashboard, DASHBOARD_KEY),
     syncedAt: dashboard.syncedAt,
