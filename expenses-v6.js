@@ -138,9 +138,9 @@
     const file = findFile(data.fileId) || data.file;
     const items = (data.items || []).filter((item) => item.name || amount(item.price));
     const info = editing ? `<div class="expense-detail-editor"><label>Customer / Job<select id="expenseDraftFile">${fileOptions(data.fileId)}</select></label><label>Expense Title<input id="expenseDraftTitle" value="${esc(data.title)}"></label><label>Vendor<input id="expenseDraftVendor" value="${esc(data.vendor)}"></label><label>Date<input id="expenseDraftDate" type="date" value="${esc(data.date)}"></label><label>Receipt Total<input id="expenseDraftAmount" inputmode="decimal" value="${esc(data.amount)}"></label><label>Category<select id="expenseDraftCategory">${categoryOptions(data.category)}</select></label><label>Paid By<select id="expenseDraftPayment">${paymentOptions(data.paymentType)}</select></label></div>` : `<div class="expense-details"><div class="expense-detail"><span>Expense Title</span><b>${esc(data.title || data.vendor || "—")}</b></div><div class="expense-detail"><span>Vendor</span><b>${esc(data.vendor || "—")}</b></div><div class="expense-detail"><span>Total Amount</span><b>${money(data.amount)}</b></div><div class="expense-detail"><span>Category</span><b>${esc(data.category || "—")}</b></div><div class="expense-detail"><span>Paid By</span><b>${esc(data.paymentType || "—")}</b></div><div class="expense-detail"><span>Customer / Job</span><b>${esc(file ? `${file.fileNumber || "Project"} · ${file.clientName || "Unnamed"}` : "—")}</b></div></div>`;
-    const itemMarkup = items.length ? items.map((item,index) => editing ? `<div class="expense-item"><input data-expense-item-name="${index}" value="${esc(item.name)}"><input data-expense-item-price="${index}" inputmode="decimal" value="${esc(item.price)}"></div>` : `<div class="expense-item"><span class="expense-item-name">${esc(item.name)}</span><b>${money(item.price)}</b><button class="expense-item-add" data-expense-item-import="${index}">Price Database</button></div>`).join("") : `<div class="expense-item"><span>No line items were saved with this expense.</span></div>`;
+    const itemMarkup = items.length ? items.map((item,index) => editing ? `<div class="expense-item"><input data-expense-item-name="${index}" value="${esc(item.name)}"><input data-expense-item-price="${index}" inputmode="decimal" value="${esc(item.price)}"></div>` : `<div class="expense-item"><span class="expense-item-name">${esc(item.name)}</span><b>${money(item.price)}</b><button class="expense-item-add" data-expense-item-import="${index}">Add to Price Database</button></div>`).join("") : `<div class="expense-item"><span>No line items were saved with this expense.</span></div>`;
     const imageSrc = receiptImageSrc(data);
-    return `<aside class="expense-drawer"><div class="expense-drawer-head"><h2>Receipt Details</h2><button class="expense-close" id="expenseDrawerClose">×</button></div><div class="expense-drawer-status"><span class="expense-status ${imageSrc ? "" : "manual"}">${imageSrc ? "Receipt saved" : "Manual expense"}</span><small>${data.receiptImageKey ? "Photo backed up in ANIMUS cloud storage." : "AI confidence is not stored by the current scanner."}</small></div>${imageSrc ? `<button type="button" class="expense-preview expense-preview-button" id="expenseImagePreviewButton" aria-label="Open larger receipt image"><img src="${esc(imageSrc)}" alt="Receipt image"><span>Click to enlarge</span></button>` : `<div class="expense-preview">No receipt image</div>`}<p class="expense-drawer-vendor">${esc(data.title || data.vendor || "New Expense")}</p><p class="expense-drawer-meta">${esc(data.date || "No date")} · ${esc(data.imageTitle || "No receipt reference")}</p><section class="expense-detail-section"><div class="expense-section-top"><h3>Extracted Information</h3><button class="expense-link-button" id="expenseEditToggle">${editing ? "Done" : "Edit"}</button></div>${info}</section><section class="expense-detail-section"><div class="expense-section-top"><h3>Items (${items.length})</h3><button class="expense-link-button" id="expenseImportAll">Add to Price Database</button></div><div id="expenseDrawerItems">${itemMarkup}</div></section><section class="expense-detail-section"><h3>Notes <span style="color:#94a3b8;font-weight:600">(Optional)</span></h3>${editing ? `<textarea id="expenseDraftNotes">${esc(data.notes)}</textarea>` : `<p style="margin:10px 0 0;color:#64748b;font-size:12px;white-space:pre-wrap">${esc(data.notes || "No notes")}</p>`}</section><div class="expense-drawer-actions"><button class="expense-button danger" id="expenseDelete">Delete</button><button class="expense-button" id="expenseSaveLater">Save for Later</button><button class="expense-button primary" id="expenseSave">Save</button></div></aside>`;
+    return `<aside class="expense-drawer"><div class="expense-drawer-head"><h2>Receipt Details</h2><button class="expense-close" id="expenseDrawerClose">×</button></div><div class="expense-drawer-status"><span class="expense-status ${imageSrc ? "" : "manual"}">${imageSrc ? "Receipt saved" : "Manual expense"}</span><small>${data.receiptImageKey ? "Photo backed up in ANIMUS cloud storage." : "AI confidence is not stored by the current scanner."}</small></div>${imageSrc ? `<button type="button" class="expense-preview expense-preview-button" id="expenseImagePreviewButton" aria-label="Open larger receipt image"><img src="${esc(imageSrc)}" alt="Receipt image"><span>Click to enlarge</span></button>` : `<div class="expense-preview">No receipt image</div>`}<p class="expense-drawer-vendor">${esc(data.title || data.vendor || "New Expense")}</p><p class="expense-drawer-meta">${esc(data.date || "No date")} · ${esc(data.imageTitle || "No receipt reference")}</p><section class="expense-detail-section"><div class="expense-section-top"><h3>Extracted Information</h3><button class="expense-link-button" id="expenseEditToggle">${editing ? "Done" : "Edit"}</button></div>${info}</section><section class="expense-detail-section"><div class="expense-section-top"><h3>Items (${items.length})</h3><button class="expense-link-button" id="expenseDatabaseManager">Price Database</button></div><div id="expenseDrawerItems">${itemMarkup}</div></section><section class="expense-detail-section"><h3>Notes <span style="color:#94a3b8;font-weight:600">(Optional)</span></h3>${editing ? `<textarea id="expenseDraftNotes">${esc(data.notes)}</textarea>` : `<p style="margin:10px 0 0;color:#64748b;font-size:12px;white-space:pre-wrap">${esc(data.notes || "No notes")}</p>`}</section><div class="expense-drawer-actions"><button class="expense-button danger" id="expenseDelete">Delete</button><button class="expense-button primary" id="expenseSave">Save</button></div></aside>`;
   }
 
   function openReceiptImagePreview(src, alt = "Receipt image") {
@@ -278,12 +278,98 @@
     render();
   }
 
+  function priceMatch(normalizer, database, product) {
+    return database.find((row) => normalizer(row.product || row.name) === normalizer(product));
+  }
+
   function showPriceImport(items) {
-    const draft = drawerData(); const normalizer = typeof normalizeReceiptProduct === "function" ? normalizeReceiptProduct : (value) => String(value || "").trim().toLowerCase(); const database = typeof priceDatabaseRows === "function" ? priceDatabaseRows() : [];
-    const rows = items.filter((item) => item.name && amount(item.price)).map((item,index) => { const existing = database.find((row) => normalizer(row.product || row.name) === normalizer(item.name)); const oldPrice = amount(existing?.defaultPrice || existing?.priceLow || existing?.price); return { id:`ec-price-${index}`,product:item.name,price:amount(item.price),category:item.category || draft.category,vendor:draft.vendor,existing,oldPrice,checked:!existing || Math.abs(oldPrice - amount(item.price)) > .004 }; });
+    const draft = drawerData();
+    const normalizer = typeof normalizeReceiptProduct === "function" ? normalizeReceiptProduct : (value) => String(value || "").trim().toLowerCase();
+    const database = typeof priceDatabaseRows === "function" ? priceDatabaseRows() : [];
+    const rows = items.filter((item) => item?.name && amount(item.price)).map((item, index) => ({
+      id: `ec-price-${index}`,
+      product: item.name,
+      price: amount(item.price),
+      category: item.category || draft.category,
+      vendor: draft.vendor,
+    }));
     if (!rows.length) return window.alert("There are no named, priced receipt items to add to the Price Database.");
-    document.querySelector("#expenseImportModal")?.remove(); document.body.insertAdjacentHTML("beforeend",`<div class="expense-import-backdrop" id="expenseImportModal"><section class="expense-import-modal"><div class="expense-drawer-head"><div><p class="expense-breadcrumb">Price Database</p><h2>Review Receipt Items</h2></div><button class="expense-close" id="expenseImportClose">×</button></div><p class="expense-breadcrumb">New items and changed prices are preselected. Edit anything before importing.</p>${rows.map((row) => `<div class="expense-import-row"><input type="checkbox" data-ec-import-check="${row.id}"${row.checked ? " checked" : ""}><span><strong>${row.existing ? (row.checked ? `Update ${money(row.oldPrice)} → ${money(row.price)}` : `Already current · ${money(row.oldPrice)}`) : "New item"}</strong><input data-ec-import-product="${row.id}" value="${esc(row.product)}"><input data-ec-import-price="${row.id}" value="${esc(row.price)}" inputmode="decimal"><input data-ec-import-category="${row.id}" value="${esc(row.category)}"><input data-ec-import-vendor="${row.id}" value="${esc(row.vendor)}"></span></div>`).join("")}<div class="expense-import-actions"><button class="expense-button" id="expenseImportCancel">Cancel</button><button class="expense-button primary" id="expenseImportConfirm">Add Checked Items</button></div></section></div>`);
-    const close = () => document.querySelector("#expenseImportModal")?.remove(); document.querySelector("#expenseImportClose")?.addEventListener("click",close); document.querySelector("#expenseImportCancel")?.addEventListener("click",close); document.querySelector("#expenseImportConfirm")?.addEventListener("click",() => { const selected=rows.filter((row)=>document.querySelector(`[data-ec-import-check="${row.id}"]`)?.checked).map((row)=>({product:document.querySelector(`[data-ec-import-product="${row.id}"]`)?.value.trim()||row.product,price:document.querySelector(`[data-ec-import-price="${row.id}"]`)?.value.trim()||row.price,category:document.querySelector(`[data-ec-import-category="${row.id}"]`)?.value.trim()||row.category,vendor:document.querySelector(`[data-ec-import-vendor="${row.id}"]`)?.value.trim()||row.vendor,unit:"each"})); if (!selected.length) return; const result=typeof importLinesToPriceDatabase === "function" ? importLinesToPriceDatabase(selected,{vendor:draft.vendor,date:draft.date,category:draft.category}) : null; close(); if (result) window.alert(`${result.updatedCount} updated, ${result.addedCount} added to the Price Database.`); });
+    document.querySelector("#expenseImportModal")?.remove();
+    document.body.insertAdjacentHTML("beforeend", `<div class="expense-import-backdrop" id="expenseImportModal"><section class="expense-import-modal" role="dialog" aria-modal="true" aria-label="Review receipt items"><div class="expense-drawer-head"><div><p class="expense-breadcrumb">Price Database</p><h2>Review Receipt Items</h2></div><button class="expense-close" id="expenseImportClose">×</button></div><p class="expense-breadcrumb">Each item is checked against your current Price Database as you type. Review the result, then submit the selected changes.</p>${rows.map((row) => `<div class="expense-import-row"><input type="checkbox" data-ec-import-check="${row.id}"><span><strong data-ec-import-status="${row.id}">Checking Price Database...</strong><input data-ec-import-product="${row.id}" value="${esc(row.product)}" aria-label="Item name"><input data-ec-import-price="${row.id}" value="${esc(row.price)}" inputmode="decimal" aria-label="Item price"><input data-ec-import-category="${row.id}" value="${esc(row.category)}" aria-label="Category"><input data-ec-import-vendor="${row.id}" value="${esc(row.vendor)}" aria-label="Vendor"></span></div>`).join("")}<div class="expense-import-actions"><button class="expense-button" id="expenseImportCancel">Cancel</button><button class="expense-button primary" id="expenseImportConfirm">Submit Changes</button></div></section></div>`);
+    const modal = document.querySelector("#expenseImportModal");
+    const close = () => modal?.remove();
+    const refreshMatches = (keepSelections = true) => rows.forEach((row) => {
+      const product = modal.querySelector(`[data-ec-import-product="${row.id}"]`)?.value.trim() || "";
+      const price = amount(modal.querySelector(`[data-ec-import-price="${row.id}"]`)?.value);
+      const existing = priceMatch(normalizer, database, product);
+      const oldPrice = amount(existing?.defaultPrice || existing?.priceLow || existing?.price);
+      const needsUpdate = Boolean(existing && Math.abs(oldPrice - price) > .004);
+      const isNew = Boolean(product && !existing);
+      const status = modal.querySelector(`[data-ec-import-status="${row.id}"]`);
+      const check = modal.querySelector(`[data-ec-import-check="${row.id}"]`);
+      if (status) status.textContent = isNew ? "New price line" : needsUpdate ? `Price update: ${existing.product || existing.name} · ${money(oldPrice)} → ${money(price)}` : existing ? `Already current: ${existing.product || existing.name} · ${money(oldPrice)}` : "Enter an item name and price";
+      if (!keepSelections && check) check.checked = isNew || needsUpdate;
+    });
+    refreshMatches(false);
+    modal.querySelectorAll("[data-ec-import-product], [data-ec-import-price]").forEach((input) => input.addEventListener("input", () => refreshMatches(false)));
+    modal.querySelector("#expenseImportClose")?.addEventListener("click", close);
+    modal.querySelector("#expenseImportCancel")?.addEventListener("click", close);
+    modal.addEventListener("click", (event) => { if (event.target === modal) close(); });
+    modal.querySelector("#expenseImportConfirm")?.addEventListener("click", () => {
+      refreshMatches(true);
+      const selected = rows.filter((row) => modal.querySelector(`[data-ec-import-check="${row.id}"]`)?.checked).map((row) => ({
+        product: modal.querySelector(`[data-ec-import-product="${row.id}"]`)?.value.trim() || row.product,
+        price: modal.querySelector(`[data-ec-import-price="${row.id}"]`)?.value.trim() || row.price,
+        category: modal.querySelector(`[data-ec-import-category="${row.id}"]`)?.value.trim() || row.category,
+        vendor: modal.querySelector(`[data-ec-import-vendor="${row.id}"]`)?.value.trim() || row.vendor,
+        unit: "each",
+      }));
+      if (!selected.length) return window.alert("Select at least one new item or price update to submit.");
+      const result = typeof importLinesToPriceDatabase === "function" ? importLinesToPriceDatabase(selected, { vendor:draft.vendor, date:draft.date, category:draft.category }) : null;
+      close();
+      if (result) window.alert(`${result.updatedCount} price update${result.updatedCount === 1 ? "" : "s"} and ${result.addedCount} new part${result.addedCount === 1 ? "" : "s"} submitted to the Price Database.`);
+    });
+  }
+
+  function showPriceDatabaseManager() {
+    const rows = typeof priceDatabaseRows === "function" ? priceDatabaseRows() : [];
+    document.querySelector("#expenseDatabaseModal")?.remove();
+    document.body.insertAdjacentHTML("beforeend", `<div class="expense-import-backdrop" id="expenseDatabaseModal"><section class="expense-import-modal expense-database-modal" role="dialog" aria-modal="true" aria-label="Price Database"><div class="expense-drawer-head"><div><p class="expense-breadcrumb">Price Database</p><h2>Review Price Database</h2></div><button class="expense-close" id="expenseDatabaseClose">×</button></div><p class="expense-breadcrumb">Review every saved line here. Update names or prices, check a line to delete it, then save your changes.</p><input class="expense-database-search" id="expenseDatabaseSearch" placeholder="Search parts, vendors, or categories"><div id="expenseDatabaseRows">${rows.map((row) => `<div class="expense-import-row expense-database-row" data-ec-db-row="${esc(row.id)}"><input type="checkbox" data-ec-db-delete="${esc(row.id)}" aria-label="Mark ${esc(row.product || row.name)} for deletion"><span><strong>${esc(row.readonly ? "Estimator line" : "Saved price line")}</strong><input data-ec-db-product="${esc(row.id)}" value="${esc(row.product || row.name)}" aria-label="Item name"><input data-ec-db-price="${esc(row.id)}" value="${esc(row.defaultPrice || row.priceLow || "")}" inputmode="decimal" aria-label="Price"><input data-ec-db-category="${esc(row.id)}" value="${esc(row.category || "")}" aria-label="Category"><input data-ec-db-vendor="${esc(row.id)}" value="${esc(row.vendor || row.source || "")}" aria-label="Vendor"></span></div>`).join("") || `<div class="expense-empty">No Price Database lines have been saved yet.</div>`}</div><div class="expense-import-actions"><button class="expense-button" id="expenseDatabaseCancel">Cancel</button><button class="expense-button primary" id="expenseDatabaseSave">Save Changes</button></div></section></div>`);
+    const modal = document.querySelector("#expenseDatabaseModal");
+    const close = () => modal?.remove();
+    modal.querySelector("#expenseDatabaseClose")?.addEventListener("click", close);
+    modal.querySelector("#expenseDatabaseCancel")?.addEventListener("click", close);
+    modal.addEventListener("click", (event) => { if (event.target === modal) close(); });
+    modal.querySelector("#expenseDatabaseSearch")?.addEventListener("input", (event) => {
+      const query = event.target.value.trim().toLowerCase();
+      modal.querySelectorAll("[data-ec-db-row]").forEach((element) => { element.hidden = query && !element.textContent.toLowerCase().includes(query); });
+    });
+    modal.querySelector("#expenseDatabaseSave")?.addEventListener("click", () => {
+      let changed = 0;
+      rows.forEach((row) => {
+        const id = row.id;
+        const deleted = modal.querySelector(`[data-ec-db-delete="${id}"]`)?.checked;
+        if (deleted) {
+          crmPriceRows = crmPriceRows.filter((entry) => entry.id !== id);
+          if (row.readonly || row.sourceId) crmDeletedPriceIds = Array.from(new Set([...crmDeletedPriceIds, row.sourceId || id]));
+          changed += 1;
+          return;
+        }
+        const product = modal.querySelector(`[data-ec-db-product="${id}"]`)?.value.trim() || "";
+        const price = amount(modal.querySelector(`[data-ec-db-price="${id}"]`)?.value);
+        const category = modal.querySelector(`[data-ec-db-category="${id}"]`)?.value.trim() || "Custom";
+        const vendor = modal.querySelector(`[data-ec-db-vendor="${id}"]`)?.value.trim() || "";
+        const oldPrice = amount(row.defaultPrice || row.priceLow || row.price);
+        if (!product || !price || (product === (row.product || row.name) && price === oldPrice && category === (row.category || "") && vendor === (row.vendor || row.source || ""))) return;
+        const updated = { ...(row.readonly ? {} : row), id:row.readonly ? `custom-${makeCrmId("price")}` : id, sourceId:row.readonly ? id : row.sourceId, product, name:product, category, vendor, source:vendor, unit:row.unit || "each", priceLow:price, priceHigh:price, defaultPrice:price, lastChecked:new Date().toISOString().slice(0,10) };
+        const index = crmPriceRows.findIndex((entry) => entry.id === id);
+        if (index >= 0) crmPriceRows[index] = updated; else crmPriceRows.unshift(updated);
+        changed += 1;
+      });
+      if (changed) { savePriceRows(); saveDeletedPriceIds(); renderPriceDatabase?.(); }
+      close();
+      window.alert(changed ? `${changed} Price Database change${changed === 1 ? "" : "s"} saved.` : "No Price Database changes were needed.");
+    });
   }
 
   function bind() {
@@ -297,7 +383,7 @@
     document.querySelectorAll("[data-expense-check]").forEach((checkbox)=>checkbox.addEventListener("change",()=>{if(checkbox.checked) state.selectedIds.add(checkbox.dataset.expenseCheck); else state.selectedIds.delete(checkbox.dataset.expenseCheck); render();}));
     document.querySelector("#expenseDeleteChecked")?.addEventListener("click",()=>deleteCheckedExpenses().catch((error)=>window.alert(error.message || "Selected expenses could not be deleted.")));
     document.querySelectorAll("[data-expense-open]").forEach((button)=>button.addEventListener("click",()=>{state.selectedId=button.dataset.expenseOpen;state.draft=null;state.editing=false;render();})); document.querySelectorAll("[data-expense-edit]").forEach((button)=>button.addEventListener("click",()=>{state.selectedId=button.dataset.expenseEdit;state.draft=cleanDraft(selectedEntry());state.editing=true;render();})); document.querySelector("#expenseDrawerClose")?.addEventListener("click",()=>{state.selectedId="";state.draft=null;state.editing=false;render();}); document.querySelector("#expenseDetailModal")?.addEventListener("click",(event)=>{if(event.target.id === "expenseDetailModal"){state.selectedId="";state.draft=null;state.editing=false;render();}}); document.querySelector("#expenseImagePreviewButton")?.addEventListener("click",()=>{const image=drawerData();openReceiptImagePreview(receiptImageSrc(image), image?.imageTitle || image?.title || "Receipt image");});
-    document.querySelector("#expenseEditToggle")?.addEventListener("click",()=>{if (!state.editing) state.draft=cleanDraft(selectedEntry()); else captureDrawer();state.editing=!state.editing;render();}); document.querySelector("#expenseSave")?.addEventListener("click",()=>saveDrawer().catch((error)=>window.alert(error.message || "Expense could not be saved."))); document.querySelector("#expenseSaveLater")?.addEventListener("click",()=>{captureDrawer(); state.editing=true; showDashboardSaveStatus?.("Expense changes are held here for review. Click Save when ready to post them to the file."); render();}); document.querySelector("#expenseDelete")?.addEventListener("click",()=>deleteSelected().catch((error)=>window.alert(error.message || "Expense could not be deleted."))); document.querySelector("#expenseImportAll")?.addEventListener("click",()=>showPriceImport(drawerData()?.items || [])); document.querySelectorAll("[data-expense-item-import]").forEach((button)=>button.addEventListener("click",()=>showPriceImport([drawerData()?.items?.[Number(button.dataset.expenseItemImport)]])));
+    document.querySelector("#expenseEditToggle")?.addEventListener("click",()=>{if (!state.editing) state.draft=cleanDraft(selectedEntry()); else captureDrawer();state.editing=!state.editing;render();}); document.querySelector("#expenseSave")?.addEventListener("click",()=>saveDrawer().catch((error)=>window.alert(error.message || "Expense could not be saved."))); document.querySelector("#expenseDelete")?.addEventListener("click",()=>deleteSelected().catch((error)=>window.alert(error.message || "Expense could not be deleted."))); document.querySelector("#expenseDatabaseManager")?.addEventListener("click",showPriceDatabaseManager); document.querySelectorAll("[data-expense-item-import]").forEach((button)=>button.addEventListener("click",()=>showPriceImport([drawerData()?.items?.[Number(button.dataset.expenseItemImport)]])));
   }
 
   // Replaces only the Expenses view. The existing scanner and storage functions are left intact.
