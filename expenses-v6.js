@@ -296,7 +296,7 @@
     }));
     if (!rows.length) return window.alert("There are no named, priced receipt items to add to the Price Database.");
     document.querySelector("#expenseImportModal")?.remove();
-    document.body.insertAdjacentHTML("beforeend", `<div class="expense-import-backdrop" id="expenseImportModal"><section class="expense-import-modal" role="dialog" aria-modal="true" aria-label="Review receipt items"><div class="expense-drawer-head"><div><p class="expense-breadcrumb">Price Database</p><h2>Review Receipt Items</h2></div><button class="expense-close" id="expenseImportClose">×</button></div><p class="expense-breadcrumb">Each item is checked against your current Price Database as you type. Review the result, then submit the selected changes.</p>${rows.map((row) => `<div class="expense-import-row"><input type="checkbox" data-ec-import-check="${row.id}"><span><strong data-ec-import-status="${row.id}">Checking Price Database...</strong><input data-ec-import-product="${row.id}" value="${esc(row.product)}" aria-label="Item name"><input data-ec-import-price="${row.id}" value="${esc(row.price)}" inputmode="decimal" aria-label="Item price"><input data-ec-import-category="${row.id}" value="${esc(row.category)}" aria-label="Category"><input data-ec-import-vendor="${row.id}" value="${esc(row.vendor)}" aria-label="Vendor"></span></div>`).join("")}<div class="expense-import-actions"><button class="expense-button" id="expenseImportCancel">Cancel</button><button class="expense-button primary" id="expenseImportConfirm">Submit Changes</button></div></section></div>`);
+    document.body.insertAdjacentHTML("beforeend", `<div class="expense-import-backdrop" id="expenseImportModal"><section class="expense-import-modal" role="dialog" aria-modal="true" aria-label="Review receipt items"><div class="expense-drawer-head"><div><p class="expense-breadcrumb">Price Database</p><h2>Review Receipt Items</h2></div><span class="expense-section-actions"><button class="expense-button primary small" data-expense-import-submit>Submit to Price Database</button><button class="expense-close" id="expenseImportClose">×</button></span></div><p class="expense-breadcrumb">Each item is checked against your current Price Database as you type. Review the result, then submit the selected changes.</p>${rows.map((row) => `<div class="expense-import-row"><input type="checkbox" data-ec-import-check="${row.id}"><span><strong data-ec-import-status="${row.id}">Checking Price Database...</strong><input data-ec-import-product="${row.id}" value="${esc(row.product)}" aria-label="Item name"><input data-ec-import-price="${row.id}" value="${esc(row.price)}" inputmode="decimal" aria-label="Item price"><input data-ec-import-category="${row.id}" value="${esc(row.category)}" aria-label="Category"><input data-ec-import-vendor="${row.id}" value="${esc(row.vendor)}" aria-label="Vendor"></span></div>`).join("")}<div class="expense-import-actions"><button class="expense-button" id="expenseImportCancel">Cancel</button><button class="expense-button primary" data-expense-import-submit>Submit to Price Database</button></div></section></div>`);
     const modal = document.querySelector("#expenseImportModal");
     const close = () => modal?.remove();
     const refreshMatches = (keepSelections = true) => rows.forEach((row) => {
@@ -316,7 +316,7 @@
     modal.querySelector("#expenseImportClose")?.addEventListener("click", close);
     modal.querySelector("#expenseImportCancel")?.addEventListener("click", close);
     modal.addEventListener("click", (event) => { if (event.target === modal) close(); });
-    modal.querySelector("#expenseImportConfirm")?.addEventListener("click", () => {
+    modal.querySelectorAll("[data-expense-import-submit]").forEach((button) => button.addEventListener("click", () => {
       refreshMatches(true);
       const selected = rows.filter((row) => modal.querySelector(`[data-ec-import-check="${row.id}"]`)?.checked).map((row) => ({
         product: modal.querySelector(`[data-ec-import-product="${row.id}"]`)?.value.trim() || row.product,
@@ -329,7 +329,7 @@
       const result = typeof importLinesToPriceDatabase === "function" ? importLinesToPriceDatabase(selected, { vendor:draft.vendor, date:draft.date, category:draft.category }) : null;
       close();
       if (result) window.alert(`${result.updatedCount} price update${result.updatedCount === 1 ? "" : "s"} and ${result.addedCount} new part${result.addedCount === 1 ? "" : "s"} submitted to the Price Database.`);
-    });
+    }));
   }
 
   function showPriceDatabaseManager() {
