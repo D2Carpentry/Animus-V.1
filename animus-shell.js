@@ -42,7 +42,7 @@
       const menu = document.querySelector("#animusAccountMenu");
       if (menu) menu.hidden = true;
     });
-    document.querySelectorAll("[data-animus-shell-view]").forEach((button) => button.addEventListener("click", () => { const view = button.dataset.animusShellView; if (view === "files" && typeof activateCrmFilter === "function") activateCrmFilter("active"); if (typeof switchCrmView === "function") switchCrmView(view); if (view === "files" && typeof renderCrm === "function") renderCrm(); syncShell(); }));
+    document.querySelectorAll("[data-animus-shell-view]").forEach((button) => button.addEventListener("click", () => { const view = button.dataset.animusShellView; if (view === "files" && typeof activateCrmFilter === "function") activateCrmFilter("open"); if (typeof switchCrmView === "function") switchCrmView(view); if (view === "files" && typeof renderCrm === "function") renderCrm(); syncShell(); }));
     document.addEventListener("click", (event) => { if (event.target.closest?.("[data-crm-view]")) setTimeout(syncShell, 0); });
     const observer = new MutationObserver(syncShell);
     ["crmExpensesView","crmRevenueView","crmPayrollView","crmCalendarView","crmContactsView","crmPriceView","crmBusinessView","crmEstimatorView"].map((id) => document.getElementById(id)).filter(Boolean).forEach((element) => observer.observe(element, { attributes:true, attributeFilter:["hidden"] }));
