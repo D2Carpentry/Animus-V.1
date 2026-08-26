@@ -269,7 +269,7 @@
     const entry = { ...draft, id:draft.id || expenseId(), amount:total, fileId:fileKey(file), items:draft.items.filter((item) => item.name.trim() || amount(item.price)).map((item) => ({...item,price:amount(item.price)})) };
     const response = await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},cache:"no-store",body:JSON.stringify({fileId:entry.fileId,expense:entry})});
     const payload = await response.json().catch(() => ({})); if (!response.ok || payload.ok === false) throw new Error(payload.error || "Expense could not be saved.");
-    state.entries = [{...payload.expense,fileId:entry.fileId,file},...state.entries.filter((item) => item.id !== payload.expense.id)]; state.selectedId = payload.expense.id; state.draft = null; state.editing = false; updateRevenue(file); render();
+    state.entries = [{...payload.expense,fileId:entry.fileId,file},...state.entries.filter((item) => item.id !== payload.expense.id)]; state.selectedId = ""; state.draft = null; state.editing = false; updateRevenue(file); render();
   }
 
   async function deleteSelected() { const entry = drawerData(); if (!entry?.id || !window.confirm("Delete this saved expense?")) return; const response = await fetch(`${API}?fileId=${encodeURIComponent(entry.fileId)}&expenseId=${encodeURIComponent(entry.id)}`,{method:"DELETE",cache:"no-store"}); const payload = await response.json().catch(() => ({})); if (!response.ok || payload.ok === false) throw new Error(payload.error || "Expense could not be deleted."); state.entries = state.entries.filter((item) => item.id !== entry.id); updateRevenue(findFile(entry.fileId)); state.selectedId=""; state.draft=null; state.editing=false; render(); }
