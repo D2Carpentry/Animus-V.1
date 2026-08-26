@@ -1745,6 +1745,7 @@ function renderFileList() {
   $("crmListTitle").textContent = $("crmFileFilter").selectedOptions[0].textContent;
   const filters = [
     ["all", "All Work Files", crmFiles.length],
+    ["open", "Open Files", crmFiles.filter(isOpenCrmFile).length],
     ["new", "New Leads", filesInCategory("new").length],
     ["contact", "Pending Contact", filesInCategory("contact").length],
     ["estimate", "Pending Estimates", filesInCategory("estimate").length],
@@ -8670,6 +8671,14 @@ document.addEventListener("click", (event) => {
       menu.hidden = true;
       $("animusWorkFileFilterButton")?.setAttribute("aria-expanded", "false");
     }
+  }
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") return;
+  const menu = $("animusWorkFileFilterMenu");
+  if (menu && !menu.hidden) {
+    menu.hidden = true;
+    $("animusWorkFileFilterButton")?.setAttribute("aria-expanded", "false");
   }
 });
 $("animusWorkFileSearch")?.addEventListener("input", renderCrm);

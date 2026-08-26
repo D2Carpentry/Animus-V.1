@@ -31,6 +31,17 @@
     const accountMenu = document.querySelector("#animusAccountMenu");
     [document.querySelector("#crmExportCurrentSnapshot"), document.querySelector("#crmCreateBackup"), document.querySelector("#crmLoadCloud"), document.querySelector("#crmImportBackupFile")].filter(Boolean).forEach((element) => accountMenu?.append(element));
     document.querySelector("#animusAccountToggle")?.addEventListener("click", () => { const menu = document.querySelector("#animusAccountMenu"); if (menu) menu.hidden = !menu.hidden; });
+    document.addEventListener("click", (event) => {
+      if (!event.target.closest?.(".animus-account-wrap")) {
+        const menu = document.querySelector("#animusAccountMenu");
+        if (menu) menu.hidden = true;
+      }
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape") return;
+      const menu = document.querySelector("#animusAccountMenu");
+      if (menu) menu.hidden = true;
+    });
     document.querySelectorAll("[data-animus-shell-view]").forEach((button) => button.addEventListener("click", () => { const view = button.dataset.animusShellView; if (view === "files" && typeof activateCrmFilter === "function") activateCrmFilter("active"); if (typeof switchCrmView === "function") switchCrmView(view); if (view === "files" && typeof renderCrm === "function") renderCrm(); syncShell(); }));
     document.addEventListener("click", (event) => { if (event.target.closest?.("[data-crm-view]")) setTimeout(syncShell, 0); });
     const observer = new MutationObserver(syncShell);
