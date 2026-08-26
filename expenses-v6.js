@@ -4,7 +4,7 @@
   const API = "/api/expenses";
   // "home" is the business-wide landing page. "file" is used only when a
   // Work File or Revenue row deliberately opens its own expense ledger.
-  const state = { entries: [], loaded: false, loading: false, selectedId: "", selectedIds: new Set(), scope: "all", mode: "home", tab: "processed", filters: {}, draft: null, editing: false, processStep: "", requestId: 0 };
+  const state = { entries: [], loaded: false, loading: false, selectedId: "", selectedIds: new Set(), scope: "all", mode: "home", tab: "processed", filters: {}, draft: null, editing: false, processStep: "", requestId: 0, searchCursor: null };
   const money = (value) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(value) || 0);
   const amount = (value) => Number(String(value || "").replace(/[$,]/g, "")) || 0;
   const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#039;" }[char]));
@@ -70,7 +70,8 @@
       if (state.filters.to && String(entry.date || "") > state.filters.to) return false;
       if (state.filters.imagesOnly && !hasReceiptImage(entry)) return false;
       if (!query) return true;
-      return [entry.vendor, entry.title, entry.category, entry.paymentType, entry.file?.clientName, entry.file?.fileNumber, entry.notes].some((value) => String(value || "").toLowerCase().includes(query));
+      const itemDetails = Array.isArray(entry.items) ? entry.items.flatMap((item) => [item?.name, item?.price, item?.category]) : [];
+      return [entry.vendor, entry.title, entry.imageTitle, entry.category, entry.paymentType, entry.date, entry.amount, entry.receiptImageKey, entry.file?.clientName, entry.file?.fileNumber, entry.notes, ...itemDetails].some((value) => String(value || "").toLowerCase().includes(query));
     });
   }
 
@@ -195,6 +196,15 @@
         : `<section class="expense-workspace expense-workspace-single"><section class="expense-table-card"><div class="expense-toolbar"><button class="expense-button small" id="expenseBackHome">← All expense files</button><input class="expense-search" id="expenseSearch" value="${esc(state.filters.query || "")}" placeholder="Search this file's expenses..."><select class="expense-select" id="expenseCategory"><option value="">Category</option>${categories.map((value) => `<option${state.filters.category === value ? " selected" : ""}>${esc(value)}</option>`).join("")}</select><select class="expense-select" id="expenseVendor"><option value="">Vendor</option>${vendors.map((value) => `<option${state.filters.vendor === value ? " selected" : ""}>${esc(value)}</option>`).join("")}</select><button class="expense-button danger small" id="expenseDeleteChecked"${state.selectedIds.size ? "" : " disabled"}>Delete Selected${state.selectedIds.size ? ` (${state.selectedIds.size})` : ""}</button><span class="expense-count">${rows.length} expense${rows.length === 1 ? "" : "s"}</span></div>${tableMarkup(rows)}</section></section>`;
     root.innerHTML = `<section class="expense-center"><aside class="expense-sidebar"><div class="expense-brand"><img src="assets/d2-logo.png" alt="D2 logo"><span>ANIMUS<small>Command Center</small></span></div><p class="expense-side-label">Workspace</p>${[["dashboard","⌂","Dashboard"],["calendar","□","Calendar"],["estimator","▤","Estimates"],["files","▱","Work Files"],["contacts","◉","Contacts"]].map(([view,icon,label]) => `<button class="expense-side-button" data-expense-view="${view}"><span class="expense-side-icon">${icon}</span>${label}</button>`).join("")}<p class="expense-side-label">Business</p>${[["revenue","↗","Revenue"],["expenses","▧","Expenses"],["payroll","♙","Payroll"],["prices","▦","Price Database"],["business","◈","Business Performance"]].map(([view,icon,label]) => `<button class="expense-side-button ${view === "expenses" ? "active" : ""}" data-expense-view="${view}"><span class="expense-side-icon">${icon}</span>${label}</button>`).join("")}<div class="expense-side-account"><strong>D2 Carpentry &amp; Design</strong>Owner</div></aside><main class="expense-main"><header class="expense-header"><div><p class="expense-breadcrumb">${breadcrumb}</p><h1 class="expense-title">${esc(pageTitle)}</h1></div><div class="expense-header-actions"><button class="expense-button primary" id="expenseUpload">↑ Upload Receipt</button><button class="expense-button" id="expenseRefresh">↻</button><input id="expenseUploadInput" type="file" accept="image/*" hidden></div></header><section class="expense-kpis expense-kpis-three"><article class="expense-kpi"><div class="expense-kpi-label">This Month Expenses</div><div class="expense-kpi-value">${money(headerThisMonth)}</div><div class="expense-kpi-note">${isHome ? "Across all saved work files" : "For this work file"}</div><div class="expense-kpi-mark">$</div></article><button type="button" class="expense-kpi expense-kpi-button" id="expenseReceiptImages"><div class="expense-kpi-label">Receipt Images</div><div class="expense-kpi-value">${headerEntries.filter(hasReceiptImage).length}</div><div class="expense-kpi-note">View uploaded receipt photos</div><div class="expense-kpi-mark">▣</div></button><article class="expense-kpi"><div class="expense-kpi-label">${isHome ? "YTD Expenses" : "File Expense Total"}</div><div class="expense-kpi-value">${money(isHome ? headerYtd : headerTotal)}</div><div class="expense-kpi-note">${isHome ? "All saved expenses this year" : "All saved costs on this file"}</div><div class="expense-kpi-mark">$</div></article></section>${body}</main></section>${detailModalMarkup()}`;
     bind();
+    if (state.searchCursor !== null) {
+      const search = document.querySelector("#expenseSearch");
+      if (search) {
+        search.focus();
+        const cursor = Math.min(state.searchCursor, search.value.length);
+        search.setSelectionRange(cursor, cursor);
+      }
+      state.searchCursor = null;
+    }
   }
 
   function captureDrawer() {
@@ -395,6 +405,8 @@
     document.querySelectorAll("[data-expense-view]").forEach((button) => button.addEventListener("click", () => { const view=button.dataset.expenseView; if (view !== "expenses") { setExpenseCenterMode(false); switchCrmView(view); } }));
     document.querySelectorAll("[data-expense-tab]").forEach((button) => button.addEventListener("click",()=>{state.tab=button.dataset.expenseTab;render();}));
     document.querySelector("#expenseRefresh")?.addEventListener("click",loadExpenses); document.querySelector("#expenseUpload")?.addEventListener("click",()=>document.querySelector("#expenseUploadInput")?.click()); document.querySelector("#expenseUploadInput")?.addEventListener("change",(event)=>scan(event.target.files?.[0]).catch((error)=>{state.processStep="";render();window.alert(error.message || "Receipt could not be read.");}));
+    const expenseSearchFocus = document.querySelector("#expenseSearch");
+    expenseSearchFocus?.addEventListener("input", () => { state.searchCursor = expenseSearchFocus.selectionStart ?? expenseSearchFocus.value.length; }, true);
     document.querySelector("#expenseBackHome")?.addEventListener("click", () => { state.mode = "home"; state.scope = "all"; state.selectedId = ""; state.selectedIds.clear(); state.draft = null; state.editing = false; state.filters.imagesOnly = false; render(); });
     document.querySelectorAll("[data-expense-file-open]").forEach((button) => button.addEventListener("click", () => { const file = findFile(button.dataset.expenseFileOpen); if (!file) return; if (typeof activeFileId !== "undefined") activeFileId = file.id; state.mode = "file"; state.scope = fileKey(file); state.selectedId = ""; state.draft = null; state.editing = false; render(); }));
     document.querySelector("#expenseSearch")?.addEventListener("input",(event)=>{state.filters.query=event.target.value;render();}); document.querySelector("#expenseScope")?.addEventListener("change",(event)=>{state.scope=event.target.value;render();}); document.querySelector("#expenseCategory")?.addEventListener("change",(event)=>{state.filters.category=event.target.value;render();}); document.querySelector("#expenseVendor")?.addEventListener("change",(event)=>{state.filters.vendor=event.target.value;render();}); document.querySelector("#expenseFrom")?.addEventListener("change",(event)=>{state.filters.from=event.target.value;render();}); document.querySelector("#expenseTo")?.addEventListener("change",(event)=>{state.filters.to=event.target.value;render();});
