@@ -8673,14 +8673,6 @@ document.addEventListener("click", (event) => {
     }
   }
 });
-document.addEventListener("keydown", (event) => {
-  if (event.key !== "Escape") return;
-  const menu = $("animusWorkFileFilterMenu");
-  if (menu && !menu.hidden) {
-    menu.hidden = true;
-    $("animusWorkFileFilterButton")?.setAttribute("aria-expanded", "false");
-  }
-});
 $("animusWorkFileSearch")?.addEventListener("input", renderCrm);
 $("animusWorkFileSearchButton")?.addEventListener("click", renderCrm);
 $("animusWorkFileSort")?.addEventListener("change", renderCrm);
