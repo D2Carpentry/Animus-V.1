@@ -1082,6 +1082,7 @@ function captureVisibleRevenueEdits() {
     const key = field.dataset.revenueField;
     if (["gross", "expenses", "labor"].includes(key)) {
       row[key] = parseMoney(field.value);
+      if (key === "gross") row.grossOverride = true;
       if (key === "labor") syncRevenueLaborToFile(row);
     } else if (key === "date") {
       row[key] = normalizeDate(field.value);
@@ -3574,14 +3575,15 @@ function ensureRevenueRowForFile(file) {
     receiptNotes: "",
     laborAssigns: "",
   };
+  const gross = baseRow.grossOverride ? parseMoney(baseRow.gross) : estimateTotal;
   const row = {
     ...baseRow,
     dashboardFileId: file.id,
     fileNumber,
     clientJob: `${file.clientName || "Unnamed Client"} - ${fileNumber}`,
-    gross: estimateTotal,
+    gross,
     expenses: materialTotal,
-    profit: estimateTotal - materialTotal - (Number(file.laborTotal) || Number(baseRow.labor) || 0),
+    profit: gross - materialTotal - (Number(file.laborTotal) || Number(baseRow.labor) || 0),
     attachedEstimate: {
       ...(baseRow.attachedEstimate || {}),
       ...(file.editableEstimate || {}),
@@ -3732,7 +3734,9 @@ function repairRevenueRowsFromFiles() {
     existing.fileNumber = existing.fileNumber || file.fileNumber || "";
     existing.clientJob = existing.clientJob || revenueLabelForFile(file);
     existing.date = existing.date || normalizeDate(file.startDate || file.anticipatedCompletionDate || todayIso(0));
-    if (!(Number(existing.gross) || 0) && gross) existing.gross = gross;
+    // Preserve a Revenue-page gross edit, including a deliberate $0 value.
+    // The work-file estimate remains the default only until Revenue is manually edited.
+    if (!existing.grossOverride && !(Number(existing.gross) || 0) && gross) existing.gross = gross;
     if (!(Number(existing.expenses) || 0) && expenses) existing.expenses = expenses;
     if (recordedExpenses) {
       existing.expenseLines = Array.isArray(file.expenseLines) ? file.expenseLines.map((line) => ({ ...line })) : [];
@@ -3880,6 +3884,7 @@ function updateRevenueRows() {
     const key = field.dataset.revenueField;
     if (["gross", "expenses", "labor"].includes(key)) {
       row[key] = parseMoney(field.value);
+      if (key === "gross") row.grossOverride = true;
       field.value = row[key] ? row[key] : "";
     } else if (key === "date") {
       row[key] = normalizeDate(field.value);
@@ -6047,6 +6052,7 @@ function updateRevenueField(field) {
   const key = field.dataset.revenueField;
   if (["gross", "expenses", "labor"].includes(key)) {
     row[key] = parseMoney(field.value);
+    if (key === "gross") row.grossOverride = true;
   } else if (key === "date") {
     row[key] = normalizeDate(field.value);
   } else {
@@ -8671,6 +8677,14 @@ document.addEventListener("click", (event) => {
       menu.hidden = true;
       $("animusWorkFileFilterButton")?.setAttribute("aria-expanded", "false");
     }
+  }
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") return;
+  const menu = $("animusWorkFileFilterMenu");
+  if (menu && !menu.hidden) {
+    menu.hidden = true;
+    $("animusWorkFileFilterButton")?.setAttribute("aria-expanded", "false");
   }
 });
 $("animusWorkFileSearch")?.addEventListener("input", renderCrm);
