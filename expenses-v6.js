@@ -118,10 +118,12 @@
   function receiptImageLibraryMarkup(entries) {
     if (state.loading) return `<section class="expense-home-card expense-empty">Loading saved receipt images...</section>`;
     if (!entries.length) return `<section class="expense-home-card expense-empty"><strong>No receipt images have been saved yet.</strong><span>Uploaded receipt photos will appear here after the expense is saved.</span></section>`;
-    return `<section class="expense-image-library"><div class="expense-library-head"><div><h2>Saved Receipt Images</h2><p>Every receipt photo saved in ANIMUS. Names come from the receipt name on its work file.</p></div><button class="expense-button small" id="expenseBackFromImages">← Back to Expenses</button></div><div class="expense-image-grid">${entries.map((entry) => {
+    return `<section class="expense-image-library"><div class="expense-library-head"><div><h2>Saved Receipt Images</h2><p>Open any receipt to review its photo and complete saved details.</p></div><button class="expense-button small" id="expenseBackFromImages">← Back to Expenses</button></div><div class="expense-image-list">${entries.map((entry) => {
       const file = findFile(entry.fileId) || entry.file || {};
-      const receiptName = entry.imageTitle || entry.title || entry.vendor || "Receipt image";
-      return `<button type="button" class="expense-image-card" data-expense-open="${esc(entry.id)}"><img src="${esc(receiptImageSrc(entry))}" alt="${esc(receiptName)}"><span><strong>${esc(receiptName)}</strong><small>${esc(shortDate(entry.date))} · ${esc(file.fileNumber || "Work file")}</small></span></button>`;
+      const receiptName = entry.title || entry.vendor || entry.imageTitle || "Receipt image";
+      const workFile = [file.fileNumber, file.clientName].filter(Boolean).join(" · ") || "Work file";
+      const itemDetail = Array.isArray(entry.items) ? entry.items.map((item) => item?.name).filter(Boolean).slice(0, 3).join(" · ") : "";
+      return `<button type="button" class="expense-image-list-row" data-expense-open="${esc(entry.id)}"><time>${esc(shortDate(entry.date))}</time><span><strong>${esc(receiptName)}</strong><small>${esc(itemDetail || entry.notes || "No item details saved")}</small></span><b>${esc(workFile)}</b><i>›</i></button>`;
     }).join("")}</div></section>`;
   }
 
