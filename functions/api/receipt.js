@@ -89,6 +89,7 @@ async function readReceiptWithOpenAi(env, imageDataUrl, fileName) {
                 "For date, use YYYY-MM-DD when visible; otherwise leave it blank.",
                 "For category, choose one of: Supplies, Materials, Hardware, Paint / Finish, Equipment, Labor, Fuel, Other.",
                 "For notes, summarize key purchased items and anything useful for bookkeeping.",
+                "For every line item, extract the quantity and the full line total. Also extract the single-unit price when visible; otherwise calculate unitPrice as line total divided by quantity when quantity is a clear number. If quantity or unit price cannot be determined from the receipt, leave it blank. Never treat a multi-pack or line total as the unit price.",
                 `File name: ${fileName || "receipt image"}.`,
               ].join("\n"),
             },
@@ -125,10 +126,11 @@ async function readReceiptWithOpenAi(env, imageDataUrl, fileName) {
                   properties: {
                     name: { type: "string" },
                     quantity: { type: "string" },
+                    unitPrice: { type: "string" },
                     total: { type: "string" },
                     category: { type: "string" },
                   },
-                  required: ["name", "quantity", "total", "category"],
+                  required: ["name", "quantity", "unitPrice", "total", "category"],
                 },
               },
             },
@@ -154,12 +156,20 @@ async function readReceiptWithOpenAi(env, imageDataUrl, fileName) {
     category: normalizeCategory(receipt.category || `${receipt.vendor || ""} ${receipt.notes || ""}`),
     notes: receipt.notes || "",
     lineItems: Array.isArray(receipt.lineItems)
-      ? receipt.lineItems.map((item) => ({
-        name: item.name || "",
-        quantity: item.quantity || "",
-        total: item.total || "",
-        category: normalizeCategory(item.category || receipt.category),
-      }))
+      ? receipt.lineItems.map((item) => {
+        const quantity = String(item.quantity || "").trim();
+        const parsedQuantity = Number(quantity.replace(/[^0-9.]/g, ""));
+        const lineTotal = parseMoney(item.total || item.amount);
+        const extractedUnitPrice = parseMoney(item.unitPrice || item.price);
+        const unitPrice = extractedUnitPrice || (parsedQuantity > 0 && lineTotal ? lineTotal / parsedQuantity : 0);
+        return {
+          name: item.name || "",
+          quantity,
+          unitPrice: unitPrice || "",
+          total: lineTotal || "",
+          category: normalizeCategory(item.category || receipt.category),
+        };
+      })
       : [],
     confidence: receipt.confidence || "needs-review",
   };
