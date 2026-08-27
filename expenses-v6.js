@@ -4,7 +4,8 @@
   const API = "/api/expenses";
   // "home" is the business-wide landing page. "file" is used only when a
   // Work File or Revenue row deliberately opens its own expense ledger.
-  const state = { entries: [], loaded: false, loading: false, selectedId: "", selectedIds: new Set(), scope: "all", mode: "home", tab: "processed", filters: {}, draft: null, editing: false, processStep: "", requestId: 0, searchCursor: null };
+  const COMPANY_EXPENSE_FILE = { id: "__animus_company_expenses__", fileNumber: "COMPANY", clientName: "Company Expenses", isCompanyExpense: true };
+  const state = { entries: [], companyEntries: [], loaded: false, loading: false, selectedId: "", selectedIds: new Set(), scope: "all", mode: "home", tab: "processed", filters: {}, draft: null, editing: false, processStep: "", requestId: 0, searchCursor: null, companyMode: false };
   const money = (value) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(value) || 0);
   const amount = (value) => Number(String(value || "").replace(/[$,]/g, "")) || 0;
   const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#039;" }[char]));
@@ -45,22 +46,24 @@
     state.loading = true;
     render();
     try {
-      const rows = await Promise.all(files().map(async (file) => {
+      const [rows, companyRows] = await Promise.all([Promise.all(files().map(async (file) => {
         try { return await apiGet(file); } catch (_) { return []; }
-      }));
+      })), apiGet(COMPANY_EXPENSE_FILE).catch(() => [])]);
       if (requestId !== state.requestId) return;
       state.entries = rows.flat().sort((a,b) => String(b.updatedAt || b.createdAt || "").localeCompare(String(a.updatedAt || a.createdAt || "")));
+      state.companyEntries = companyRows.sort((a,b) => String(b.updatedAt || b.createdAt || "").localeCompare(String(a.updatedAt || a.createdAt || "")));
       state.loaded = true;
     } finally {
       if (requestId === state.requestId) { state.loading = false; render(); }
     }
   }
 
-  function selectedEntry() { return state.entries.find((entry) => entry.id === state.selectedId) || null; }
+  function expenseEntries() { return state.companyMode ? state.companyEntries : state.entries; }
+  function selectedEntry() { return expenseEntries().find((entry) => entry.id === state.selectedId) || null; }
   function visibleEntries() {
     const query = String(state.filters.query || "").trim().toLowerCase();
     const tab = state.tab;
-    return state.entries.filter((entry) => {
+    return expenseEntries().filter((entry) => {
       if (state.scope !== "all" && entry.fileId !== state.scope) return false;
       if (tab === "categories" && state.filters.category && entry.category !== state.filters.category) return false;
       if (tab === "vendors" && state.filters.vendor && entry.vendor !== state.filters.vendor) return false;
@@ -77,7 +80,7 @@
 
   function thisMonthExpenses() {
     const month = new Date().toISOString().slice(0,7);
-    return state.entries.filter((entry) => String(entry.date || "").slice(0,7) === month).reduce((sum,entry) => sum + amount(entry.amount), 0);
+    return expenseEntries().filter((entry) => String(entry.date || "").slice(0,7) === month).reduce((sum,entry) => sum + amount(entry.amount), 0);
   }
 
   function fileExpenseGroups() {
@@ -107,6 +110,11 @@
     }).join("")}</div></section>`;
   }
 
+  function companyExpenseLaunchMarkup() {
+    const total = state.companyEntries.reduce((sum, entry) => sum + amount(entry.amount), 0);
+    return `<section class="expense-company-launch"><div><p class="expense-company-eyebrow">Company Ledger</p><h2>Company Expenses</h2><p>Keep tools, equipment, fuel, and other non-project costs separate from work-file expenses.</p></div><div class="expense-company-launch-actions"><span>${state.companyEntries.length} saved · ${money(total)}</span><button type="button" class="expense-button primary" id="expenseOpenCompany">Open Company Expenses</button></div></section>`;
+  }
+
   function receiptImageLibraryMarkup(entries) {
     if (state.loading) return `<section class="expense-home-card expense-empty">Loading saved receipt images...</section>`;
     if (!entries.length) return `<section class="expense-home-card expense-empty"><strong>No receipt images have been saved yet.</strong><span>Uploaded receipt photos will appear here after the expense is saved.</span></section>`;
@@ -125,7 +133,7 @@
     return `<div class="expense-processing">${steps.map((step,index) => `<div class="expense-processing-row ${index < current ? "done" : index === current ? "active" : ""}"><span class="expense-dot"></span>${step}</div>`).join("")}</div>`;
   }
 
-  function fileOptions(selected) { return [`<option value="">Choose customer / job</option>`, `<option value="all"${selected === "all" ? " selected" : ""}>All customer files</option>`, ...files().map((file) => `<option value="${esc(fileKey(file))}"${selected === fileKey(file) ? " selected" : ""}>${esc(file.fileNumber || "Project")} — ${esc(file.clientName || "Unnamed Client")}</option>`)].join(""); }
+  function fileOptions(selected) { if (state.companyMode) return `<option value="${COMPANY_EXPENSE_FILE.id}" selected>Company Expenses</option>`; return [`<option value="">Choose customer / job</option>`, `<option value="all"${selected === "all" ? " selected" : ""}>All customer files</option>`, ...files().map((file) => `<option value="${esc(fileKey(file))}"${selected === fileKey(file) ? " selected" : ""}>${esc(file.fileNumber || "Project")} — ${esc(file.clientName || "Unnamed Client")}</option>`)].join(""); }
   function categoryOptions(value) { return ["Supplies","Materials","Fuel","Equipment","Labor","Other"].map((item) => `<option${value === item ? " selected" : ""}>${item}</option>`).join(""); }
   function paymentOptions(value) { return ["","Cash","Credit - Chase Business","Credit - Bank of America","Credit - Chase Personal"].map((item) => `<option value="${esc(item)}"${value === item ? " selected" : ""}>${item || "Select"}</option>`).join(""); }
 
@@ -146,7 +154,7 @@
     if (state.processStep) return `<aside class="expense-drawer"><div class="expense-drawer-head"><h2>Reading receipt...</h2><button class="expense-close" id="expenseDrawerClose">×</button></div>${processingMarkup()}</aside>`;
     if (!data) return `<aside class="expense-drawer"><div class="expense-drawer-head"><h2>Receipt Details</h2></div><div class="expense-empty">Select a receipt to review its image, details, line items, and Price Database options.</div></aside>`;
     const editing = state.editing || Boolean(state.draft);
-    const file = findFile(data.fileId) || data.file;
+    const file = findFile(data.fileId) || data.file || (data.fileId === COMPANY_EXPENSE_FILE.id ? COMPANY_EXPENSE_FILE : null);
     const items = (data.items || []).filter((item) => item.name || amount(item.price));
     const info = editing ? `<div class="expense-detail-editor"><label>Customer / Job<select id="expenseDraftFile">${fileOptions(data.fileId)}</select></label><label>Expense Title<input id="expenseDraftTitle" value="${esc(data.title)}"></label><label>Receipt Image Name<input id="expenseDraftImageTitle" value="${esc(data.imageTitle)}" placeholder="Receipt image name"></label><label>Vendor<input id="expenseDraftVendor" value="${esc(data.vendor)}"></label><label>Date<input id="expenseDraftDate" type="date" value="${esc(data.date)}"></label><label>Receipt Total<input id="expenseDraftAmount" inputmode="decimal" value="${esc(data.amount)}"></label><label>Category<select id="expenseDraftCategory">${categoryOptions(data.category)}</select></label><label>Paid By<select id="expenseDraftPayment">${paymentOptions(data.paymentType)}</select></label></div>` : `<div class="expense-details"><div class="expense-detail"><span>Expense Title</span><b>${esc(data.title || data.vendor || "—")}</b></div><div class="expense-detail"><span>Receipt Image Name</span><b>${esc(data.imageTitle || "—")}</b></div><div class="expense-detail"><span>Vendor</span><b>${esc(data.vendor || "—")}</b></div><div class="expense-detail"><span>Total Amount</span><b>${money(data.amount)}</b></div><div class="expense-detail"><span>Category</span><b>${esc(data.category || "—")}</b></div><div class="expense-detail"><span>Paid By</span><b>${esc(data.paymentType || "—")}</b></div><div class="expense-detail"><span>Customer / Job</span><b>${esc(file ? `${file.fileNumber || "Project"} · ${file.clientName || "Unnamed"}` : "—")}</b></div></div>`;
     const itemMarkup = items.length ? items.map((item,index) => editing ? `<div class="expense-item"><input data-expense-item-name="${index}" value="${esc(item.name)}"><input data-expense-item-price="${index}" inputmode="decimal" value="${esc(item.price)}"></div>` : `<div class="expense-item"><span class="expense-item-name">${esc(item.name)}</span><b>${money(item.price)}</b><button class="expense-item-add" data-expense-item-import="${index}">Add to Price Database</button></div>`).join("") : `<div class="expense-item"><span>No line items were saved with this expense.</span></div>`;
@@ -176,23 +184,24 @@
     if (!root) return;
     setExpenseCenterMode(true);
     const rows = visibleEntries();
+    const currentEntries = expenseEntries();
     const groups = fileExpenseGroups();
-    const categories = [...new Set(state.entries.map((entry) => entry.category).filter(Boolean))];
-    const vendors = [...new Set(state.entries.map((entry) => entry.vendor).filter(Boolean))].sort();
+    const categories = [...new Set(currentEntries.map((entry) => entry.category).filter(Boolean))];
+    const vendors = [...new Set(currentEntries.map((entry) => entry.vendor).filter(Boolean))].sort();
     const activeTabs = [["inbox","Receipt Inbox"],["processed","Processed Expenses"],["history","Expense History"],["categories","Categories"],["vendors","Vendors"]];
-    const isHome = state.mode === "home";
-    const targetFile = state.scope !== "all" ? findFile(state.scope) : null;
+    const isHome = state.mode === "home" && !state.companyMode;
+    const targetFile = state.companyMode ? COMPANY_EXPENSE_FILE : (state.scope !== "all" ? findFile(state.scope) : null);
     const headerEntries = isHome ? state.entries : rows;
     const currentMonth = new Date().toISOString().slice(0, 7);
     const headerThisMonth = headerEntries.filter((entry) => String(entry.date || "").slice(0, 7) === currentMonth).reduce((sum, entry) => sum + amount(entry.amount), 0);
     const headerTotal = headerEntries.reduce((sum, entry) => sum + amount(entry.amount), 0);
     const headerYtd = headerEntries.filter((entry) => String(entry.date || "").slice(0, 4) === String(new Date().getFullYear())).reduce((sum, entry) => sum + amount(entry.amount), 0);
-    const pageTitle = isHome ? "Expenses" : (state.filters.imagesOnly && !targetFile ? "Receipt Images" : `${targetFile?.clientName || "Work File"} Expenses`);
-    const breadcrumb = isHome ? "Home &nbsp;›&nbsp; Expenses" : `Expenses &nbsp;›&nbsp; ${esc(targetFile?.fileNumber || "Work File")}`;
+    const pageTitle = isHome ? "Expenses" : (state.companyMode ? "Company Expenses" : (state.filters.imagesOnly && !targetFile ? "Receipt Images" : `${targetFile?.clientName || "Work File"} Expenses`));
+    const breadcrumb = isHome ? "Home &nbsp;›&nbsp; Expenses" : (state.companyMode ? "Expenses &nbsp;›&nbsp; Company Expenses" : `Expenses &nbsp;›&nbsp; ${esc(targetFile?.fileNumber || "Work File")}`);
     const body = state.filters.imagesOnly
       ? `<section class="expense-home-workspace">${receiptImageLibraryMarkup(rows)}</section>`
       : isHome
-        ? `<section class="expense-home-workspace">${expenseHomeMarkup()}</section>`
+        ? `<section class="expense-home-workspace">${companyExpenseLaunchMarkup()}${expenseHomeMarkup()}</section>`
         : `<section class="expense-workspace expense-workspace-single"><section class="expense-table-card"><div class="expense-toolbar"><button class="expense-button small" id="expenseBackHome">← All expense files</button><input class="expense-search" id="expenseSearch" value="${esc(state.filters.query || "")}" placeholder="Search this file's expenses..."><select class="expense-select" id="expenseCategory"><option value="">Category</option>${categories.map((value) => `<option${state.filters.category === value ? " selected" : ""}>${esc(value)}</option>`).join("")}</select><select class="expense-select" id="expenseVendor"><option value="">Vendor</option>${vendors.map((value) => `<option${state.filters.vendor === value ? " selected" : ""}>${esc(value)}</option>`).join("")}</select><button class="expense-button danger small" id="expenseDeleteChecked"${state.selectedIds.size ? "" : " disabled"}>Delete Selected${state.selectedIds.size ? ` (${state.selectedIds.size})` : ""}</button><span class="expense-count">${rows.length} expense${rows.length === 1 ? "" : "s"}</span></div>${tableMarkup(rows)}</section></section>`;
     root.innerHTML = `<section class="expense-center"><aside class="expense-sidebar"><div class="expense-brand"><img src="assets/d2-logo.png" alt="D2 logo"><span>ANIMUS<small>Command Center</small></span></div><p class="expense-side-label">Workspace</p>${[["dashboard","⌂","Dashboard"],["calendar","□","Calendar"],["estimator","▤","Estimates"],["files","▱","Work Files"],["contacts","◉","Contacts"]].map(([view,icon,label]) => `<button class="expense-side-button" data-expense-view="${view}"><span class="expense-side-icon">${icon}</span>${label}</button>`).join("")}<p class="expense-side-label">Business</p>${[["revenue","↗","Revenue"],["expenses","▧","Expenses"],["payroll","♙","Payroll"],["prices","▦","Price Database"],["business","◈","Business Performance"]].map(([view,icon,label]) => `<button class="expense-side-button ${view === "expenses" ? "active" : ""}" data-expense-view="${view}"><span class="expense-side-icon">${icon}</span>${label}</button>`).join("")}<div class="expense-side-account"><strong>D2 Carpentry &amp; Design</strong>Owner</div></aside><main class="expense-main"><header class="expense-header"><div><p class="expense-breadcrumb">${breadcrumb}</p><h1 class="expense-title">${esc(pageTitle)}</h1></div><div class="expense-header-actions"><button class="expense-button primary" id="expenseUpload">↑ Upload Receipt</button><button class="expense-button" id="expenseRefresh">↻</button><input id="expenseUploadInput" type="file" accept="image/*" hidden></div></header><section class="expense-kpis expense-kpis-three"><article class="expense-kpi"><div class="expense-kpi-label">This Month Expenses</div><div class="expense-kpi-value">${money(headerThisMonth)}</div><div class="expense-kpi-note">${isHome ? "Across all saved work files" : "For this work file"}</div><div class="expense-kpi-mark">$</div></article><button type="button" class="expense-kpi expense-kpi-button" id="expenseReceiptImages"><div class="expense-kpi-label">Receipt Images</div><div class="expense-kpi-value">${headerEntries.filter(hasReceiptImage).length}</div><div class="expense-kpi-note">View uploaded receipt photos</div><div class="expense-kpi-mark">▣</div></button><article class="expense-kpi"><div class="expense-kpi-label">${isHome ? "YTD Expenses" : "File Expense Total"}</div><div class="expense-kpi-value">${money(isHome ? headerYtd : headerTotal)}</div><div class="expense-kpi-note">${isHome ? "All saved expenses this year" : "All saved costs on this file"}</div><div class="expense-kpi-mark">$</div></article></section>${body}</main></section>${detailModalMarkup()}`;
     bind();
@@ -225,8 +234,8 @@
 
   async function scan(file) {
     if (!file) return;
-    const targetFileId = state.scope !== "all" ? state.scope : fileKey(typeof activeFile === "function" ? activeFile() : null);
-    if (!targetFileId || !findFile(targetFileId)) {
+    const targetFileId = state.companyMode ? COMPANY_EXPENSE_FILE.id : (state.scope !== "all" ? state.scope : fileKey(typeof activeFile === "function" ? activeFile() : null));
+    if (!targetFileId || (!state.companyMode && !findFile(targetFileId))) {
       window.alert("Select the customer / job first. Every receipt must be saved to a work file.");
       return;
     }
@@ -252,7 +261,7 @@
   }
 
   function updateRevenue(file) {
-    if (!file || typeof ensureExpenseRevenueRowForFile !== "function") return;
+    if (!file || file.isCompanyExpense || typeof ensureExpenseRevenueRowForFile !== "function") return;
     const relevant = state.entries.filter((entry) => entry.fileId === fileKey(file));
     // The cloud receipt list is mirrored to the original work-file ledger so
     // Work Files, Revenue, and the Expense Center all read the same records.
@@ -272,30 +281,34 @@
   }
 
   async function saveDrawer() {
-    captureDrawer(); const draft = state.draft; const file = findFile(draft.fileId);
+    captureDrawer(); const draft = state.draft; const file = findFile(draft.fileId) || (draft.fileId === COMPANY_EXPENSE_FILE.id ? COMPANY_EXPENSE_FILE : null);
     if (!file) return window.alert("Choose the customer / job before saving this expense.");
     const total = amount(draft.amount) || draft.items.reduce((sum,item) => sum + amount(item.price),0);
     if (!total) return window.alert("Add a receipt total or a priced line item before saving.");
     const entry = { ...draft, id:draft.id || expenseId(), amount:total, fileId:fileKey(file), items:draft.items.filter((item) => item.name.trim() || amount(item.price)).map((item) => ({...item,price:amount(item.price)})) };
     const response = await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},cache:"no-store",body:JSON.stringify({fileId:entry.fileId,expense:entry})});
     const payload = await response.json().catch(() => ({})); if (!response.ok || payload.ok === false) throw new Error(payload.error || "Expense could not be saved.");
-    state.entries = [{...payload.expense,fileId:entry.fileId,file},...state.entries.filter((item) => item.id !== payload.expense.id)]; state.selectedId = ""; state.draft = null; state.editing = false; updateRevenue(file); render();
+    const savedEntry = {...payload.expense,fileId:entry.fileId,file};
+    if (state.companyMode) state.companyEntries = [savedEntry,...state.companyEntries.filter((item) => item.id !== payload.expense.id)];
+    else state.entries = [savedEntry,...state.entries.filter((item) => item.id !== payload.expense.id)];
+    state.selectedId = ""; state.draft = null; state.editing = false; updateRevenue(file); render();
   }
 
-  async function deleteSelected() { const entry = drawerData(); if (!entry?.id || !window.confirm("Delete this saved expense?")) return; const response = await fetch(`${API}?fileId=${encodeURIComponent(entry.fileId)}&expenseId=${encodeURIComponent(entry.id)}`,{method:"DELETE",cache:"no-store"}); const payload = await response.json().catch(() => ({})); if (!response.ok || payload.ok === false) throw new Error(payload.error || "Expense could not be deleted."); state.entries = state.entries.filter((item) => item.id !== entry.id); updateRevenue(findFile(entry.fileId)); state.selectedId=""; state.draft=null; state.editing=false; render(); }
+  async function deleteSelected() { const entry = drawerData(); if (!entry?.id || !window.confirm("Delete this saved expense?")) return; const response = await fetch(`${API}?fileId=${encodeURIComponent(entry.fileId)}&expenseId=${encodeURIComponent(entry.id)}`,{method:"DELETE",cache:"no-store"}); const payload = await response.json().catch(() => ({})); if (!response.ok || payload.ok === false) throw new Error(payload.error || "Expense could not be deleted."); if (state.companyMode) state.companyEntries = state.companyEntries.filter((item) => item.id !== entry.id); else state.entries = state.entries.filter((item) => item.id !== entry.id); updateRevenue(findFile(entry.fileId)); state.selectedId=""; state.draft=null; state.editing=false; render(); }
 
   async function deleteCheckedExpenses() {
     const ids = [...state.selectedIds];
     if (!ids.length) return;
     if (window.prompt(`Delete ${ids.length} selected expense${ids.length === 1 ? "" : "s"}? Enter D2 to continue.`) !== "D2") return;
-    const selected = state.entries.filter((entry) => ids.includes(entry.id));
+    const selected = expenseEntries().filter((entry) => ids.includes(entry.id));
     for (const entry of selected) {
       const response = await fetch(`${API}?fileId=${encodeURIComponent(entry.fileId)}&expenseId=${encodeURIComponent(entry.id)}`, { method:"DELETE", cache:"no-store" });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok || payload.ok === false) throw new Error(payload.error || `Could not delete ${entry.title || entry.vendor || "an expense"}.`);
     }
     const changedFileIds = [...new Set(selected.map((entry) => entry.fileId))];
-    state.entries = state.entries.filter((entry) => !state.selectedIds.has(entry.id));
+    if (state.companyMode) state.companyEntries = state.companyEntries.filter((entry) => !state.selectedIds.has(entry.id));
+    else state.entries = state.entries.filter((entry) => !state.selectedIds.has(entry.id));
     state.selectedIds.clear();
     changedFileIds.forEach((fileId) => updateRevenue(findFile(fileId)));
     render();
@@ -407,10 +420,11 @@
     document.querySelector("#expenseRefresh")?.addEventListener("click",loadExpenses); document.querySelector("#expenseUpload")?.addEventListener("click",()=>document.querySelector("#expenseUploadInput")?.click()); document.querySelector("#expenseUploadInput")?.addEventListener("change",(event)=>scan(event.target.files?.[0]).catch((error)=>{state.processStep="";render();window.alert(error.message || "Receipt could not be read.");}));
     const expenseSearchFocus = document.querySelector("#expenseSearch");
     expenseSearchFocus?.addEventListener("input", () => { state.searchCursor = expenseSearchFocus.selectionStart ?? expenseSearchFocus.value.length; }, true);
-    document.querySelector("#expenseBackHome")?.addEventListener("click", () => { state.mode = "home"; state.scope = "all"; state.selectedId = ""; state.selectedIds.clear(); state.draft = null; state.editing = false; state.filters.imagesOnly = false; render(); });
-    document.querySelectorAll("[data-expense-file-open]").forEach((button) => button.addEventListener("click", () => { const file = findFile(button.dataset.expenseFileOpen); if (!file) return; if (typeof activeFileId !== "undefined") activeFileId = file.id; state.mode = "file"; state.scope = fileKey(file); state.selectedId = ""; state.draft = null; state.editing = false; render(); }));
+    document.querySelector("#expenseBackHome")?.addEventListener("click", () => { state.mode = "home"; state.scope = "all"; state.companyMode = false; state.selectedId = ""; state.selectedIds.clear(); state.draft = null; state.editing = false; state.filters.imagesOnly = false; render(); });
+    document.querySelector("#expenseOpenCompany")?.addEventListener("click", () => { state.mode = "file"; state.scope = COMPANY_EXPENSE_FILE.id; state.companyMode = true; state.selectedId = ""; state.selectedIds.clear(); state.draft = null; state.editing = false; state.filters.imagesOnly = false; render(); });
+    document.querySelectorAll("[data-expense-file-open]").forEach((button) => button.addEventListener("click", () => { const file = findFile(button.dataset.expenseFileOpen); if (!file) return; if (typeof activeFileId !== "undefined") activeFileId = file.id; state.mode = "file"; state.scope = fileKey(file); state.companyMode = false; state.selectedId = ""; state.draft = null; state.editing = false; render(); }));
     document.querySelector("#expenseSearch")?.addEventListener("input",(event)=>{state.filters.query=event.target.value;render();}); document.querySelector("#expenseScope")?.addEventListener("change",(event)=>{state.scope=event.target.value;render();}); document.querySelector("#expenseCategory")?.addEventListener("change",(event)=>{state.filters.category=event.target.value;render();}); document.querySelector("#expenseVendor")?.addEventListener("change",(event)=>{state.filters.vendor=event.target.value;render();}); document.querySelector("#expenseFrom")?.addEventListener("change",(event)=>{state.filters.from=event.target.value;render();}); document.querySelector("#expenseTo")?.addEventListener("change",(event)=>{state.filters.to=event.target.value;render();});
-    document.querySelector("#expenseReceiptImages")?.addEventListener("click",()=>{state.mode="file"; state.scope="all"; state.filters.imagesOnly=true; state.selectedId=""; state.draft=null; state.editing=false; render();});
+    document.querySelector("#expenseReceiptImages")?.addEventListener("click",()=>{state.mode="file"; state.scope="all"; state.companyMode=false; state.filters.imagesOnly=true; state.selectedId=""; state.draft=null; state.editing=false; render();});
     document.querySelector("#expenseBackFromImages")?.addEventListener("click", () => { state.mode = "home"; state.scope = "all"; state.selectedId = ""; state.draft = null; state.editing = false; state.filters.imagesOnly = false; render(); });
     document.querySelectorAll("[data-expense-check]").forEach((checkbox)=>checkbox.addEventListener("change",()=>{if(checkbox.checked) state.selectedIds.add(checkbox.dataset.expenseCheck); else state.selectedIds.delete(checkbox.dataset.expenseCheck); render();}));
     document.querySelector("#expenseDeleteChecked")?.addEventListener("click",()=>deleteCheckedExpenses().catch((error)=>window.alert(error.message || "Selected expenses could not be deleted.")));
@@ -429,6 +443,7 @@
         const file = typeof activeFile === "function" ? activeFile() : null;
         state.mode = fileScoped && file ? "file" : "home";
         state.scope = fileScoped && file ? fileKey(file) : "all";
+        state.companyMode = false;
         state.selectedId = "";
         state.draft = null;
         state.editing = false;
@@ -443,6 +458,7 @@
       const file = typeof activeFile === "function" ? activeFile() : null;
       state.scope = fileKey(file) || "all";
       state.mode = file ? "file" : "home";
+      state.companyMode = false;
       state.selectedId = "";
       if (typeof switchCrmView === "function") switchCrmView("expenses", { expenseScope: "file" }); else render();
       if (!state.loaded && !state.loading) loadExpenses();
@@ -457,6 +473,7 @@
       const file = typeof activeFile === "function" ? activeFile() : null;
       state.scope = fileKey(file) || "all";
       state.mode = file ? "file" : "home";
+      state.companyMode = false;
       state.selectedId = "";
       render();
       if (!state.loaded && !state.loading) loadExpenses();
