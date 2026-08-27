@@ -4072,6 +4072,11 @@ body[data-copy-mode="team"] .estimate-sheet td:first-child {
   font-weight: 900;
 }
 
+.crm-profit-value.is-negative,
+.crm-revenue-summary strong.is-negative {
+  color: #dc2626;
+}
+
 .crm-revenue-actions {
   display: flex;
   flex-wrap: wrap;

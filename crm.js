@@ -3773,7 +3773,9 @@ function renderRevenue() {
   $("crmRevenueGross").textContent = crmCurrency.format(totals.gross);
   $("crmRevenueExpenses").textContent = crmCurrency.format(totals.expenses);
   $("crmRevenueLabor").textContent = crmCurrency.format(totals.labor);
-  $("crmRevenueProfit").textContent = crmCurrency.format(totals.profit);
+  const profitSummary = $("crmRevenueProfit");
+  profitSummary.textContent = crmCurrency.format(totals.profit);
+  profitSummary.classList.toggle("is-negative", totals.profit < 0);
 
   const sortControl = $("crmRevenueDateSort");
   if (sortControl) sortControl.value = crmRevenueDateSort;
@@ -3803,7 +3805,7 @@ function renderRevenue() {
           <td><input class="crm-revenue-input crm-money-input" inputmode="decimal" value="${escapeHtml(Number(row.gross) || "")}" data-revenue-edit="${escapeHtml(row.id)}" data-revenue-field="gross" placeholder="0"></td>
           <td><input class="crm-revenue-input crm-money-input" inputmode="decimal" value="${escapeHtml(Number(row.expenses) || "")}" data-revenue-edit="${escapeHtml(row.id)}" data-revenue-field="expenses" placeholder="0"></td>
           <td><input class="crm-revenue-input crm-money-input" inputmode="decimal" value="${escapeHtml(Number(row.labor) || "")}" data-revenue-edit="${escapeHtml(row.id)}" data-revenue-field="labor" placeholder="0"></td>
-          <td><strong class="crm-profit-value">${crmCurrency.format(revenueProfit(row))}</strong></td>
+          <td><strong class="crm-profit-value ${revenueProfit(row) < 0 ? "is-negative" : ""}">${crmCurrency.format(revenueProfit(row))}</strong></td>
           <td><button type="button" class="crm-table-action-button" data-revenue-expenses="${escapeHtml(row.id)}">View Expenses</button></td>
           <td><button type="button" class="crm-table-action-button" data-revenue-payroll="${escapeHtml(row.id)}">Payroll</button></td>
           <td class="crm-revenue-actions">
