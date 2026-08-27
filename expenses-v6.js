@@ -17,6 +17,7 @@
   const expenseId = () => `expense-v6-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   const receiptImageSrc = (entry = {}) => String(entry.imageDataUrl || entry.receiptImageUrl || "");
   const hasReceiptImage = (entry = {}) => Boolean(receiptImageSrc(entry));
+  const isPdfReceipt = (entry = {}) => String(entry.receiptContentType || "").toLowerCase() === "application/pdf" || /\.pdf$/i.test(String(entry.imageTitle || "")) || /^data:application\/pdf/i.test(String(entry.imageDataUrl || ""));
   const fileKey = (file) => String(file?.id || file?.fileNumber || "").trim();
   const files = () => typeof crmFiles !== "undefined" && Array.isArray(crmFiles) ? crmFiles : [];
   const findFile = (id) => files().find((file) => fileKey(file) === id || file.id === id) || null;
@@ -25,7 +26,7 @@
     return {
       id: source.id || "", fileId: source.fileId || fileKey(typeof activeFile === "function" ? activeFile() : null), date: source.date || today(), vendor: source.vendor || "", title: source.title || "",
       category: source.category || "Supplies", paymentType: source.paymentType || "", amount: source.amount === undefined ? "" : String(source.amount), notes: source.notes || "",
-      imageDataUrl: source.imageDataUrl || "", receiptImageKey: source.receiptImageKey || "", receiptImageUrl: source.receiptImageUrl || "", imageTitle: source.imageTitle || "",
+      imageDataUrl: source.imageDataUrl || "", receiptImageKey: source.receiptImageKey || "", receiptImageUrl: source.receiptImageUrl || "", receiptContentType: source.receiptContentType || "", imageTitle: source.imageTitle || "",
       items: Array.isArray(source.items) && source.items.length ? source.items.map((item) => ({ name:item.name || "", quantity:item.quantity === undefined ? "" : String(item.quantity), price:item.price === undefined ? "" : String(item.price), lineTotal:item.lineTotal === undefined ? "" : String(item.lineTotal), category:item.category || source.category || "Supplies" })) : [{ name:"", quantity:"", price:"", lineTotal:"", category:source.category || "Supplies" }],
     };
   }
@@ -146,7 +147,7 @@
       const selected = entry.id === state.selectedId;
       const title = entry.title || entry.vendor || "Untitled expense";
       const imageSrc = receiptImageSrc(entry);
-      const receipt = imageSrc ? `<img src="${esc(imageSrc)}" alt="Receipt">` : "▤";
+      const receipt = imageSrc ? (isPdfReceipt(entry) ? "PDF" : `<img src="${esc(imageSrc)}" alt="Receipt">`) : "▤";
       return `<tr class="${selected ? "selected" : ""}"><td><input class="expense-check" type="checkbox" data-expense-check="${esc(entry.id)}"${state.selectedIds.has(entry.id) ? " checked" : ""} aria-label="Select ${esc(title)}"></td><td><button type="button" class="expense-thumb expense-thumb-button" data-expense-open="${esc(entry.id)}" aria-label="Open ${esc(title)}">${receipt}</button></td><td>${esc(shortDate(entry.date))}</td><td><button type="button" class="expense-name-button" data-expense-open="${esc(entry.id)}"><strong>${esc(title)}</strong><small>${esc(entry.vendor || "No vendor")}</small></button></td><td class="expense-amount">${money(entry.amount)}</td></tr>`;
     }).join("")}</tbody></table>`;
   }
@@ -161,7 +162,12 @@
     const info = editing ? `<div class="expense-detail-editor"><label>Customer / Job<select id="expenseDraftFile">${fileOptions(data.fileId)}</select></label><label>Expense Title<input id="expenseDraftTitle" value="${esc(data.title)}"></label><label>Receipt Image Name<input id="expenseDraftImageTitle" value="${esc(data.imageTitle)}" placeholder="Receipt image name"></label><label>Vendor<input id="expenseDraftVendor" value="${esc(data.vendor)}"></label><label>Date<input id="expenseDraftDate" type="date" value="${esc(data.date)}"></label><label>Receipt Total<input id="expenseDraftAmount" inputmode="decimal" value="${esc(data.amount)}"></label><label>Category<select id="expenseDraftCategory">${categoryOptions(data.category)}</select></label><label>Paid By<select id="expenseDraftPayment">${paymentOptions(data.paymentType)}</select></label></div>` : `<div class="expense-details"><div class="expense-detail"><span>Expense Title</span><b>${esc(data.title || data.vendor || "—")}</b></div><div class="expense-detail"><span>Receipt Image Name</span><b>${esc(data.imageTitle || "—")}</b></div><div class="expense-detail"><span>Vendor</span><b>${esc(data.vendor || "—")}</b></div><div class="expense-detail"><span>Total Amount</span><b>${money(data.amount)}</b></div><div class="expense-detail"><span>Category</span><b>${esc(data.category || "—")}</b></div><div class="expense-detail"><span>Paid By</span><b>${esc(data.paymentType || "—")}</b></div><div class="expense-detail"><span>Customer / Job</span><b>${esc(file ? `${file.fileNumber || "Project"} · ${file.clientName || "Unnamed"}` : "—")}</b></div></div>`;
     const itemMarkup = items.length ? items.map((item,index) => editing ? `<div class="expense-item"><input data-expense-item-name="${index}" value="${esc(item.name)}" placeholder="Item"><input data-expense-item-quantity="${index}" inputmode="decimal" value="${esc(item.quantity)}" placeholder="Qty"><input data-expense-item-price="${index}" inputmode="decimal" value="${esc(item.price)}" placeholder="Unit price"></div>` : `<div class="expense-item"><span class="expense-item-name">${esc(item.name)}</span><small>${item.quantity ? `Qty ${esc(item.quantity)} · ` : ""}Unit ${money(item.price)}${item.lineTotal ? ` · Line total ${money(item.lineTotal)}` : ""}</small></div>`).join("") : `<div class="expense-item"><span>No line items were saved with this expense.</span></div>`;
     const imageSrc = receiptImageSrc(data);
-    return `<aside class="expense-drawer"><div class="expense-drawer-head"><h2>Receipt Details</h2><button class="expense-close" id="expenseDrawerClose">×</button></div><div class="expense-drawer-status"><span class="expense-status ${imageSrc ? "" : "manual"}">${imageSrc ? "Receipt saved" : "Manual expense"}</span><small>${data.receiptImageKey ? "Photo backed up in ANIMUS cloud storage." : "AI confidence is not stored by the current scanner."}</small></div>${imageSrc ? `<button type="button" class="expense-preview expense-preview-button" id="expenseImagePreviewButton" aria-label="Open larger receipt image"><img src="${esc(imageSrc)}" alt="Receipt image"><span>Click to enlarge</span></button>` : `<div class="expense-preview">No receipt image</div>`}<p class="expense-drawer-vendor">${esc(data.title || data.vendor || "New Expense")}</p><p class="expense-drawer-meta">${esc(data.date || "No date")} · ${esc(data.imageTitle || "No receipt reference")}</p><section class="expense-detail-section"><div class="expense-section-top"><h3>Extracted Information</h3><button class="expense-button primary small" id="expenseEditToggle" style="background:#2563eb!important;color:#fff!important;border-color:#2563eb!important">${editing ? "Done" : "Edit"}</button></div>${info}</section><section class="expense-detail-section"><div class="expense-section-top"><h3>Items (${items.length})</h3><button class="expense-link-button" id="expenseImportAll">Add to Price Database</button></div><div id="expenseDrawerItems">${itemMarkup}</div></section><section class="expense-detail-section"><h3>Notes <span style="color:#94a3b8;font-weight:600">(Optional)</span></h3>${editing ? `<textarea id="expenseDraftNotes">${esc(data.notes)}</textarea>` : `<p style="margin:10px 0 0;color:#64748b;font-size:12px;white-space:pre-wrap">${esc(data.notes || "No notes")}</p>`}</section><div class="expense-drawer-actions"><button class="expense-button danger" id="expenseDelete">Delete</button><button class="expense-button primary" id="expenseSave">Save</button></div></aside>`;
+    const receiptPreview = imageSrc
+      ? (isPdfReceipt(data)
+        ? `<a class="expense-preview expense-preview-button" href="${esc(imageSrc)}" target="_blank" rel="noopener"><span>Open saved PDF receipt</span></a>`
+        : `<button type="button" class="expense-preview expense-preview-button" id="expenseImagePreviewButton" aria-label="Open larger receipt image"><img src="${esc(imageSrc)}" alt="Receipt image"><span>Click to enlarge</span></button>`)
+      : `<div class="expense-preview">No receipt attachment</div>`;
+    return `<aside class="expense-drawer"><div class="expense-drawer-head"><h2>Receipt Details</h2><button class="expense-close" id="expenseDrawerClose">×</button></div><div class="expense-drawer-status"><span class="expense-status ${imageSrc ? "" : "manual"}">${imageSrc ? "Receipt saved" : "Manual expense"}</span><small>${data.receiptImageKey ? "Receipt backed up in ANIMUS cloud storage." : "AI confidence is not stored by the current scanner."}</small></div>${receiptPreview}<p class="expense-drawer-vendor">${esc(data.title || data.vendor || "New Expense")}</p><p class="expense-drawer-meta">${esc(data.date || "No date")} · ${esc(data.imageTitle || "No receipt reference")}</p><section class="expense-detail-section"><div class="expense-section-top"><h3>Extracted Information</h3><button class="expense-button primary small" id="expenseEditToggle" style="background:#2563eb!important;color:#fff!important;border-color:#2563eb!important">${editing ? "Done" : "Edit"}</button></div>${info}</section><section class="expense-detail-section"><div class="expense-section-top"><h3>Items (${items.length})</h3><button class="expense-link-button" id="expenseImportAll">Add to Price Database</button></div><div id="expenseDrawerItems">${itemMarkup}</div></section><section class="expense-detail-section"><h3>Notes <span style="color:#94a3b8;font-weight:600">(Optional)</span></h3>${editing ? `<textarea id="expenseDraftNotes">${esc(data.notes)}</textarea>` : `<p style="margin:10px 0 0;color:#64748b;font-size:12px;white-space:pre-wrap">${esc(data.notes || "No notes")}</p>`}</section><div class="expense-drawer-actions"><button class="expense-button danger" id="expenseDelete">Delete</button><button class="expense-button primary" id="expenseSave">Save</button></div></aside>`;
   }
 
   function openReceiptImagePreview(src, alt = "Receipt image") {
@@ -243,9 +249,10 @@
       return;
     }
     state.scope = targetFileId;
-    state.draft = cleanDraft({ fileId: targetFileId, imageTitle:file.name });
+    if (file.type !== "application/pdf" && !String(file.type || "").startsWith("image/")) throw new Error("Choose an image or PDF receipt.");
+    state.draft = cleanDraft({ fileId: targetFileId, imageTitle:file.name, receiptContentType:file.type || "" });
     state.processStep = "Reading receipt"; render();
-    if (typeof showReceiptLoading === "function") showReceiptLoading("Reading receipt photo with AI...");
+    if (typeof showReceiptLoading === "function") showReceiptLoading(file.type === "application/pdf" ? "Reading receipt PDF with AI..." : "Reading receipt photo with AI...");
     try {
       const imageDataUrl = await new Promise((resolve,reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(file); });
       state.processStep = "Identifying vendor"; render();
@@ -254,7 +261,7 @@
       if (!response.ok || payload.ok === false) throw new Error(payload.error || "Receipt AI could not read that image.");
       const receipt = payload.receipt || {};
       state.processStep = "Preparing expense record"; render();
-      state.draft = cleanDraft({ ...state.draft, date:receipt.date || today(), vendor:receipt.vendor || "", title:receipt.vendor || file.name.replace(/\.[^.]+$/, ""), category:receipt.category || "Supplies", paymentType:receipt.paymentType || "", amount:receipt.total || "", notes:receipt.notes || "", imageDataUrl, imageTitle:file.name, items:(receipt.lineItems || []).map((item) => ({name:item.name || "",quantity:item.quantity || "",price:item.unitPrice || item.price || "",lineTotal:item.total || "",category:item.category || receipt.category || "Supplies"})) });
+      state.draft = cleanDraft({ ...state.draft, date:receipt.date || today(), vendor:receipt.vendor || "", title:receipt.vendor || file.name.replace(/\.[^.]+$/, ""), category:receipt.category || "Supplies", paymentType:receipt.paymentType || "", amount:receipt.total || "", notes:receipt.notes || "", imageDataUrl, imageTitle:file.name, receiptContentType:file.type || "", items:(receipt.lineItems || []).map((item) => ({name:item.name || "",quantity:item.quantity || "",price:item.unitPrice || item.price || "",lineTotal:item.total || "",category:item.category || receipt.category || "Supplies"})) });
       state.editing = true;
     } finally {
       state.processStep = "";
@@ -418,6 +425,8 @@
   }
 
   function bind() {
+    const receiptUploadInput = document.querySelector("#expenseUploadInput");
+    if (receiptUploadInput) receiptUploadInput.accept = "image/*,application/pdf";
     document.querySelectorAll("[data-expense-view]").forEach((button) => button.addEventListener("click", () => { const view=button.dataset.expenseView; if (view !== "expenses") { setExpenseCenterMode(false); switchCrmView(view); } }));
     document.querySelectorAll("[data-expense-tab]").forEach((button) => button.addEventListener("click",()=>{state.tab=button.dataset.expenseTab;render();}));
     document.querySelector("#expenseRefresh")?.addEventListener("click",loadExpenses); document.querySelector("#expenseUpload")?.addEventListener("click",()=>document.querySelector("#expenseUploadInput")?.click()); document.querySelector("#expenseUploadInput")?.addEventListener("change",(event)=>scan(event.target.files?.[0]).catch((error)=>{state.processStep="";render();window.alert(error.message || "Receipt could not be read.");}));

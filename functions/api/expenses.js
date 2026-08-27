@@ -44,7 +44,7 @@ async function readStoredExpense(bucket, fileId, expenseId) {
 }
 
 async function storeReceiptPhoto(bucket, fileId, expenseId, dataUrl) {
-  const match = String(dataUrl || "").match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,/);
+  const match = String(dataUrl || "").match(/^data:(image\/[a-zA-Z0-9.+-]+|application\/pdf);base64,/);
   if (!match) return "";
   const contentType = match[1].toLowerCase();
   const response = await fetch(dataUrl);
@@ -66,7 +66,9 @@ function cleanExpense(value = {}, fileId = "") {
   const amount = Number(String(value.amount ?? "").replace(/[$,]/g, ""));
   const items = Array.isArray(value.items) ? value.items.slice(0, 100).map((item) => ({
     name: String(item?.name || "").slice(0, 300),
+    quantity: String(item?.quantity ?? "").slice(0, 50),
     price: Number(String(item?.price ?? "").replace(/[$,]/g, "")) || 0,
+    lineTotal: Number(String(item?.lineTotal ?? item?.total ?? "").replace(/[$,]/g, "")) || 0,
     category: String(item?.category || "Supplies").slice(0, 80),
   })) : [];
   return {
@@ -80,6 +82,7 @@ function cleanExpense(value = {}, fileId = "") {
     amount: Number.isFinite(amount) ? amount : 0,
     notes: String(value.notes || "").slice(0, 4000),
     receiptImageKey: String(value.receiptImageKey || ""),
+    receiptContentType: String(value.receiptContentType || "").slice(0, 100),
     imageTitle: String(value.imageTitle || "").slice(0, 200),
     items,
     createdAt: value.createdAt || new Date().toISOString(),
@@ -130,7 +133,7 @@ export async function onRequestPost(context) {
   const existing = await readStoredExpense(context.env.ANIMUS_BUCKET, fileId, expense.id);
   const incomingImage = String(body.expense?.imageDataUrl || "");
   let receiptImageKey = expense.receiptImageKey || String(existing?.receiptImageKey || "");
-  if (incomingImage.startsWith("data:image/")) {
+  if (incomingImage.startsWith("data:image/") || incomingImage.startsWith("data:application/pdf")) {
     const previousKey = receiptImageKey;
     receiptImageKey = await storeReceiptPhoto(context.env.ANIMUS_BUCKET, fileId, expense.id, incomingImage);
     if (previousKey && previousKey !== receiptImageKey && isReceiptPhotoKey(previousKey)) {
@@ -138,6 +141,8 @@ export async function onRequestPost(context) {
     }
   }
   expense.receiptImageKey = receiptImageKey;
+  if (incomingImage) expense.receiptContentType = incomingImage.slice(5, incomingImage.indexOf(";"));
+  else if (existing?.receiptContentType) expense.receiptContentType = existing.receiptContentType;
   await context.env.ANIMUS_BUCKET.put(keyFor(fileId, expense.id), JSON.stringify(expense), {
     httpMetadata: { contentType: "application/json; charset=utf-8" },
   });

@@ -68,6 +68,10 @@ function responseOutputText(data = {}) {
 
 async function readReceiptWithOpenAi(env, imageDataUrl, fileName) {
   const model = env.OPENAI_MODEL || "gpt-5-mini";
+  const isPdf = /^data:application\/pdf;base64,/i.test(String(imageDataUrl || ""));
+  const receiptInput = isPdf
+    ? { type: "input_file", filename: fileName || "receipt.pdf", file_data: imageDataUrl }
+    : { type: "input_image", image_url: imageDataUrl, detail: "high" };
   const response = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
     headers: {
@@ -93,11 +97,7 @@ async function readReceiptWithOpenAi(env, imageDataUrl, fileName) {
                 `File name: ${fileName || "receipt image"}.`,
               ].join("\n"),
             },
-            {
-              type: "input_image",
-              image_url: imageDataUrl,
-              detail: "high",
-            },
+            receiptInput,
           ],
         },
       ],
@@ -201,7 +201,7 @@ export async function onRequestPost(context) {
   const imageDataUrl = body.imageDataUrl || body.image || "";
   const fileName = body.fileName || "";
   if (!imageDataUrl) {
-    return jsonResponse({ ok: false, error: "No receipt image was sent." }, 400);
+    return jsonResponse({ ok: false, error: "No receipt photo or PDF was sent." }, 400);
   }
 
   if (!context.env.OPENAI_API_KEY) {
