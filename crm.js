@@ -13,6 +13,7 @@ const CRM_STORAGE_BACKUP_KEY = "d2CrmDemoFilesBackup";
 const CRM_REVENUE_BACKUP_KEY = "d2CrmRevenueRowsBackup";
 const CRM_PAYROLL_BACKUP_KEY = "d2CrmPayrollRowsBackup";
 const CRM_REVENUE_DELETED_KEY = "d2CrmRevenueDeletedIds";
+const CRM_FILE_DELETED_KEY = "animusDeletedWorkFileKeys";
 const CRM_REVENUE_HISTORY_RECOVERY_KEY = "d2CrmRevenueHistoryRecoveryV2";
 const CRM_PRICE_BACKUP_KEY = "d2PriceDatabaseBackup";
 const CRM_RECEIPT_DRAFT_KEY = "d2ReceiptScannerDraft";
@@ -270,6 +271,38 @@ function fileRecordKey(file = {}) {
   return String(file.fileNumber || file.id || file.clientName || "").trim().toLowerCase();
 }
 
+function loadDeletedFileKeys() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(CRM_FILE_DELETED_KEY) || "[]");
+    return new Set((Array.isArray(saved) ? saved : []).map((key) => String(key || "").trim().toLowerCase()).filter(Boolean));
+  } catch (_) {
+    return new Set();
+  }
+}
+
+function saveDeletedFileKeys(keys) {
+  try { localStorage.setItem(CRM_FILE_DELETED_KEY, JSON.stringify(Array.from(keys))); } catch (_) { /* Storage is optional. */ }
+}
+
+function rememberDeletedFile(file) {
+  const key = fileRecordKey(file);
+  if (!key) return;
+  const deleted = loadDeletedFileKeys();
+  deleted.add(key);
+  saveDeletedFileKeys(deleted);
+}
+
+function forgetDeletedFile(file) {
+  const key = fileRecordKey(file);
+  if (!key) return;
+  const deleted = loadDeletedFileKeys();
+  if (deleted.delete(key)) saveDeletedFileKeys(deleted);
+}
+
+function filterDeletedCrmFiles(files = [], deletedKeys = loadDeletedFileKeys()) {
+  return (Array.isArray(files) ? files : []).filter((file) => !deletedKeys.has(fileRecordKey(file)));
+}
+
 function expenseGroupKey(line = {}) {
   return String(line.receiptGroupId || line.id || "").trim();
 }
@@ -340,7 +373,7 @@ function mergeDashboardFiles(primary = [], secondary = []) {
     if (!key) return;
     merged.set(key, merged.has(key) ? mergeDashboardFileRecords(merged.get(key), file) : { ...file });
   });
-  return [...merged.values()];
+  return filterDeletedCrmFiles([...merged.values()]);
 }
 
 function defaultRevenueRows() {
@@ -482,16 +515,16 @@ function loadCrmFiles() {
       if (Array.isArray(files) && files.length) {
         // Never silently blend a baked-in recovery list into live browser data.
         // That legacy merge was a direct source of duplicate work files.
-        return repairCrmFileCategories(files.map((file) => normalizeCrmFile({ ...file })));
+        return repairCrmFileCategories(filterDeletedCrmFiles(files).map((file) => normalizeCrmFile({ ...file })));
       }
       const backup = localStorage.getItem(CRM_STORAGE_BACKUP_KEY);
       const backupFiles = backup ? JSON.parse(backup) : [];
       if (Array.isArray(backupFiles) && backupFiles.length) {
-        return repairCrmFileCategories(backupFiles.map((file) => normalizeCrmFile({ ...file })));
+        return repairCrmFileCategories(filterDeletedCrmFiles(backupFiles).map((file) => normalizeCrmFile({ ...file })));
       }
       if (restoredFiles.length) {
         crmRestoreAppliedThisLoad = true;
-        return repairCrmFileCategories(restoredFiles.map((file) => normalizeCrmFile({ ...file })));
+        return repairCrmFileCategories(filterDeletedCrmFiles(restoredFiles).map((file) => normalizeCrmFile({ ...file })));
       }
       return Array.isArray(files) && files.length ? files : defaultFiles();
     }
@@ -500,7 +533,7 @@ function loadCrmFiles() {
   }
   if (restoredFiles.length) {
     crmRestoreAppliedThisLoad = true;
-    return repairCrmFileCategories(restoredFiles.map((file) => normalizeCrmFile({ ...file })));
+    return repairCrmFileCategories(filterDeletedCrmFiles(restoredFiles).map((file) => normalizeCrmFile({ ...file })));
   }
   return defaultFiles();
 }
@@ -831,6 +864,7 @@ function buildDashboardSyncPayload(options = {}) {
     syncedAt: new Date().toISOString(),
     source: "D2 Command Center",
     dashboardFiles: crmFiles,
+    deletedFileKeys: Array.from(loadDeletedFileKeys()),
     ...(includeRevenue ? {
       revenueRows: crmRevenueRows,
       deletedRevenueKeys: Array.from(loadDeletedRevenueKeys()),
@@ -1462,7 +1496,7 @@ function applyDashboardBackup(dashboard = {}, options = {}) {
   const payrollRows = hasPayroll ? dashboard.payrollRows : (preserveMissing ? crmPayrollRows : []);
   const priceRows = hasPrices ? dashboard.priceRows : (preserveMissing ? crmPriceRows : []);
   const deletedPriceIds = Array.isArray(dashboard.deletedPriceIds) ? dashboard.deletedPriceIds : (preserveMissing ? crmDeletedPriceIds : []);
-  crmFiles = repairCrmFileCategories(files.map((file) => normalizeCrmFile({ ...file })));
+  crmFiles = repairCrmFileCategories(filterDeletedCrmFiles(files).map((file) => normalizeCrmFile({ ...file })));
   crmRevenueRows = dedupeRevenueRows(revenueRows.map((row) => ({ ...row })));
   crmPayrollRows = payrollRows.map((row) => normalizePayrollRow(row));
   crmPriceRows = priceRows.map((row) => normalizedPriceRow(row));
@@ -2228,6 +2262,38 @@ function addCrmNote() {
   renderCrm();
 }
 
+function openFileNoteModal() {
+  const file = normalizeCrmFile(activeFile());
+  const modal = $("animusFileNoteModal");
+  if (!file || !modal) return;
+  modal.dataset.fileId = file.id;
+  $("animusFileNoteText").value = "";
+  modal.hidden = false;
+  window.setTimeout(() => $("animusFileNoteText")?.focus(), 0);
+}
+
+function closeFileNoteModal() {
+  const modal = $("animusFileNoteModal");
+  if (!modal) return;
+  modal.hidden = true;
+  modal.dataset.fileId = "";
+  if ($("animusFileNoteText")) $("animusFileNoteText").value = "";
+}
+
+function saveFileNoteModal() {
+  const modal = $("animusFileNoteModal");
+  const text = $("animusFileNoteText")?.value.trim() || "";
+  const file = crmFiles.find((entry) => entry.id === modal?.dataset.fileId);
+  if (!file || !text) return;
+  normalizeCrmFile(file);
+  const timestamp = new Date().toISOString();
+  file.notes = [...file.notes, { at: timestamp, text, source: "manual" }];
+  file.timeline = [...file.timeline, `File note added ${formatNoteTimestamp(timestamp)}`];
+  saveCrmFiles({ syncExpenses: false });
+  closeFileNoteModal();
+  renderCrm();
+}
+
 function editCrmNote(index) {
   const file = normalizeCrmFile(activeFile());
   if (!file || !canEditLatestNote(file.notes, index)) {
@@ -2587,6 +2653,7 @@ function newCrmFile(options = {}) {
     notes: [],
     timeline: [{ at:new Date().toISOString(), text:"Work file created" }],
   };
+  forgetDeletedFile(file);
   crmFiles.unshift(file);
   saveCrmFiles({ syncExpenses: false });
   if (!options.skipRoute) {
@@ -2619,10 +2686,14 @@ function deleteActiveFile() {
   if (!confirmed) return;
 
   const deleteIndex = crmFiles.findIndex((entry) => entry.id === file.id);
+  rememberDeletedFile(file);
   crmFiles = crmFiles.filter((entry) => entry.id !== file.id);
   const nextFile = crmFiles[deleteIndex] || crmFiles[deleteIndex - 1] || crmFiles[0] || null;
   activeFileId = nextFile ? nextFile.id : null;
   saveCrmFiles();
+  queueDashboardCloudSave(buildDashboardSyncPayload({ includeRevenue: true, syncExpenses: false, captureEdits: false, restoreRevenueHistory: false }), { replaceLatest: true })
+    .then(() => showDashboardSaveStatus(`${file.fileNumber} was deleted everywhere and will not return from an older cloud copy.`))
+    .catch(() => showDashboardSaveStatus(`${file.fileNumber} was removed here. Click Save All when the connection is steady to remove it from the cloud too.`, true));
   renderCrm();
 }
 
@@ -8729,11 +8800,20 @@ $("crmEmailInvoice").addEventListener("click", () => {
   emailInvoice().catch(() => window.alert("The invoice email could not be opened. Save the PDF first, then attach it manually."));
 });
 $("crmNewFile").addEventListener("click", newCrmFile);
-$("crmAddNote").addEventListener("click", addCrmNote);
+$("crmAddNote").addEventListener("click", openFileNoteModal);
 $("crmNewNote").addEventListener("keydown", (event) => {
   if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
     event.preventDefault();
     addCrmNote();
+  }
+});
+$("animusFileNoteSave")?.addEventListener("click", saveFileNoteModal);
+$("animusFileNoteCancel")?.addEventListener("click", closeFileNoteModal);
+$("animusFileNoteClose")?.addEventListener("click", closeFileNoteModal);
+$("animusFileNoteText")?.addEventListener("keydown", (event) => {
+  if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+    event.preventDefault();
+    saveFileNoteModal();
   }
 });
 $("crmSaveDemo").addEventListener("click", () => {
