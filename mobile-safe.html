@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+  <meta name="theme-color" content="#071a33">
+  <title>ANIMUS Mobile</title>
+  <style>
+    :root{--navy:#071a33;--blue:#2563eb;--ink:#10203c;--muted:#64748b;--line:#e2e8f0;--paper:#fff;--ground:#f7f9fc}*{box-sizing:border-box}body{margin:0;background:var(--ground);color:var(--ink);font:16px/1.4 Inter,system-ui,-apple-system,sans-serif}.app{max-width:560px;min-height:100vh;margin:auto;padding:0 16px 32px}.top{display:flex;align-items:center;justify-content:space-between;padding:18px 0;border-bottom:1px solid var(--line)}.brand{font-weight:900;letter-spacing:.08em}.brand small{display:block;color:#a87925;font-size:.58rem}.cloud{color:var(--muted);font-size:.75rem;font-weight:700}h1{margin:24px 0 4px;font-size:1.75rem}.sub{margin:0 0 20px;color:var(--muted)}.notice{padding:14px 15px;border:1px solid #bfdbfe;border-radius:11px;background:#eff6ff;color:#174b9b;font-size:.85rem}.notice b{display:block;margin-bottom:3px}.filters{display:flex;gap:8px;overflow:auto;margin:18px 0 10px}.filters button{flex:0 0 auto;padding:8px 11px;border:1px solid var(--line);border-radius:999px;background:#fff;color:#475569;font-weight:800}.filters button.active{border-color:var(--blue);background:var(--blue);color:#fff}.files{display:grid;gap:10px}.file{width:100%;padding:14px;border:1px solid var(--line);border-radius:11px;background:#fff;color:inherit;text-align:left}.file strong{display:block;font-size:1rem}.file small{display:block;margin-top:3px;color:var(--muted)}.badge{display:inline-block;margin-top:8px;padding:3px 7px;border-radius:999px;background:#eff6ff;color:#1d4ed8;font-size:.7rem;font-weight:850}.empty{padding:22px;border:1px dashed #cbd5e1;border-radius:11px;color:var(--muted);text-align:center}.actions{display:flex;gap:9px;margin-top:18px}.actions a{flex:1;padding:12px;border:1px solid var(--line);border-radius:9px;background:#fff;color:#174b9b;font-weight:850;text-align:center;text-decoration:none}.actions a.primary{border-color:var(--blue);background:var(--blue);color:#fff}
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="top"><div class="brand">ANIMUS<small>COMMAND CENTER</small></div><span id="cloud" class="cloud">Loading cloud...</span></header>
+    <h1>Work Files</h1><p class="sub">Current cloud records, without mobile browser storage.</p>
+    <section class="notice"><b>Receipt scanning is temporarily paused.</b>This clean mobile page has no receipt-reader overlay, camera handler, or saved mobile state.</section>
+    <div class="filters" id="filters"><button class="active" data-filter="open">Open</button><button data-filter="active">Active</button><button data-filter="closed">Closed</button><button data-filter="all">All</button></div>
+    <section id="files" class="files"></section>
+    <div class="actions"><a href="crm.html?view=expenses">Expenses on desktop</a><a class="primary" href="crm.html">Open Command Center</a></div>
+  </main>
+  <script>
+    const api = "https://animus-v-1.pages.dev/api/dashboard";
+    let files = [], filter = "open";
+    const closed = (file) => /closed|paid|lost|archiv/i.test(String(file.fileStatus || ""));
+    const active = (file) => /progress|active/i.test(String(file.fileStatus || ""));
+    function esc(value=""){return String(value).replace(/[&<>'"]/g,(c)=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#039;","\"":"&quot;"}[c]));}
+    function render(){const list=files.filter((file)=>filter==="all"||filter==="closed"&&closed(file)||filter==="active"&&active(file)||filter==="open"&&!closed(file));document.querySelector("#files").innerHTML=list.length?list.map((file)=>`<button class="file" type="button" onclick="location.href='crm.html?file=${encodeURIComponent(file.id)}'"><strong>${esc(file.clientName||"Unnamed Client")}</strong><small>${esc(file.fileNumber||"No file number")} · ${esc(file.projectType||"Other")}</small><span class="badge">${esc(file.fileStatus||"New Lead")}</span></button>`).join(""):`<div class="empty">No work files in this view.</div>`;}
+    document.querySelector("#filters").addEventListener("click",(event)=>{const button=event.target.closest("button[data-filter]");if(!button)return;filter=button.dataset.filter;document.querySelectorAll("[data-filter]").forEach((node)=>node.classList.toggle("active",node===button));render();});
+    if("serviceWorker" in navigator)navigator.serviceWorker.getRegistrations().then((items)=>items.forEach((item)=>item.unregister()));
+    if(window.caches)caches.keys().then((keys)=>Promise.all(keys.map((key)=>caches.delete(key))));
+    fetch(`${api}?t=${Date.now()}`,{cache:"no-store"}).then((response)=>response.json()).then((result)=>{files=(result.dashboard?.dashboardFiles||[]).filter((file)=>String(file.fileNumber||file.id||"").toLowerCase()!=="26-a1006");document.querySelector("#cloud").textContent="Live cloud data";render();}).catch(()=>{document.querySelector("#cloud").textContent="Cloud unavailable";document.querySelector("#files").innerHTML='<div class="empty">Could not reach the cloud. Try again when connected.</div>';});
+  </script>
+</body>
+</html>
