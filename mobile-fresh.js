@@ -137,8 +137,22 @@ function renderRevenue() { const total = financialTotals(); const profit = total
 function chooseFileSheet() { const candidates = state.files.filter((file) => !isClosed(file)); openSheet(`<div class="sheet-heading"><div><p class="eyebrow">Expense capture</p><h2>Choose a work file</h2></div><button class="sheet-close" type="button" data-close-sheet>×</button></div><div class="sheet-file-list">${candidates.map((file) => `<button type="button" data-select-file="${escapeHtml(file.id)}">${escapeHtml(file.clientName)}<small>${escapeHtml(file.fileNumber)} · ${escapeHtml(file.fileStatus)}</small></button>`).join("") || `<p class="subcopy">No open work files found.</p>`}</div>`); document.querySelectorAll("[data-select-file]").forEach((button) => button.addEventListener("click", async () => { activeFileId=button.dataset.selectFile; saveLocal(); closeSheet(); notify("Loading receipts..."); await fetchReceipts(); notify("Live cloud data"); renderExpenses(); })); }
 function openSheet(markup) { $("sheet").innerHTML=markup; $("sheet").hidden=false; $("sheetBackdrop").hidden=false; document.querySelectorAll("[data-close-sheet]").forEach((button) => button.addEventListener("click", closeSheet)); }
 function closeSheet() { $("sheet").hidden=true; $("sheetBackdrop").hidden=true; }
-function showBusy(title,message) { $("busyTitle").textContent=title; $("busyMessage").textContent=message; $("busyOverlay").hidden=false; }
-function hideBusy() { $("busyOverlay").hidden=true; }
+let busySafetyTimer = null;
+function showBusy(title,message) {
+  $("busyTitle").textContent=title;
+  $("busyMessage").textContent=message;
+  $("busyOverlay").hidden=false;
+  clearTimeout(busySafetyTimer);
+  busySafetyTimer = window.setTimeout(() => {
+    hideBusy();
+    window.alert("Receipt reading took too long, so it was cancelled. Please try the upload again.");
+  }, 45000);
+}
+function hideBusy() {
+  clearTimeout(busySafetyTimer);
+  busySafetyTimer = null;
+  $("busyOverlay").hidden=true;
+}
 function openDesktop(route) { const url = new URL("crm.html", window.location.href); if (route === "calendar") url.searchParams.set("view","calendar"); if (route === "prices") url.searchParams.set("view","prices"); if (route === "revenue") url.searchParams.set("view","revenue"); if (route === "estimate") url.pathname = url.pathname.replace(/crm\.html$/, "index.html"); window.location.href=url.toString(); }
 
 async function fetchReceipts() { const file = activeFile(); if (!file) { receipts=[]; return; } const response = await fetch(`${EXPENSE_API}?fileId=${encodeURIComponent(file.id)}&t=${Date.now()}`, { cache:"no-store" }); const result = await response.json().catch(() => ({})); receipts = response.ok && result.ok !== false ? result.expenses || [] : []; }
@@ -150,6 +164,7 @@ document.querySelectorAll("[data-view]").forEach((button) => button.addEventList
 document.querySelectorAll("[data-open-desktop]").forEach((button) => button.addEventListener("click", () => openDesktop(button.dataset.openDesktop)));
 $("fileSearch").addEventListener("input", renderFiles); $("fileFilters").addEventListener("click", (event) => { const button=event.target.closest("[data-filter]"); if (!button) return; activeFilter=button.dataset.filter; document.querySelectorAll("[data-filter]").forEach((node) => node.classList.toggle("selected",node===button)); renderFiles(); });
 $("expenseChooseFile").addEventListener("click", chooseFileSheet); $("sheetBackdrop").addEventListener("click", closeSheet); $("cameraInput").addEventListener("change", (event) => { receiveReceipt(event.target.files?.[0]); event.target.value=""; }); $("uploadInput").addEventListener("change", (event) => { receiveReceipt(event.target.files?.[0]); event.target.value=""; });
+$("cancelBusy").addEventListener("click", () => { hideBusy(); notify("Receipt read cancelled"); });
 $("saveButton").addEventListener("click", async () => { const button=$("saveButton"); button.disabled=true; button.textContent="Saving"; try { await saveCloud(); notify("Saved to cloud"); } catch (error) { notify("Save failed",true); window.alert(error.message); } finally { button.disabled=false; button.textContent="Save"; } });
 $("newFileButton").addEventListener("click", () => { window.alert("Use the desktop Command Center to create a full work file. The mobile app is optimized for reviewing files and capturing expenses on the go."); });
 
