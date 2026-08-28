@@ -2301,6 +2301,12 @@ function openFileNoteModal() {
   window.setTimeout(() => $("animusFileNoteText")?.focus(), 0);
 }
 
+function preserveActiveWorkFile(fileId, recordKey) {
+  const sameId = crmFiles.find((entry) => entry.id === fileId);
+  const sameRecord = sameId || crmFiles.find((entry) => fileRecordKey(entry) === recordKey);
+  if (sameRecord) activeFileId = sameRecord.id;
+}
+
 function openFileNoteModalForEdit(index) {
   const file = normalizeCrmFile(activeFile());
   const modal = $("animusFileNoteModal");
@@ -2333,6 +2339,8 @@ function saveFileNoteModal() {
   const file = crmFiles.find((entry) => entry.id === modal?.dataset.fileId);
   if (!file || !text) return;
   normalizeCrmFile(file);
+  const savedFileId = file.id;
+  const savedFileKey = fileRecordKey(file);
   const timestamp = new Date().toISOString();
   const noteIndex = Number.parseInt(modal?.dataset.noteIndex || "", 10);
   const note = Number.isInteger(noteIndex) ? file.notes[noteIndex] : null;
@@ -2350,21 +2358,24 @@ function saveFileNoteModal() {
   crmLocalChangeVersion += 1;
   saveCrmFiles({ syncExpenses: false });
   closeFileNoteModal();
+  preserveActiveWorkFile(savedFileId, savedFileKey);
   renderCrm();
-  persistFileNoteChangeToCloud(note ? "File note updated in this work file and Cloudflare." : "File note saved to this work file and Cloudflare.").then(() => {
+  persistFileNoteChangeToCloud(note ? "File note updated in this work file and Cloudflare." : "File note saved to this work file and Cloudflare.", savedFileId, savedFileKey).then(() => {
     showDashboardSaveStatus(note ? "File note updated in this work file and Cloudflare." : "File note saved to this work file and Cloudflare.");
   }).catch(() => {
     showDashboardSaveStatus(note ? "File note updated in this browser. Cloud sync will retry with Save All." : "File note saved in this browser. Cloud sync will retry with Save All.", true);
   });
 }
 
-function persistFileNoteChangeToCloud(message) {
+function persistFileNoteChangeToCloud(message, selectedFileId = activeFileId, selectedFileKey = "") {
   const payload = buildDashboardSyncPayload({ includeRevenue: false, syncExpenses: false, captureEdits: false, restoreRevenueHistory: false });
   return queueDashboardCloudSave(payload).then((result) => {
     const cloudFiles = Array.isArray(result?.dashboard?.dashboardFiles) ? result.dashboard.dashboardFiles : [];
     if (cloudFiles.length) {
       crmFiles = mergeDashboardFiles(crmFiles, cloudFiles).map((file) => normalizeCrmFile(file));
       saveCrmFiles({ syncExpenses: false });
+      preserveActiveWorkFile(selectedFileId, selectedFileKey);
+      renderCrm();
     }
     return result;
   });
@@ -2378,13 +2389,16 @@ function deleteFileNote(index) {
     return;
   }
   if (!window.confirm("Delete this file note? This cannot be undone.")) return;
+  const savedFileId = file.id;
+  const savedFileKey = fileRecordKey(file);
   file.notes.splice(index, 1);
   const timestamp = new Date().toISOString();
   file.timeline = [...file.timeline, `File note deleted ${formatNoteTimestamp(timestamp)}`];
   crmLocalChangeVersion += 1;
   saveCrmFiles({ syncExpenses: false });
+  preserveActiveWorkFile(savedFileId, savedFileKey);
   renderCrm();
-  persistFileNoteChangeToCloud("File note deleted from this work file and Cloudflare.").then(() => {
+  persistFileNoteChangeToCloud("File note deleted from this work file and Cloudflare.", savedFileId, savedFileKey).then(() => {
     showDashboardSaveStatus("File note deleted from this work file and Cloudflare.");
   }).catch(() => {
     showDashboardSaveStatus("File note deleted in this browser. Cloud sync will retry with Save All.", true);
