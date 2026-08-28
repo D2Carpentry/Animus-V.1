@@ -826,6 +826,24 @@ function removePhoto(id) {
   updatePreview();
 }
 
+function openImagePreview(source, label = "Invoice image") {
+  const modal = $("imagePreviewModal");
+  const image = $("imagePreviewFull");
+  if (!modal || !image || !source) return;
+  image.src = source;
+  image.alt = label;
+  $("imagePreviewTitle").textContent = label;
+  modal.hidden = false;
+}
+
+function closeImagePreview() {
+  const modal = $("imagePreviewModal");
+  const image = $("imagePreviewFull");
+  if (!modal || modal.hidden) return;
+  modal.hidden = true;
+  if (image) image.removeAttribute("src");
+}
+
 function removeAssignmentPhoto(id) {
   state.assignmentPhotos = state.assignmentPhotos.filter((photo) => photo.id !== id);
   renderAssignmentPhotos();
@@ -864,6 +882,10 @@ function renderPhotos() {
     });
 
     card.addEventListener("click", (event) => {
+      if (event.target.tagName === "IMG") {
+        openImagePreview(photo.dataUrl, photo.label || photo.name || "Invoice image");
+        return;
+      }
       if (event.target.dataset.action === "remove") removePhoto(photo.id);
     });
 
@@ -1200,7 +1222,7 @@ function updatePreview() {
   $("previewPhotosSection").hidden = previewPhotos.length === 0;
   $("previewPhotos").innerHTML = previewPhotos.map((photo) => `
     <figure>
-      <img src="${photo.dataUrl}" alt="${escapeHtml(photo.label || photo.name)}">
+      <img src="${photo.dataUrl}" alt="${escapeHtml(photo.label || photo.name)}" data-preview-image data-preview-label="${escapeHtml(photo.label || photo.name)}">
       <figcaption>${escapeHtml(photo.label || photo.name)}</figcaption>
     </figure>
   `).join("");
@@ -3123,6 +3145,17 @@ $("photoDropzone").addEventListener("drop", (event) => {
   event.preventDefault();
   $("photoDropzone").classList.remove("drag-over");
   addPhotos(event.dataTransfer.files);
+});
+document.addEventListener("click", (event) => {
+  if (event.target.closest("[data-image-preview-close]")) {
+    closeImagePreview();
+    return;
+  }
+  const image = event.target.closest("[data-preview-image]");
+  if (image) openImagePreview(image.currentSrc || image.src, image.dataset.previewLabel || image.alt || "Invoice image");
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") closeImagePreview();
 });
 $("assignmentPhotoUpload").addEventListener("change", (event) => {
   addAssignmentPhotos(event.target.files);
