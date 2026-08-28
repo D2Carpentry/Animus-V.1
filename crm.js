@@ -357,6 +357,8 @@ function mergeDashboardFileRecords(primaryFile = {}, secondaryFile = {}) {
   return {
     ...primaryFile,
     ...secondaryFile,
+    notes: mergeCrmNotes(primaryFile.notes, secondaryFile.notes),
+    timeline: mergeCrmTimeline(primaryFile.timeline, secondaryFile.timeline),
     freshExpenseReceipts: mergeReceiptHistoryArrays(primaryFile.freshExpenseReceipts, secondaryFile.freshExpenseReceipts),
     expenseReceipts: mergeReceiptHistoryArrays(primaryFile.expenseReceipts, secondaryFile.expenseReceipts),
     expenseLines: mergeExpenseLineArrays(primaryFile.expenseLines, secondaryFile.expenseLines),
@@ -364,6 +366,20 @@ function mergeDashboardFileRecords(primaryFile = {}, secondaryFile = {}) {
     animusManualExpenses: mergeManualExpenseArrays(primaryFile.animusManualExpenses, secondaryFile.animusManualExpenses),
     animusExpenseLedgerV4: mergeManualExpenseArrays(primaryFile.animusExpenseLedgerV4, secondaryFile.animusExpenseLedgerV4),
   };
+}
+
+function mergeCrmNotes(primary = [], secondary = []) {
+  const unique = new Map();
+  [...(Array.isArray(primary) ? primary : []), ...(Array.isArray(secondary) ? secondary : [])].forEach((note) => {
+    if (!note || !String(note.text || "").trim()) return;
+    const key = `${note.at || ""}|${note.text || ""}`;
+    if (!unique.has(key)) unique.set(key, { ...note });
+  });
+  return [...unique.values()].sort((a, b) => (Date.parse(a.at || "") || 0) - (Date.parse(b.at || "") || 0));
+}
+
+function mergeCrmTimeline(primary = [], secondary = []) {
+  return [...new Set([...(Array.isArray(primary) ? primary : []), ...(Array.isArray(secondary) ? secondary : [])].filter(Boolean))];
 }
 
 function mergeDashboardFiles(primary = [], secondary = []) {
@@ -2289,9 +2305,20 @@ function saveFileNoteModal() {
   const timestamp = new Date().toISOString();
   file.notes = [...file.notes, { at: timestamp, text, source: "manual" }];
   file.timeline = [...file.timeline, `File note added ${formatNoteTimestamp(timestamp)}`];
+  crmLocalChangeVersion += 1;
   saveCrmFiles({ syncExpenses: false });
   closeFileNoteModal();
   renderCrm();
+  // Notes are small, independent work-file records. Push this file update now
+  // so an automatic cloud load cannot replace the just-saved local note.
+  queueDashboardCloudSave(
+    buildDashboardSyncPayload({ includeRevenue: false, syncExpenses: false, captureEdits: false, restoreRevenueHistory: false }),
+    { replaceLatest: true },
+  ).then(() => {
+    showDashboardSaveStatus("File note saved to this work file and Cloudflare.");
+  }).catch(() => {
+    showDashboardSaveStatus("File note saved in this browser. Cloud sync will retry with Save All.", true);
+  });
 }
 
 function editCrmNote(index) {
