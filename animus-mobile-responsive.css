@@ -1,0 +1,784 @@
+/* ANIMUS responsive foundation. Mobile presentation only; data/save logic stays shared. */
+.animus-mobile-appbar,
+.animus-mobile-backdrop {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  html,
+  body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  body.crm-body,
+  body.animus-unified-ui {
+    min-width: 0 !important;
+    background: #f7f9fc;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  input,
+  select,
+  textarea,
+  button {
+    font-size: 16px;
+  }
+
+  button,
+  input,
+  select,
+  textarea,
+  .icon-button,
+  .expense-button,
+  .animus-record-tab,
+  .crm-command-card,
+  .crm-file-card {
+    min-height: 44px;
+  }
+
+  .animus-mobile-appbar {
+    position: sticky;
+    z-index: 90;
+    top: 0;
+    display: grid;
+    grid-template-columns: 46px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    min-height: calc(58px + env(safe-area-inset-top));
+    padding: env(safe-area-inset-top) 12px 10px;
+    border-bottom: 1px solid #e2e8f0;
+    background: rgba(255, 255, 255, .96);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+    backdrop-filter: blur(12px);
+  }
+
+  .animus-mobile-menu-toggle {
+    display: grid;
+    width: 44px;
+    height: 44px;
+    place-items: center;
+    border: 1px solid #dbe5f0;
+    border-radius: 10px;
+    color: #071a33;
+    background: #fff;
+    font-size: 23px;
+    line-height: 1;
+  }
+
+  .animus-mobile-title {
+    min-width: 0;
+    color: #071a33;
+    font-size: 17px;
+    font-weight: 900;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .animus-mobile-save {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 42px;
+    padding: 0 13px;
+    border: 1px solid #2563eb;
+    border-radius: 10px;
+    color: #fff;
+    background: #2563eb;
+    font-weight: 850;
+  }
+
+  .animus-mobile-backdrop {
+    position: fixed;
+    z-index: 101;
+    inset: 0;
+    background: rgba(7, 26, 51, .48);
+  }
+
+  body.animus-mobile-menu-open .animus-mobile-backdrop {
+    display: block;
+  }
+
+  .animus-global-sidebar {
+    z-index: 120 !important;
+    display: flex !important;
+    width: min(86vw, 340px) !important;
+    padding: calc(18px + env(safe-area-inset-top)) 14px calc(18px + env(safe-area-inset-bottom)) !important;
+    transform: translateX(-105%);
+    transition: transform .2s ease;
+    box-shadow: 18px 0 45px rgba(7, 26, 51, .28);
+  }
+
+  body.animus-mobile-menu-open .animus-global-sidebar {
+    transform: translateX(0);
+  }
+
+  .animus-global-brand span,
+  .animus-global-brand small,
+  .animus-global-label,
+  .animus-global-nav button,
+  .animus-global-account {
+    font-size: revert !important;
+  }
+
+  .animus-global-brand {
+    justify-content: flex-start !important;
+    padding: 4px 9px 22px !important;
+  }
+
+  .animus-global-brand img {
+    width: 40px !important;
+    height: 40px !important;
+  }
+
+  .animus-global-nav button {
+    justify-content: flex-start !important;
+    min-height: 46px;
+    padding: 12px !important;
+    font-size: 14px !important;
+  }
+
+  .animus-global-icon {
+    font-size: 17px !important;
+  }
+
+  .animus-global-account {
+    display: flex !important;
+  }
+
+  body.animus-unified-ui .crm-shell,
+  body.animus-expense-center-active.crm-body .crm-shell {
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    margin-left: 0 !important;
+    padding: 0 12px calc(82px + env(safe-area-inset-bottom)) !important;
+  }
+
+  body.animus-unified-ui .crm-topbar {
+    position: static;
+    display: grid;
+    gap: 10px;
+    margin: 0 -12px 14px !important;
+    padding: 12px !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
+  body.animus-unified-ui .crm-topbar::before {
+    display: none;
+  }
+
+  .crm-brand {
+    display: none !important;
+  }
+
+  body.animus-unified-ui .crm-header-search {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    width: 100%;
+    gap: 8px;
+    margin-left: 0 !important;
+  }
+
+  .animus-topbar-search {
+    min-width: 0;
+  }
+
+  .animus-topbar-search input {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .animus-topbar-search-button,
+  .animus-topbar-notification,
+  .header-restore-button,
+  .crm-save-status {
+    display: none !important;
+  }
+
+  .animus-topbar-new,
+  .header-save-button {
+    min-width: 0;
+    padding: 0 11px !important;
+    white-space: nowrap;
+  }
+
+  .crm-nav-actions {
+    display: none !important;
+  }
+
+  .crm-dashboard,
+  body.animus-unified-ui .crm-dashboard {
+    gap: 14px;
+    margin-top: 12px;
+  }
+
+  body.animus-unified-ui .crm-command-panel {
+    padding: 12px;
+  }
+
+  body.animus-unified-ui .crm-command-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  body.animus-unified-ui .crm-command-card {
+    min-height: 86px;
+    padding: 13px;
+  }
+
+  body.animus-unified-ui .crm-command-card span {
+    font-size: 12px;
+    line-height: 1.2;
+  }
+
+  body.animus-unified-ui .crm-command-card strong {
+    font-size: 25px;
+  }
+
+  .crm-layout,
+  body.animus-unified-ui .crm-layout,
+  body.animus-unified-ui .animus-work-files-layout,
+  body.animus-unified-ui .animus-work-files-layout.animus-work-files-collapsed {
+    display: grid;
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    padding: 12px !important;
+  }
+
+  body.animus-unified-ui .crm-file-list-panel,
+  body.animus-unified-ui .animus-work-files-layout .crm-file-list-panel {
+    max-height: none !important;
+    padding: 0 !important;
+    border-right: 0 !important;
+  }
+
+  .animus-work-files-collapse {
+    display: none !important;
+  }
+
+  .crm-file-list,
+  .animus-work-files-layout .crm-file-list {
+    display: grid;
+    gap: 8px;
+    max-height: none !important;
+  }
+
+  .animus-work-files-layout .crm-file-card,
+  .crm-file-card {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    gap: 8px;
+    width: 100%;
+    padding: 12px !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 10px !important;
+  }
+
+  .crm-file-card strong,
+  .animus-work-files-layout .crm-file-card strong {
+    font-size: 16px !important;
+  }
+
+  .crm-file-card small,
+  .animus-work-files-layout .crm-file-card small {
+    white-space: normal !important;
+  }
+
+  .crm-file-workspace,
+  body.animus-unified-ui .animus-work-files-layout .crm-file-workspace {
+    width: 100%;
+    min-width: 0 !important;
+  }
+
+  .crm-file-header,
+  .animus-work-file-header {
+    display: grid !important;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 14px !important;
+  }
+
+  .crm-file-header-actions,
+  .animus-work-file-actions,
+  .crm-actions {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .crm-file-header-actions > *,
+  .animus-work-file-actions > * {
+    flex: 0 0 auto;
+  }
+
+  .animus-work-file,
+  .animus-work-file-main,
+  .animus-work-file-body,
+  .crm-file-grid,
+  .field-grid,
+  .two-tight,
+  .crm-money-grid,
+  .crm-alert-grid,
+  .crm-attention-grid,
+  .animus-detail-grid,
+  .animus-work-overview,
+  .animus-work-file-overview,
+  .animus-work-file-tab-grid,
+  .animus-work-grid {
+    grid-template-columns: 1fr !important;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .animus-record-summary,
+  .animus-summary-strip,
+  .animus-work-summary-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  .animus-record-summary > *,
+  .animus-summary-strip > *,
+  .animus-work-summary-strip > * {
+    min-width: 0;
+    padding: 12px !important;
+  }
+
+  .animus-record-tabs,
+  .animus-work-tabs,
+  .expense-tabs,
+  .animus-payroll-tabs {
+    display: flex !important;
+    gap: 18px;
+    width: 100%;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .animus-record-tab,
+  .animus-work-tabs button,
+  .expense-tab,
+  .animus-payroll-tabs button {
+    flex: 0 0 auto;
+  }
+
+  .panel,
+  .crm-detail-card,
+  .crm-file-grid > section,
+  .animus-card,
+  .animus-work-card {
+    max-width: 100%;
+    padding: 14px !important;
+  }
+
+  .crm-panel-heading,
+  .animus-revenue-head,
+  .animus-payroll-head,
+  .expense-header {
+    display: grid !important;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    align-items: stretch !important;
+  }
+
+  .crm-panel-heading h2,
+  .animus-revenue-head h1,
+  .animus-payroll-head h1,
+  .expense-title {
+    font-size: 24px !important;
+    line-height: 1.15;
+  }
+
+  .animus-revenue-tools,
+  .animus-payroll-head-actions,
+  .expense-header-actions,
+  .expense-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .animus-revenue-tools > *,
+  .animus-payroll-head-actions > *,
+  .expense-header-actions > * {
+    flex: 1 1 auto;
+  }
+
+  .animus-revenue-kpis,
+  .animus-payroll-kpis,
+  .expense-kpis,
+  .expense-kpis-three {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  .animus-revenue-kpi,
+  .animus-payroll-kpi,
+  .expense-kpi {
+    min-height: 96px !important;
+    padding: 14px !important;
+  }
+
+  .animus-revenue-layout,
+  .animus-payroll-layout,
+  .animus-payroll-side,
+  .expense-workspace,
+  .expense-center {
+    grid-template-columns: 1fr !important;
+    width: 100%;
+    min-width: 0;
+  }
+
+  body.animus-expense-center-active .crm-topbar {
+    display: grid !important;
+  }
+
+  body.animus-expense-center-active .animus-global-sidebar {
+    display: flex !important;
+  }
+
+  .expense-center {
+    min-height: 0;
+    background: transparent;
+  }
+
+  .expense-sidebar {
+    display: none !important;
+  }
+
+  .expense-main {
+    width: 100%;
+    min-width: 0;
+    padding: 14px 0 0 !important;
+  }
+
+  .expense-workspace {
+    margin-top: 12px;
+  }
+
+  .expense-table-card,
+  .expense-home-card,
+  .expense-image-library {
+    width: 100%;
+    overflow: hidden;
+  }
+
+  .expense-toolbar {
+    padding: 12px;
+  }
+
+  .expense-search,
+  .expense-select {
+    flex: 1 1 100%;
+    width: 100%;
+    max-width: none;
+    height: 44px;
+  }
+
+  .expense-count {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .expense-table,
+  .animus-revenue-table,
+  .animus-payroll-table {
+    min-width: 0 !important;
+  }
+
+  .expense-table thead,
+  .animus-revenue-table thead,
+  .animus-payroll-table thead {
+    display: none;
+  }
+
+  .expense-table tbody,
+  .expense-table tr,
+  .expense-table td,
+  .animus-revenue-table tbody,
+  .animus-revenue-table tr,
+  .animus-revenue-table td,
+  .animus-payroll-table tbody,
+  .animus-payroll-table tr,
+  .animus-payroll-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .expense-table tr,
+  .animus-revenue-table tr,
+  .animus-payroll-table tr {
+    margin: 10px 0;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #fff;
+    overflow: hidden;
+  }
+
+  .expense-table td,
+  .animus-revenue-table td,
+  .animus-payroll-table td {
+    min-height: 0;
+    height: auto !important;
+    padding: 10px 12px !important;
+    border-top: 1px solid #edf1f6;
+    font-size: 14px;
+  }
+
+  .expense-table td:first-child,
+  .animus-revenue-table td:first-child,
+  .animus-payroll-table td:first-child {
+    border-top: 0;
+  }
+
+  .expense-file-table th:first-child,
+  .expense-file-table td:first-child,
+  .expense-file-table th:nth-child(2),
+  .expense-file-table td:nth-child(2),
+  .expense-file-table th:nth-child(3),
+  .expense-file-table td:nth-child(3),
+  .expense-file-table th:nth-child(5),
+  .expense-file-table td:nth-child(5),
+  .expense-file-table th:last-child,
+  .expense-file-table td:last-child {
+    width: auto;
+    white-space: normal;
+  }
+
+  .expense-name-button strong,
+  .expense-name-button small {
+    white-space: normal;
+  }
+
+  .expense-icon-action {
+    width: 44px;
+    height: 44px;
+  }
+
+  .expense-drawer,
+  .expense-detail-modal .expense-drawer {
+    position: static;
+    min-height: 0;
+    padding: 16px;
+  }
+
+  .expense-detail-backdrop,
+  .expense-import-backdrop,
+  .animus-payroll-editor-backdrop,
+  .crm-modal-backdrop,
+  .crm-choice-modal-backdrop {
+    align-items: stretch;
+    place-items: stretch;
+    padding: calc(10px + env(safe-area-inset-top)) 10px calc(10px + env(safe-area-inset-bottom));
+  }
+
+  .expense-detail-modal,
+  .expense-import-modal,
+  .animus-payroll-editor,
+  .crm-modal,
+  .crm-choice-modal {
+    width: 100% !important;
+    max-width: none !important;
+    max-height: calc(100vh - 20px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) !important;
+    overflow: auto;
+    border-radius: 14px !important;
+  }
+
+  .expense-detail-modal .expense-detail-editor,
+  .expense-import-row span,
+  .animus-payroll-editor-grid,
+  .crm-form-grid,
+  .crm-modal-grid,
+  .crm-new-file-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .expense-drawer-actions,
+  .expense-detail-modal .expense-drawer-actions,
+  .expense-import-actions,
+  .animus-payroll-editor-actions {
+    position: sticky;
+    bottom: 0;
+    display: flex !important;
+    justify-content: flex-end;
+    gap: 8px;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom)) !important;
+    background: #fff;
+  }
+
+  .expense-drawer-actions .expense-button,
+  .expense-detail-modal .expense-drawer-actions .expense-button {
+    width: auto !important;
+    min-width: 88px !important;
+  }
+
+  .expense-file-ledger {
+    grid-template-columns: 36px minmax(0, 1fr);
+    padding: 14px;
+  }
+
+  .expense-file-ledger-total {
+    grid-column: 2;
+    text-align: left;
+  }
+
+  .expense-image-list-row {
+    grid-template-columns: 78px minmax(0, 1fr) 18px !important;
+    gap: 9px !important;
+    padding: 12px 4px !important;
+  }
+
+  .expense-image-list-row b {
+    display: none !important;
+  }
+
+  .calendar-upgrade,
+  .calendar-shell,
+  .calendar-layout,
+  .calendar-grid,
+  .crm-calendar-layout {
+    grid-template-columns: 1fr !important;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .calendar-table,
+  .calendar-month-grid {
+    min-width: 680px;
+  }
+
+  .calendar-table-wrap,
+  .calendar-month-wrap {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .estimate-studio,
+  .estimate-layout,
+  .estimate-grid,
+  .invoice-layout,
+  .invoice-grid,
+  .estimator-layout,
+  .estimator-grid {
+    grid-template-columns: 1fr !important;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .line-item-row,
+  .estimate-line-row,
+  .invoice-line-row,
+  .materials-row {
+    grid-template-columns: 1fr !important;
+    gap: 8px;
+  }
+
+  .crm-estimator-toolbar {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 13px;
+  }
+
+  .crm-estimator-toolbar > div:last-child {
+    display: flex;
+    overflow-x: auto;
+    gap: 8px;
+    padding-bottom: 2px;
+  }
+
+  .crm-estimator-toolbar > div:last-child > * {
+    flex: 0 0 auto;
+  }
+
+  .animus-dashboard-grid,
+  .animus-dashboard-row,
+  .animus-dashboard-panels,
+  .animus-business-layout,
+  .animus-contacts-layout,
+  .animus-price-layout,
+  .crm-price-layout {
+    grid-template-columns: 1fr !important;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .animus-dashboard-kpis,
+  .animus-business-kpis,
+  .contact-kpis,
+  .price-kpis {
+    grid-template-columns: 1fr !important;
+  }
+
+  .animus-topbar-search,
+  .crm-header-search input,
+  .crm-file-search,
+  .animus-work-file-tools input,
+  .animus-work-file-tools select,
+  .animus-revenue-search,
+  .animus-revenue-search input {
+    min-height: 44px;
+    font-size: 16px !important;
+  }
+
+  .animus-work-file-tools,
+  .animus-revenue-table-tools,
+  .animus-payroll-tools,
+  .animus-payroll-filter {
+    display: grid !important;
+    grid-template-columns: 1fr;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .animus-work-file-tools > *,
+  .animus-revenue-table-tools > *,
+  .animus-payroll-tools > *,
+  .animus-payroll-filter > * {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  img,
+  canvas,
+  svg,
+  video,
+  iframe,
+  object {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 360px) {
+  body.animus-unified-ui .crm-command-grid,
+  .animus-record-summary,
+  .animus-summary-strip,
+  .animus-work-summary-strip {
+    grid-template-columns: 1fr !important;
+  }
+
+  body.animus-unified-ui .crm-header-search {
+    grid-template-columns: 1fr auto;
+  }
+
+  .header-save-button {
+    display: none !important;
+  }
+}
