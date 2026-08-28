@@ -118,12 +118,13 @@
 
   function importantNotesCard(file) {
     const notes = (Array.isArray(file?.notes) ? file.notes : [])
-      .filter((entry) => field(entry, "text") && entry?.source !== "system")
-      .slice()
+      .map((note, index) => ({ note, index }))
+      .filter(({ note }) => field(note, "text") && note?.source === "manual")
       .reverse();
-    const noteHistory = notes.map((note) => {
+    const noteHistory = notes.map(({ note, index }) => {
       const updatedAt = note.editedAt || note.at || "";
-      return `<article class="animus-file-note-entry"><p>${escape(note.text)}</p><small>${escape(updatedAt ? `Added ${date(updatedAt.slice(0, 10))}` : "Date not recorded")} by D2 Carpentry &amp; Design</small></article>`;
+      const editable = typeof window.canManageManualFileNote === "function" && window.canManageManualFileNote(note);
+      return `<article class="animus-file-note-entry"><div class="animus-file-note-entry-head"><small>${escape(updatedAt ? `Added ${date(updatedAt.slice(0, 10))}` : "Date not recorded")} by D2 Carpentry &amp; Design</small>${editable ? `<span class="animus-file-note-actions"><button class="animus-record-button small" data-animus-note-edit="${index}">Edit</button><button class="animus-record-button small danger" data-animus-note-delete="${index}">Delete</button></span>` : ""}</div><p>${escape(note.text)}</p>${note.editedAt ? `<small class="animus-file-note-edited">Edited ${escape(date(note.editedAt.slice(0, 10)))}.</small>` : ""}</article>`;
     }).join("");
     return `<section class="animus-info-card animus-file-notes-card"><div class="animus-card-head"><h3><span class="card-mark">&#9744;</span> File Notes</h3><button class="animus-record-button small" data-animus-add-note>Add Note</button></div>${notes.length ? `<div class="animus-file-note-list">${noteHistory}</div>` : `<p class="animus-next-empty">No notes yet. Add the first note for this work file.</p>`}</section>`;
   }
@@ -282,6 +283,7 @@
     const input = byId("animusFileNoteText");
     if (!modal || !input) return;
     input.value = "";
+    modal.dataset.noteIndex = "";
     modal.hidden = false;
     window.setTimeout(() => input.focus(), 0);
   }
@@ -337,6 +339,16 @@
     }
     if (event.target.closest("#animusFileNoteSave")) {
       saveFileNote();
+      return;
+    }
+    const noteEdit = event.target.closest("[data-animus-note-edit]");
+    if (noteEdit) {
+      window.openFileNoteModalForEdit?.(Number(noteEdit.dataset.animusNoteEdit));
+      return;
+    }
+    const noteDelete = event.target.closest("[data-animus-note-delete]");
+    if (noteDelete) {
+      window.deleteFileNote?.(Number(noteDelete.dataset.animusNoteDelete));
       return;
     }
     const target = event.target.closest("[data-animus-tab], [data-animus-edit], [data-animus-save], [data-animus-save-editor], [data-animus-cancel-editor], [data-animus-complete-action], [data-animus-open], [data-animus-add-note], [data-animus-back], [data-animus-summary]");

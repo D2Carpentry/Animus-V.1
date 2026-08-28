@@ -2243,6 +2243,13 @@ function canEditLatestNote(notes, index) {
   return Date.now() - createdAt.getTime() <= NOTE_EDIT_WINDOW_MS;
 }
 
+function canManageManualFileNote(note) {
+  if (!note || note.source !== "manual") return false;
+  const createdAt = new Date(note.at || "");
+  if (Number.isNaN(createdAt.getTime())) return false;
+  return Date.now() - createdAt.getTime() <= NOTE_EDIT_WINDOW_MS;
+}
+
 function renderNotes(file) {
   const notes = Array.isArray(file.notes) ? file.notes : [];
   $("crmNoteList").innerHTML = notes.length
@@ -2283,7 +2290,27 @@ function openFileNoteModal() {
   const modal = $("animusFileNoteModal");
   if (!file || !modal) return;
   modal.dataset.fileId = file.id;
+  modal.dataset.noteIndex = "";
   $("animusFileNoteText").value = "";
+  $("animusFileNoteTitle").textContent = "Add File Note";
+  $("animusFileNoteSave").textContent = "Save Note";
+  modal.hidden = false;
+  window.setTimeout(() => $("animusFileNoteText")?.focus(), 0);
+}
+
+function openFileNoteModalForEdit(index) {
+  const file = normalizeCrmFile(activeFile());
+  const modal = $("animusFileNoteModal");
+  const note = file?.notes?.[index];
+  if (!file || !modal || !canManageManualFileNote(note)) {
+    window.alert("This note can only be edited within 12 hours of being added.");
+    return;
+  }
+  modal.dataset.fileId = file.id;
+  modal.dataset.noteIndex = String(index);
+  $("animusFileNoteText").value = note.text || "";
+  $("animusFileNoteTitle").textContent = "Edit File Note";
+  $("animusFileNoteSave").textContent = "Save Changes";
   modal.hidden = false;
   window.setTimeout(() => $("animusFileNoteText")?.focus(), 0);
 }
@@ -2293,6 +2320,7 @@ function closeFileNoteModal() {
   if (!modal) return;
   modal.hidden = true;
   modal.dataset.fileId = "";
+  modal.dataset.noteIndex = "";
   if ($("animusFileNoteText")) $("animusFileNoteText").value = "";
 }
 
@@ -2303,8 +2331,19 @@ function saveFileNoteModal() {
   if (!file || !text) return;
   normalizeCrmFile(file);
   const timestamp = new Date().toISOString();
-  file.notes = [...file.notes, { at: timestamp, text, source: "manual" }];
-  file.timeline = [...file.timeline, `File note added ${formatNoteTimestamp(timestamp)}`];
+  const noteIndex = Number.parseInt(modal?.dataset.noteIndex || "", 10);
+  const note = Number.isInteger(noteIndex) ? file.notes[noteIndex] : null;
+  if (note) {
+    if (!canManageManualFileNote(note)) {
+      window.alert("This note can only be edited within 12 hours of being added.");
+      return;
+    }
+    file.notes[noteIndex] = { ...note, text, editedAt: timestamp };
+    file.timeline = [...file.timeline, `File note edited ${formatNoteTimestamp(timestamp)}`];
+  } else {
+    file.notes = [...file.notes, { at: timestamp, text, source: "manual" }];
+    file.timeline = [...file.timeline, `File note added ${formatNoteTimestamp(timestamp)}`];
+  }
   crmLocalChangeVersion += 1;
   saveCrmFiles({ syncExpenses: false });
   closeFileNoteModal();
@@ -2315,9 +2354,33 @@ function saveFileNoteModal() {
     buildDashboardSyncPayload({ includeRevenue: false, syncExpenses: false, captureEdits: false, restoreRevenueHistory: false }),
     { replaceLatest: true },
   ).then(() => {
-    showDashboardSaveStatus("File note saved to this work file and Cloudflare.");
+    showDashboardSaveStatus(note ? "File note updated in this work file and Cloudflare." : "File note saved to this work file and Cloudflare.");
   }).catch(() => {
-    showDashboardSaveStatus("File note saved in this browser. Cloud sync will retry with Save All.", true);
+    showDashboardSaveStatus(note ? "File note updated in this browser. Cloud sync will retry with Save All." : "File note saved in this browser. Cloud sync will retry with Save All.", true);
+  });
+}
+
+function deleteFileNote(index) {
+  const file = normalizeCrmFile(activeFile());
+  const note = file?.notes?.[index];
+  if (!file || !canManageManualFileNote(note)) {
+    window.alert("This note can only be deleted within 12 hours of being added.");
+    return;
+  }
+  if (!window.confirm("Delete this file note? This cannot be undone.")) return;
+  file.notes.splice(index, 1);
+  const timestamp = new Date().toISOString();
+  file.timeline = [...file.timeline, `File note deleted ${formatNoteTimestamp(timestamp)}`];
+  crmLocalChangeVersion += 1;
+  saveCrmFiles({ syncExpenses: false });
+  renderCrm();
+  queueDashboardCloudSave(
+    buildDashboardSyncPayload({ includeRevenue: false, syncExpenses: false, captureEdits: false, restoreRevenueHistory: false }),
+    { replaceLatest: true },
+  ).then(() => {
+    showDashboardSaveStatus("File note deleted from this work file and Cloudflare.");
+  }).catch(() => {
+    showDashboardSaveStatus("File note deleted in this browser. Cloud sync will retry with Save All.", true);
   });
 }
 
