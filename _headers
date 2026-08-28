@@ -15,3 +15,9 @@
 
 /service-worker.js
   Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+
+/mobile-cloud.html
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+
+/mobile-cloud.css
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
