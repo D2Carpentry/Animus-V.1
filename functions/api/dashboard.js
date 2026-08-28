@@ -253,6 +253,9 @@ async function readExistingDashboard(env) {
 
 function mergeDashboard(existing = {}, incoming = {}) {
   const deletedFileKeys = new Set([
+    // A confirmed accidental work file. This file number must never return
+    // from an older browser or R2 snapshot.
+    "26-a1006",
     ...(Array.isArray(existing.deletedFileKeys) ? existing.deletedFileKeys : []),
     ...(Array.isArray(incoming.deletedFileKeys) ? incoming.deletedFileKeys : []),
   ].map((key) => String(key).trim().toLowerCase()).filter(Boolean));

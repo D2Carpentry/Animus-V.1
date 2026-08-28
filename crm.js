@@ -14,6 +14,9 @@ const CRM_REVENUE_BACKUP_KEY = "d2CrmRevenueRowsBackup";
 const CRM_PAYROLL_BACKUP_KEY = "d2CrmPayrollRowsBackup";
 const CRM_REVENUE_DELETED_KEY = "d2CrmRevenueDeletedIds";
 const CRM_FILE_DELETED_KEY = "animusDeletedWorkFileKeys";
+// This was an accidental, incomplete work file. Keep its business file number
+// tombstoned so stale Cloudflare/browser snapshots cannot resurrect it.
+const PERMANENTLY_REMOVED_WORK_FILE_KEYS = ["26-a1006"];
 const CRM_REVENUE_HISTORY_RECOVERY_KEY = "d2CrmRevenueHistoryRecoveryV2";
 const CRM_PRICE_BACKUP_KEY = "d2PriceDatabaseBackup";
 const CRM_RECEIPT_DRAFT_KEY = "d2ReceiptScannerDraft";
@@ -272,12 +275,18 @@ function fileRecordKey(file = {}) {
 }
 
 function loadDeletedFileKeys() {
+  const keys = new Set(PERMANENTLY_REMOVED_WORK_FILE_KEYS);
   try {
     const saved = JSON.parse(localStorage.getItem(CRM_FILE_DELETED_KEY) || "[]");
-    return new Set((Array.isArray(saved) ? saved : []).map((key) => String(key || "").trim().toLowerCase()).filter(Boolean));
+    (Array.isArray(saved) ? saved : []).forEach((key) => {
+      const normalized = String(key || "").trim().toLowerCase();
+      if (normalized) keys.add(normalized);
+    });
   } catch (_) {
-    return new Set();
+    // Storage is optional. The permanent tombstone still protects the record.
   }
+  saveDeletedFileKeys(keys);
+  return keys;
 }
 
 function saveDeletedFileKeys(keys) {
