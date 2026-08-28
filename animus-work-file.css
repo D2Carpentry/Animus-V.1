@@ -608,7 +608,8 @@ body.animus-unified-ui .animus-work-files-layout .crm-file-workspace { gap: 16px
 .animus-file-note-label { display: grid; gap: 8px; color: #263b5c; font-size: 13px; font-weight: 800; }
 .animus-file-note-label textarea { min-height: 190px; resize: vertical; padding: 13px; border: 1px solid #cfd9e8; border-radius: 9px; background: #fbfdff; color: #142747; font: inherit; line-height: 1.5; }
 .animus-file-note-label textarea:focus { outline: 3px solid rgba(37, 99, 235, .14); border-color: #4f8cff; background: #fff; }
-.animus-file-note-actions { justify-content: flex-end; }
+.crm-choice-actions.animus-file-note-actions { display: flex; justify-content: flex-end; gap: 10px; }
+.crm-choice-actions.animus-file-note-actions .icon-button { width: auto; min-width: 132px; min-height: 44px; }
 
 @media (max-width: 1240px) {
   .animus-work-grid { grid-template-columns: minmax(230px, 1fr) minmax(330px, 1.35fr); }

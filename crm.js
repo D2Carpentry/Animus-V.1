@@ -372,8 +372,11 @@ function mergeCrmNotes(primary = [], secondary = []) {
   const unique = new Map();
   [...(Array.isArray(primary) ? primary : []), ...(Array.isArray(secondary) ? secondary : [])].forEach((note) => {
     if (!note || !String(note.text || "").trim()) return;
-    const key = `${note.at || ""}|${note.text || ""}`;
-    if (!unique.has(key)) unique.set(key, { ...note });
+    const key = String(note.id || note.at || `${note.text || ""}`).trim();
+    const prior = unique.get(key);
+    const priorStamp = Date.parse(prior?.editedAt || prior?.at || "") || 0;
+    const nextStamp = Date.parse(note.editedAt || note.at || "") || 0;
+    unique.set(key, nextStamp >= priorStamp ? { ...prior, ...note } : { ...note, ...prior });
   });
   return [...unique.values()].sort((a, b) => (Date.parse(a.at || "") || 0) - (Date.parse(b.at || "") || 0));
 }
@@ -2348,15 +2351,22 @@ function saveFileNoteModal() {
   saveCrmFiles({ syncExpenses: false });
   closeFileNoteModal();
   renderCrm();
-  // Notes are small, independent work-file records. Push this file update now
-  // so an automatic cloud load cannot replace the just-saved local note.
-  queueDashboardCloudSave(
-    buildDashboardSyncPayload({ includeRevenue: false, syncExpenses: false, captureEdits: false, restoreRevenueHistory: false }),
-    { replaceLatest: true },
-  ).then(() => {
+  persistFileNoteChangeToCloud(note ? "File note updated in this work file and Cloudflare." : "File note saved to this work file and Cloudflare.").then(() => {
     showDashboardSaveStatus(note ? "File note updated in this work file and Cloudflare." : "File note saved to this work file and Cloudflare.");
   }).catch(() => {
     showDashboardSaveStatus(note ? "File note updated in this browser. Cloud sync will retry with Save All." : "File note saved in this browser. Cloud sync will retry with Save All.", true);
+  });
+}
+
+function persistFileNoteChangeToCloud(message) {
+  const payload = buildDashboardSyncPayload({ includeRevenue: false, syncExpenses: false, captureEdits: false, restoreRevenueHistory: false });
+  return queueDashboardCloudSave(payload).then((result) => {
+    const cloudFiles = Array.isArray(result?.dashboard?.dashboardFiles) ? result.dashboard.dashboardFiles : [];
+    if (cloudFiles.length) {
+      crmFiles = mergeDashboardFiles(crmFiles, cloudFiles).map((file) => normalizeCrmFile(file));
+      saveCrmFiles({ syncExpenses: false });
+    }
+    return result;
   });
 }
 
@@ -2374,10 +2384,7 @@ function deleteFileNote(index) {
   crmLocalChangeVersion += 1;
   saveCrmFiles({ syncExpenses: false });
   renderCrm();
-  queueDashboardCloudSave(
-    buildDashboardSyncPayload({ includeRevenue: false, syncExpenses: false, captureEdits: false, restoreRevenueHistory: false }),
-    { replaceLatest: true },
-  ).then(() => {
+  persistFileNoteChangeToCloud("File note deleted from this work file and Cloudflare.").then(() => {
     showDashboardSaveStatus("File note deleted from this work file and Cloudflare.");
   }).catch(() => {
     showDashboardSaveStatus("File note deleted in this browser. Cloud sync will retry with Save All.", true);

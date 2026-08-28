@@ -160,6 +160,29 @@ function mergeManualExpenses(existing = [], incoming = []) {
   });
 }
 
+// Notes and timeline entries are append-only history. A later save from a
+// different device must combine them instead of replacing a newer note list.
+function mergeNotes(existing = [], incoming = []) {
+  const merged = new Map();
+  [...(Array.isArray(existing) ? existing : []), ...(Array.isArray(incoming) ? incoming : [])].forEach((note) => {
+    if (!note || !String(note.text || "").trim()) return;
+    const key = String(note.id || note.at || `${note.text || ""}`).trim();
+    const prior = merged.get(key);
+    const priorStamp = Date.parse(prior?.editedAt || prior?.at || "") || 0;
+    const nextStamp = Date.parse(note.editedAt || note.at || "") || 0;
+    merged.set(key, nextStamp >= priorStamp ? { ...prior, ...note } : { ...note, ...prior });
+  });
+  return [...merged.values()].sort((left, right) => {
+    const leftStamp = Date.parse(left.at || "") || 0;
+    const rightStamp = Date.parse(right.at || "") || 0;
+    return leftStamp - rightStamp;
+  });
+}
+
+function mergeTimeline(existing = [], incoming = []) {
+  return [...new Set([...(Array.isArray(existing) ? existing : []), ...(Array.isArray(incoming) ? incoming : [])].filter(Boolean))];
+}
+
 function mergeFiles(existing = [], incoming = []) {
   const merged = new Map();
   existing.forEach((file) => {
@@ -173,6 +196,8 @@ function mergeFiles(existing = [], incoming = []) {
     merged.set(key, {
       ...prior,
       ...file,
+      notes: mergeNotes(prior.notes, file.notes),
+      timeline: mergeTimeline(prior.timeline, file.timeline),
       freshExpenseReceipts: mergeReceiptHistory(prior.freshExpenseReceipts, file.freshExpenseReceipts),
       expenseReceipts: mergeReceiptHistory(prior.expenseReceipts, file.expenseReceipts),
       expenseLines: mergeExpenseLines(prior.expenseLines, file.expenseLines),
@@ -227,6 +252,10 @@ async function readExistingDashboard(env) {
 }
 
 function mergeDashboard(existing = {}, incoming = {}) {
+  const deletedFileKeys = new Set([
+    ...(Array.isArray(existing.deletedFileKeys) ? existing.deletedFileKeys : []),
+    ...(Array.isArray(incoming.deletedFileKeys) ? incoming.deletedFileKeys : []),
+  ].map((key) => String(key).trim().toLowerCase()).filter(Boolean));
   const deletedRevenueKeys = new Set(
     Array.isArray(incoming.deletedRevenueKeys) ? incoming.deletedRevenueKeys.map((key) => String(key).trim().toLowerCase()) : [],
   );
@@ -235,7 +264,9 @@ function mergeDashboard(existing = {}, incoming = {}) {
   return {
     ...existing,
     ...incoming,
-    dashboardFiles: mergeFiles(existing.dashboardFiles, incoming.dashboardFiles),
+    dashboardFiles: mergeFiles(existing.dashboardFiles, incoming.dashboardFiles)
+      .filter((file) => !deletedFileKeys.has(fileMergeKey(file))),
+    deletedFileKeys: Array.from(deletedFileKeys),
     revenueRows: mergedRevenueRows,
     payrollRows: Array.isArray(incoming.payrollRows) ? incoming.payrollRows : (existing.payrollRows || []),
     priceRows: Array.isArray(incoming.priceRows) ? incoming.priceRows : (existing.priceRows || []),
