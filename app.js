@@ -142,6 +142,9 @@ function isInvoiceMode() {
 function applyInvoiceMode() {
   const invoiceMode = isInvoiceMode();
   document.body.classList.toggle("invoice-mode", invoiceMode);
+  if ($("projectPhotosHeading")) {
+    $("projectPhotosHeading").textContent = invoiceMode ? "Invoice Images" : "Project Photos";
+  }
   if (invoiceMode) {
     $("estimateTitle").value = "Invoice";
     if ($("taxRate").value === "6.5") $("taxRate").value = "";
@@ -789,6 +792,7 @@ function addPhotos(files) {
           id: createId(),
           name: file.name,
           label: "",
+          includeOnInvoice: true,
           dataUrl: reader.result,
         });
         renderPhotos();
@@ -841,13 +845,21 @@ function renderPhotos() {
         Image Label
         <input data-field="label" value="${escapeHtml(photo.label)}" placeholder="Example: Existing closet">
       </label>
+      <label class="photo-invoice-toggle">
+        <input type="checkbox" data-field="includeOnInvoice" ${photo.includeOnInvoice !== false ? "checked" : ""}>
+        Include on invoice
+      </label>
       <button type="button" data-action="remove" title="Remove photo" aria-label="Remove photo">x</button>
     `;
 
     card.addEventListener("input", (event) => {
-      if (event.target.dataset.field !== "label") return;
+      if (!event.target.dataset.field) return;
       const entry = state.photos.find((item) => item.id === photo.id);
-      if (entry) entry.label = event.target.value;
+      if (entry) {
+        entry[event.target.dataset.field] = event.target.dataset.field === "includeOnInvoice"
+          ? event.target.checked
+          : event.target.value;
+      }
       updatePreview();
     });
 
@@ -1182,8 +1194,11 @@ function updatePreview() {
     : "Deposit Due";
   $("depositDue").textContent = currency.format(totals.deposit);
 
-  $("previewPhotosSection").hidden = state.photos.length === 0;
-  $("previewPhotos").innerHTML = state.photos.map((photo) => `
+  const previewPhotos = invoiceMode
+    ? state.photos.filter((photo) => photo.includeOnInvoice !== false)
+    : state.photos;
+  $("previewPhotosSection").hidden = previewPhotos.length === 0;
+  $("previewPhotos").innerHTML = previewPhotos.map((photo) => `
     <figure>
       <img src="${photo.dataUrl}" alt="${escapeHtml(photo.label || photo.name)}">
       <figcaption>${escapeHtml(photo.label || photo.name)}</figcaption>

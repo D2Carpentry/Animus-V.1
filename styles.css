@@ -912,6 +912,29 @@ textarea:focus {
   color: #633929;
 }
 
+.photo-invoice-toggle {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  color: var(--pine);
+  font-size: 0.76rem;
+  font-weight: 850;
+}
+
+.photo-invoice-toggle input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--blue);
+}
+
+body.invoice-mode .photo-invoice-toggle {
+  display: inline-flex;
+}
+
+body.invoice-mode .photo-editor-card {
+  grid-template-columns: 88px minmax(150px, 1fr) max-content 40px;
+}
+
 .line-row label:first-child {
   font-weight: 900;
 }
@@ -1410,7 +1433,6 @@ th {
 body.invoice-mode .dashboard-file-panel,
 body.invoice-mode .project-panel,
 body.invoice-mode .materials-panel,
-body.invoice-mode .project-photos-panel,
 body.invoice-mode .assignment-panel,
 body.invoice-mode .calculations-panel,
 body.invoice-mode #generateAssignmentSheet,
