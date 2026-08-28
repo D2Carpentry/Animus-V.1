@@ -281,9 +281,17 @@
   function openFileNoteModal() {
     const modal = byId("animusFileNoteModal");
     const input = byId("animusFileNoteText");
-    if (!modal || !input) return;
+    const file = currentFile();
+    if (!modal || !input || !file?.id) return;
+    // The CRM cloud writer uses this ID to attach the note to this exact
+    // work file. Without it, the modal could only save a temporary copy.
+    modal.dataset.fileId = file.id;
     input.value = "";
     modal.dataset.noteIndex = "";
+    const title = byId("animusFileNoteTitle");
+    const saveButton = byId("animusFileNoteSave");
+    if (title) title.textContent = "Add File Note";
+    if (saveButton) saveButton.textContent = "Save Note";
     modal.hidden = false;
     window.setTimeout(() => input.focus(), 0);
   }
