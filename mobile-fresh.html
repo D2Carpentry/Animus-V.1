@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#071a33">
+  <title>ANIMUS Mobile</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="mobile-fresh.css?v=20260827-fresh-mobile-unique">
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <button class="brand" type="button" data-view="home" aria-label="Open ANIMUS home"><span class="brand-mark">A</span><span><b>ANIMUS</b><small>COMMAND CENTER</small></span></button>
+      <div class="top-actions"><span id="cloudState" class="cloud-state">Connecting...</span><button id="saveButton" class="icon-button" type="button">Save</button></div>
+    </header>
+    <section class="content">
+      <section id="homeView" class="view active">
+        <p class="eyebrow">Command Center</p><h1>Good day, D2 Team</h1><p class="subcopy">Your work, finances, and receipt capture in one place.</p>
+        <div id="summaryGrid" class="summary-grid"></div>
+        <div class="home-actions"><button class="primary-action" type="button" data-view="files">Open Work Files</button><button class="secondary-action" type="button" data-view="expenses">Capture an Expense</button></div>
+        <section class="panel"><div class="panel-heading"><div><p class="eyebrow">Today</p><h2>Upcoming work</h2></div><button type="button" data-open-desktop="calendar">Calendar</button></div><div id="todayList" class="compact-list"></div></section>
+      </section>
+      <section id="filesView" class="view">
+        <div class="page-heading"><div><p class="eyebrow">CRM</p><h1>Work Files</h1></div><button id="newFileButton" class="icon-button" type="button">+ New</button></div>
+        <div class="search-field"><input id="fileSearch" type="search" placeholder="Search work files"><span>Search</span></div>
+        <div class="filter-row" id="fileFilters"><button type="button" data-filter="open" class="selected">Open</button><button type="button" data-filter="active">Active</button><button type="button" data-filter="closed">Closed</button><button type="button" data-filter="all">All</button></div>
+        <div id="fileList" class="file-list"></div>
+      </section>
+      <section id="detailView" class="view"><button class="back-link" type="button" data-view="files">Back to Work Files</button><div id="fileDetail"></div></section>
+      <section id="expensesView" class="view">
+        <div class="page-heading"><div><p class="eyebrow">Expense Center</p><h1>Expenses</h1></div><button id="expenseChooseFile" class="icon-button" type="button">Work File</button></div>
+        <section id="expenseHero" class="expense-hero"></section><section id="receiptReview" class="receipt-review" hidden></section>
+        <section class="panel"><div class="panel-heading"><div><p class="eyebrow">Saved</p><h2>Receipt history</h2></div><strong id="receiptCount">0</strong></div><div id="receiptHistory" class="receipt-history"></div></section>
+      </section>
+      <section id="revenueView" class="view"><div class="page-heading"><div><p class="eyebrow">Business</p><h1>Revenue</h1></div><button type="button" data-open-desktop="revenue">Open desktop</button></div><div id="revenueStats" class="summary-grid"></div><div id="revenueList" class="file-list"></div></section>
+      <section id="moreView" class="view"><div class="page-heading"><div><p class="eyebrow">ANIMUS</p><h1>More</h1></div></div><div class="tool-list"><button type="button" data-open-desktop="calendar">Calendar <span>›</span></button><button type="button" data-open-desktop="estimate">Estimator <span>›</span></button><button type="button" data-open-desktop="prices">Price Database <span>›</span></button><button type="button" data-open-desktop="crm">Desktop Command Center <span>›</span></button></div></section>
+    </section>
+    <nav class="bottom-nav"><button class="active" type="button" data-view="home">Home</button><button type="button" data-view="files">Files</button><button type="button" data-view="expenses">Expenses</button><button type="button" data-view="revenue">Revenue</button><button type="button" data-view="more">More</button></nav>
+  </main>
+  <input id="cameraInput" type="file" accept="image/*" capture="environment" hidden><input id="uploadInput" type="file" accept="image/*,application/pdf" hidden>
+  <div id="busyOverlay" class="busy-overlay" hidden><div class="busy-card"><i></i><p class="eyebrow">ANIMUS Receipt Reader</p><h2 id="busyTitle">Reading receipt...</h2><p id="busyMessage">Preparing your receipt for review.</p></div></div>
+  <div id="sheetBackdrop" class="sheet-backdrop" hidden></div><section id="sheet" class="bottom-sheet" hidden></section>
+  <script src="mobile-fresh.js?v=20260827-fresh-mobile-unique"></script>
+</body>
+</html>
