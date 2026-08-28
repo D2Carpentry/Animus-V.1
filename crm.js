@@ -2094,7 +2094,7 @@ function saveMaterialAmountEdit() {
 function addSystemNote(file, text) {
   if (!text) return;
   const timestamp = new Date().toISOString();
-  file.notes = [...(file.notes || []), { at: timestamp, text }];
+  file.notes = [...(file.notes || []), { at: timestamp, text, source: "system" }];
   file.timeline = [...(file.timeline || []), `Workflow note added ${formatNoteTimestamp(timestamp)}`];
 }
 
@@ -2271,7 +2271,7 @@ function addCrmNote() {
   const text = $("crmNewNote").value.trim();
   if (!text) return;
   const timestamp = new Date().toISOString();
-  file.notes.push({ at: timestamp, text });
+  file.notes.push({ at: timestamp, text, source: "manual" });
   file.timeline = [...(file.timeline || []), `Note added ${formatNoteTimestamp(timestamp)}`];
   $("crmNewNote").value = "";
   saveCrmFiles();

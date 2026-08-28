@@ -564,11 +564,11 @@ body.animus-unified-ui .animus-work-files-layout .crm-file-workspace { gap: 16px
 .animus-assigned-person small { display: block; margin-bottom: 3px; color: #70809a; font-size: 10px; font-weight: 750; }
 .animus-assigned-person strong { display: block; overflow: hidden; color: #14325e; font-size: 14px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
 
-.animus-important-note { margin: 16px; padding: 15px; border: 1px solid #f2d08c; border-radius: 8px; background: #fffaf0; }
-.animus-important-note p { margin: 0; color: #243653; font-size: 13px; line-height: 1.55; white-space: pre-wrap; }
-.animus-important-note small { display: block; margin-top: 18px; color: #71809a; font-size: 10px; }
 .animus-file-notes-card { min-height: 178px; }
-.animus-file-notes-card .animus-important-note { margin: 16px; min-height: 96px; }
+.animus-file-note-list { display: grid; gap: 10px; max-height: 330px; margin: 16px; overflow: auto; padding-right: 4px; }
+.animus-file-note-entry { padding: 14px; border: 1px solid #e1e8f2; border-radius: 8px; background: #fff; }
+.animus-file-note-entry p { margin: 0; color: #243653; font-size: 13px; line-height: 1.55; white-space: pre-wrap; }
+.animus-file-note-entry small { display: block; margin-top: 12px; color: #71809a; font-size: 10px; font-weight: 700; }
 .animus-recent-activity-card { margin-top: 14px; }
 
 .animus-tab-panel { min-width: 0; }

@@ -117,8 +117,15 @@
   }
 
   function importantNotesCard(file) {
-    const note = [...(Array.isArray(file?.notes) ? file.notes : [])].reverse().find((entry) => field(entry, "text"));
-    return `<section class="animus-info-card animus-file-notes-card"><div class="animus-card-head"><h3><span class="card-mark">&#9744;</span> File Notes</h3><button class="animus-record-button small" data-animus-add-note>Add Note</button></div>${note ? `<div class="animus-important-note"><p>${escape(note.text)}</p><small>Updated ${escape(date((note.editedAt || note.at || "").slice(0, 10)))} by D2 Carpentry &amp; Design</small></div>` : `<p class="animus-next-empty">No notes yet. Add the first note for this work file.</p>`}</section>`;
+    const notes = (Array.isArray(file?.notes) ? file.notes : [])
+      .filter((entry) => field(entry, "text") && entry?.source !== "system")
+      .slice()
+      .reverse();
+    const noteHistory = notes.map((note) => {
+      const updatedAt = note.editedAt || note.at || "";
+      return `<article class="animus-file-note-entry"><p>${escape(note.text)}</p><small>${escape(updatedAt ? `Added ${date(updatedAt.slice(0, 10))}` : "Date not recorded")} by D2 Carpentry &amp; Design</small></article>`;
+    }).join("");
+    return `<section class="animus-info-card animus-file-notes-card"><div class="animus-card-head"><h3><span class="card-mark">&#9744;</span> File Notes</h3><button class="animus-record-button small" data-animus-add-note>Add Note</button></div>${notes.length ? `<div class="animus-file-note-list">${noteHistory}</div>` : `<p class="animus-next-empty">No notes yet. Add the first note for this work file.</p>`}</section>`;
   }
 
   function assignedToCard(file) {
@@ -295,7 +302,7 @@
       return;
     }
     const stamp = new Date().toISOString();
-    file.notes = [...(Array.isArray(file.notes) ? file.notes : []), { at: stamp, text }];
+    file.notes = [...(Array.isArray(file.notes) ? file.notes : []), { at: stamp, text, source: "manual" }];
     file.timeline = [...(Array.isArray(file.timeline) ? file.timeline : []), `Note added ${new Date(stamp).toLocaleString("en-US")}`];
     if (typeof window.saveCrmFiles === "function") window.saveCrmFiles();
     closeFileNoteModal();
