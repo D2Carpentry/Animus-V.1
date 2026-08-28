@@ -1,4 +1,4 @@
-const CACHE_NAME = "animus-cache-cleanup-20260810";
+const CACHE_NAME = "animus-mobile-fresh-20260827";
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();

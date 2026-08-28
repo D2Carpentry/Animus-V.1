@@ -1,311 +1,46 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <title>ANIMUS Mobile</title>
-    <meta name="theme-color" content="#0d4a91">
-    <link rel="icon" href="icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="mobile.css?v=20260822-mobile-shared-expenses">
-    <link rel="stylesheet" href="mobile-expenses-v2.css?v=20260822-mobile-shared-expenses">
-  </head>
-  <body>
-    <main class="mobile-shell">
-      <header class="mobile-topbar">
-        <div class="mobile-brand">
-          <img src="assets/d2-logo.png" alt="D2 Carpentry and Design logo">
-          <div>
-            <p>D2 Carpentry and Design</p>
-            <h1>ANIMUS</h1>
-          </div>
-        </div>
-        <button type="button" class="mobile-menu-button" id="mobileMenuButton" aria-label="Open menu" aria-expanded="false">
-          <span></span>
-          <span></span>
-          <span></span>
-        </button>
-      </header>
-
-      <div class="mobile-menu-backdrop" id="mobileMenuBackdrop" hidden></div>
-      <aside class="mobile-menu-panel" id="mobileMenuPanel" hidden>
-        <div class="mobile-menu-head">
-          <div>
-            <p class="eyebrow">ANIMUS</p>
-            <h2>Menu</h2>
-          </div>
-          <button type="button" id="mobileMenuClose" aria-label="Close menu">×</button>
-        </div>
-        <div class="mobile-menu-list">
-          <button type="button" id="mobileNewFile">+ New File</button>
-          <button type="button" data-mobile-tab="files">Command Center</button>
-          <button type="button" data-mobile-tab="calendar">Calendar</button>
-          <button type="button" data-mobile-tab="estimate">Estimator</button>
-          <button type="button" data-mobile-tab="revenue">Revenue</button>
-          <button type="button" data-mobile-tab="expenses">Expenses</button>
-          <button type="button" data-mobile-tab="more">More</button>
-          <button type="button" id="mobileSaveCloud">Save</button>
-          <button type="button" id="mobileLoadCloud">Load Cloud</button>
-          <button type="button" id="mobileOpenDesktop">Desktop Command Center</button>
-          <button type="button" id="mobileOpenPriceDb">Price Database</button>
-        </div>
-      </aside>
-
-      <section class="mobile-hero">
-        <div>
-          <p class="eyebrow">Command Center</p>
-          <h2 id="mobileViewTitle">Files</h2>
-        </div>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#071a33">
+  <title>ANIMUS Mobile</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="mobile.css?v=20260827-fresh-mobile">
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <button class="brand" type="button" data-view="home" aria-label="Open ANIMUS home"><span class="brand-mark">A</span><span><b>ANIMUS</b><small>COMMAND CENTER</small></span></button>
+      <div class="top-actions"><span id="cloudState" class="cloud-state">Connecting...</span><button id="saveButton" class="icon-button" type="button">Save</button></div>
+    </header>
+    <section class="content">
+      <section id="homeView" class="view active">
+        <p class="eyebrow">Command Center</p><h1>Good day, D2 Team</h1><p class="subcopy">Your work, finances, and receipt capture in one place.</p>
+        <div id="summaryGrid" class="summary-grid"></div>
+        <div class="home-actions"><button class="primary-action" type="button" data-view="files">Open Work Files</button><button class="secondary-action" type="button" data-view="expenses">Capture an Expense</button></div>
+        <section class="panel"><div class="panel-heading"><div><p class="eyebrow">Today</p><h2>Upcoming work</h2></div><button type="button" data-open-desktop="calendar">Calendar</button></div><div id="todayList" class="compact-list"></div></section>
       </section>
-
-      <section class="mobile-view active" id="mobileFilesView">
-        <div class="mobile-filter-row">
-          <select id="mobileFileFilter" aria-label="File filter">
-            <option value="all">All Files</option>
-            <option value="new">New Leads</option>
-            <option value="contact">Pending Contact</option>
-            <option value="estimate">Pending Estimates</option>
-            <option value="negotiation">In Negotiation</option>
-            <option value="active">Active Jobs</option>
-            <option value="archive">Closed Files</option>
-          </select>
-        </div>
-        <div class="mobile-search">
-          <input id="mobileSearch" type="search" placeholder="Search name, phone, or file #">
-        </div>
-        <div class="mobile-file-list" id="mobileFileList"></div>
+      <section id="filesView" class="view">
+        <div class="page-heading"><div><p class="eyebrow">CRM</p><h1>Work Files</h1></div><button id="newFileButton" class="icon-button" type="button">+ New</button></div>
+        <div class="search-field"><input id="fileSearch" type="search" placeholder="Search work files"><span>Search</span></div>
+        <div class="filter-row" id="fileFilters"><button type="button" data-filter="open" class="selected">Open</button><button type="button" data-filter="active">Active</button><button type="button" data-filter="closed">Closed</button><button type="button" data-filter="all">All</button></div>
+        <div id="fileList" class="file-list"></div>
       </section>
-
-      <section class="mobile-view" id="mobileDetailView">
-        <button type="button" class="mobile-back" data-mobile-tab="files">Back to Files</button>
-        <article class="mobile-card mobile-file-editor mobile-collapsible is-open">
-          <button type="button" class="mobile-section-toggle" data-mobile-toggle-section>
-            <span>
-              <span class="eyebrow" id="mobileDetailNumber">File</span>
-              <strong>Customer</strong>
-            </span>
-            <span class="mobile-section-arrow">›</span>
-          </button>
-          <div class="mobile-section-body">
-            <input class="mobile-title-input" id="mobileClientName" placeholder="Client name">
-            <div class="mobile-grid">
-              <label>Phone<input id="mobileClientPhone" type="tel"></label>
-              <label>Email<input id="mobileClientEmail" type="email"></label>
-              <label class="full">Address<input id="mobileProjectAddress"></label>
-              <label>Status<select id="mobileFileStatus"></select></label>
-              <label>Detail<select id="mobileStatusDetail"></select></label>
-              <label>Project Type<select id="mobileProjectType"></select></label>
-              <label>Source<input id="mobileLeadSource"></label>
-            </div>
-          </div>
-        </article>
-
-        <article class="mobile-card mobile-collapsible">
-          <button type="button" class="mobile-section-toggle" data-mobile-toggle-section>
-            <span>
-              <span class="eyebrow">Financials</span>
-              <strong id="mobileMoneyTitle">$0.00</strong>
-            </span>
-            <span class="mobile-section-right">
-              <span id="mobileBalanceBadge">$0.00 due</span>
-              <span class="mobile-section-arrow">›</span>
-            </span>
-          </button>
-          <div class="mobile-section-body">
-            <div class="mobile-grid">
-              <label>Estimate<input id="mobileEstimateTotal" type="number" min="0" step="0.01"></label>
-              <label>Materials<input id="mobileMaterialTotal" type="number" min="0" step="0.01"></label>
-              <label>Initial Deposit<input id="mobileInitialDeposit" type="number" min="0" step="0.01"></label>
-              <label>Midpoint<input id="mobileMidpointDeposit" type="number" min="0" step="0.01"></label>
-              <label>Final Payment<input id="mobileFinalPaymentAmount" type="number" min="0" step="0.01"></label>
-              <label>Paid in Full<select id="mobilePaidInFull"><option>No</option><option>Yes</option></select></label>
-            </div>
-          </div>
-        </article>
-
-        <article class="mobile-card mobile-collapsible">
-          <button type="button" class="mobile-section-toggle" data-mobile-toggle-section>
-            <span>
-              <span class="eyebrow">Schedule</span>
-              <strong>Dates</strong>
-            </span>
-            <span class="mobile-section-arrow">›</span>
-          </button>
-          <div class="mobile-section-body">
-            <div class="mobile-grid">
-              <label>Inspection<input id="mobileInspectionDate" type="date"></label>
-              <label>Inspection Time<input id="mobileInspectionTime" type="time"></label>
-              <label>Start Date<input id="mobileStartDate" type="date"></label>
-              <label>Follow-Up<input id="mobileFollowUpDate" type="date"></label>
-              <label class="full">Completion<input id="mobileAnticipatedCompletionDate" type="date"></label>
-            </div>
-          </div>
-        </article>
-
-        <article class="mobile-card mobile-collapsible">
-          <button type="button" class="mobile-section-toggle" data-mobile-toggle-section>
-            <span>
-              <span class="eyebrow">Notes</span>
-              <strong>File Notes</strong>
-            </span>
-            <span class="mobile-section-arrow">›</span>
-          </button>
-          <div class="mobile-section-body">
-            <button type="button" id="mobileAddNote">Add Note</button>
-            <textarea id="mobileNewNote" rows="3" placeholder="Add a note"></textarea>
-            <div class="mobile-notes" id="mobileNotes"></div>
-          </div>
-        </article>
-
-        <div class="mobile-action-row">
-          <button type="button" id="mobileOpenEstimate">Estimate</button>
-          <button type="button" id="mobileOpenExpenses">Expenses</button>
-        </div>
+      <section id="detailView" class="view"><button class="back-link" type="button" data-view="files">Back to Work Files</button><div id="fileDetail"></div></section>
+      <section id="expensesView" class="view">
+        <div class="page-heading"><div><p class="eyebrow">Expense Center</p><h1>Expenses</h1></div><button id="expenseChooseFile" class="icon-button" type="button">Work File</button></div>
+        <section id="expenseHero" class="expense-hero"></section><section id="receiptReview" class="receipt-review" hidden></section>
+        <section class="panel"><div class="panel-heading"><div><p class="eyebrow">Saved</p><h2>Receipt history</h2></div><strong id="receiptCount">0</strong></div><div id="receiptHistory" class="receipt-history"></div></section>
       </section>
-
-      <section class="mobile-view" id="mobileCalendarView">
-        <div class="mobile-calendar-actions">
-          <button type="button" id="mobileImportGoogleCalendar">Import Google</button>
-          <button type="button" id="mobileSyncCalendar">Sync Upcoming</button>
-          <button type="button" id="mobileOpenGoogleCalendar">Open Google</button>
-        </div>
-        <div class="mobile-month-head">
-          <button type="button" id="mobilePrevMonth">Previous</button>
-          <h2 id="mobileMonthTitle">Month</h2>
-          <button type="button" id="mobileNextMonth">Next</button>
-        </div>
-        <div class="mobile-calendar" id="mobileCalendarGrid"></div>
-        <article class="mobile-card">
-          <p class="eyebrow">Selected Day</p>
-          <h3 id="mobileSelectedDayTitle">Today</h3>
-          <div class="mobile-day-events" id="mobileSelectedDayEvents"></div>
-        </article>
-      </section>
-
-      <section class="mobile-view" id="mobileEstimateView">
-        <iframe id="mobileEstimatorFrame" title="D2 Estimator"></iframe>
-      </section>
-
-      <section class="mobile-view" id="mobileRevenueView">
-        <div class="mobile-stat-grid">
-          <article><span>Gross</span><strong id="mobileRevenueGross">$0.00</strong></article>
-          <article><span>Expenses</span><strong id="mobileRevenueExpenses">$0.00</strong></article>
-          <article><span>Labor</span><strong id="mobileRevenueLabor">$0.00</strong></article>
-          <article><span>Profit</span><strong id="mobileRevenueProfit">$0.00</strong></article>
-        </div>
-        <div class="mobile-revenue-list" id="mobileRevenueList"></div>
-      </section>
-
-      <section class="mobile-view" id="mobileExpensesView">
-        <article class="mobile-card mobile-expense-file-card">
-          <p class="eyebrow">File Expenses</p>
-          <h3 id="mobileExpensesFileTitle">Select a file</h3>
-          <p id="mobileExpensesFileMeta" class="mobile-helper">Use the file list first, then add receipts here.</p>
-          <div class="mobile-expense-total">
-            <span>Total Expenses</span>
-            <strong id="mobileExpensesFileTotal">$0.00</strong>
-          </div>
-          <div class="mobile-expense-actions">
-            <button type="button" id="mobileTakeReceiptPhoto">Take Photo</button>
-            <button type="button" id="mobileUploadReceiptPhoto">Upload Image</button>
-          </div>
-          <input id="mobileReceiptCameraInput" type="file" accept="image/*" capture="environment" hidden>
-          <input id="mobileReceiptUploadInput" type="file" accept="image/*" hidden>
-        </article>
-
-        <article class="mobile-card mobile-receipt-review-card" id="mobileReceiptReviewCard" hidden>
-          <div class="mobile-card-head">
-            <div>
-              <p class="eyebrow">Receipt Review</p>
-              <h3>Check Before Saving</h3>
-            </div>
-            <button type="button" class="mobile-small-button" id="mobileClearReceiptDraft">Clear</button>
-          </div>
-          <div class="mobile-receipt-preview" id="mobileReceiptPreview"></div>
-          <div class="mobile-grid mobile-expense-form-grid">
-            <label>Date<input id="mobileReceiptDate" type="date"></label>
-            <label>Vendor<input id="mobileReceiptVendor" placeholder="Store"></label>
-            <label>Category<select id="mobileReceiptCategory"></select></label>
-            <label>Receipt Total<input id="mobileReceiptTotal" type="text" inputmode="decimal" placeholder="0.00"></label>
-            <label>Paid By<select id="mobileReceiptPaidBy">
-              <option value="">Select</option>
-              <option>Cash</option>
-              <option>Credit</option>
-              <option>Other</option>
-            </select></label>
-            <label id="mobileReceiptCardWrap" hidden>Card<select id="mobileReceiptCard">
-              <option>Chase Business</option>
-              <option>Bank of America</option>
-              <option>Chase Personal</option>
-            </select></label>
-            <label class="full">Image Title<input id="mobileReceiptImageTitle" placeholder="Receipt image name"></label>
-            <label class="full">Notes<textarea id="mobileReceiptNotes" rows="3" placeholder="Manual notes"></textarea></label>
-          </div>
-          <div class="mobile-receipt-lines-head">
-            <p class="eyebrow">Receipt Details</p>
-            <strong id="mobileReceiptReviewTotal">$0.00</strong>
-          </div>
-          <div class="mobile-receipt-lines" id="mobileReceiptLines"></div>
-          <div class="mobile-expense-actions">
-            <button type="button" id="mobileAddReceiptLine">Add Line</button>
-            <button type="button" class="primary" id="mobileSaveReceiptExpense">Save Receipt</button>
-          </div>
-          <p class="mobile-receipt-status" id="mobileReceiptStatus"></p>
-        </article>
-
-        <article class="mobile-card mobile-collapsible is-open">
-          <button type="button" class="mobile-section-toggle" data-mobile-toggle-section>
-            <span>
-              <span class="eyebrow">Manual Expense</span>
-              <strong>Add Without Receipt</strong>
-            </span>
-            <span class="mobile-section-arrow">›</span>
-          </button>
-          <div class="mobile-section-body">
-            <div class="mobile-grid mobile-expense-form-grid">
-              <label>Date<input id="mobileManualExpenseDate" type="date"></label>
-              <label>Vendor<input id="mobileManualExpenseVendor" placeholder="Store or note"></label>
-              <label>Category<select id="mobileManualExpenseCategory"></select></label>
-              <label>Amount<input id="mobileManualExpenseAmount" type="text" inputmode="decimal" placeholder="0.00"></label>
-              <label class="mobile-check-row full"><input id="mobileManualExpenseTax" type="checkbox" checked> Add sales tax</label>
-              <label class="full">Notes<textarea id="mobileManualExpenseNotes" rows="3" placeholder="Expense notes"></textarea></label>
-            </div>
-            <button type="button" class="primary" id="mobileAddManualExpense">Add Expense</button>
-          </div>
-        </article>
-
-        <article class="mobile-card">
-          <div class="mobile-card-head">
-            <div>
-              <p class="eyebrow">Saved Receipts</p>
-              <h3>Expense History</h3>
-            </div>
-            <strong id="mobileSavedExpenseCount">0</strong>
-          </div>
-          <div class="mobile-expense-list" id="mobileSavedExpenseList"></div>
-        </article>
-      </section>
-
-      <section class="mobile-view" id="mobileMoreView">
-        <article class="mobile-card">
-          <p class="eyebrow">Tools</p>
-          <p class="mobile-helper">Use the menu button in the top corner for files, calendar, estimator, revenue, cloud save, desktop view, and the price database.</p>
-        </article>
-      </section>
-    </main>
-
-    <div class="mobile-loading-backdrop" id="mobileReceiptLoadingModal" hidden>
-      <section class="mobile-loading-modal" role="status" aria-live="polite" aria-label="Reading receipt photo">
-        <div class="mobile-loading-spinner" aria-hidden="true"></div>
-        <p class="eyebrow">Receipt Reader</p>
-        <h2 id="mobileReceiptLoadingTitle">Reading receipt photo...</h2>
-        <p id="mobileReceiptLoadingMessage">ANIMUS is reviewing the image and preparing the expense lines.</p>
-      </section>
-    </div>
-
-    <script src="dashboard-restore-data.js?v=20260805-mobile-sync"></script>
-    <script src="revenue-data.js?v=20260805-mobile-sync"></script>
-    <script src="materials-database.js?v=20260804-price-update-2"></script>
-    <script src="mobile.js?v=20260822-mobile-shared-expenses"></script>
-    <script src="mobile-expenses-v2.js?v=20260822-mobile-shared-expenses"></script>
-  </body>
+      <section id="revenueView" class="view"><div class="page-heading"><div><p class="eyebrow">Business</p><h1>Revenue</h1></div><button type="button" data-open-desktop="revenue">Open desktop</button></div><div id="revenueStats" class="summary-grid"></div><div id="revenueList" class="file-list"></div></section>
+      <section id="moreView" class="view"><div class="page-heading"><div><p class="eyebrow">ANIMUS</p><h1>More</h1></div></div><div class="tool-list"><button type="button" data-open-desktop="calendar">Calendar <span>›</span></button><button type="button" data-open-desktop="estimate">Estimator <span>›</span></button><button type="button" data-open-desktop="prices">Price Database <span>›</span></button><button type="button" data-open-desktop="crm">Desktop Command Center <span>›</span></button></div></section>
+    </section>
+    <nav class="bottom-nav"><button class="active" type="button" data-view="home">Home</button><button type="button" data-view="files">Files</button><button type="button" data-view="expenses">Expenses</button><button type="button" data-view="revenue">Revenue</button><button type="button" data-view="more">More</button></nav>
+  </main>
+  <input id="cameraInput" type="file" accept="image/*" capture="environment" hidden><input id="uploadInput" type="file" accept="image/*,application/pdf" hidden>
+  <div id="busyOverlay" class="busy-overlay" hidden><div class="busy-card"><i></i><p class="eyebrow">ANIMUS Receipt Reader</p><h2 id="busyTitle">Reading receipt...</h2><p id="busyMessage">Preparing your receipt for review.</p></div></div>
+  <div id="sheetBackdrop" class="sheet-backdrop" hidden></div><section id="sheet" class="bottom-sheet" hidden></section>
+  <script src="mobile.js?v=20260827-fresh-mobile"></script>
+</body>
 </html>

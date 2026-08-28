@@ -1,11 +1,11 @@
 {
-  "name": "Alchemyist Estimate Studio",
-  "short_name": "Estimates",
-  "start_url": "./index.html",
+  "name": "ANIMUS Mobile",
+  "short_name": "ANIMUS",
+  "start_url": "./mobile.html?v=20260827-fresh-mobile",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#f4f1ea",
-  "theme_color": "#24514a",
+  "background_color": "#f7f9fc",
+  "theme_color": "#071a33",
   "icons": [
     {
       "src": "icon.svg",
