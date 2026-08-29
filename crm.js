@@ -154,6 +154,7 @@ const trackedStatusFields = {
 const $ = (id) => document.getElementById(id);
 
 let crmRestoreAppliedThisLoad = false;
+let crmCloudAuthoritativeLoaded = false;
 let crmFiles = [];
 let activeFileId = crmFiles[0] ? crmFiles[0].id : null;
 let crmRevenueRows = [];
@@ -987,6 +988,9 @@ async function postPayloadToCloudflare(payload, options = {}) {
 let cloudDashboardWriteQueue = Promise.resolve();
 
 function queueDashboardCloudSave(payload, options = {}) {
+  if (!crmCloudAuthoritativeLoaded && !options.testSnapshot && !options.backupOnly && !options.allowBeforeCloudLoad) {
+    return Promise.reject(new Error("Cloudflare has not finished loading the current Command Center yet. Live save was blocked so stale browser data cannot overwrite the cloud."));
+  }
   const write = cloudDashboardWriteQueue.then(() => postPayloadToCloudflare(payload, options));
   // Keep the next save available even when one request fails.
   cloudDashboardWriteQueue = write.catch(() => {});
@@ -1298,6 +1302,10 @@ async function saveDashboardToGoogle() {
     showDashboardSaveStatus("Finish creating the work file or cancel the form before using Save All. This keeps the cloud snapshot exact.", true);
     return;
   }
+  if (!crmCloudAuthoritativeLoaded) {
+    showDashboardSaveStatus("Save All is blocked until the current Cloudflare Command Center has loaded. This prevents an older browser copy from overwriting the cloud.", true);
+    return;
+  }
   saveButton.disabled = true;
   saveButton.textContent = "Checking...";
   showDashboardSaveStatus("Preparing the current Command Center for a push-only cloud save...");
@@ -1534,6 +1542,7 @@ function applyDashboardBackup(dashboard = {}, options = {}) {
   savePriceRows();
   saveDeletedPriceIds();
   rememberCloudSync(dashboard);
+  crmCloudAuthoritativeLoaded = true;
 }
 
 async function loadDashboardFromGoogle() {
@@ -1651,7 +1660,7 @@ async function autoRestoreDashboardFromCloud() {
     }
     const files = Array.isArray(dashboard?.dashboardFiles) ? dashboard.dashboardFiles : [];
     if (!dashboard || !files.length) {
-      showDashboardSaveStatus("Cloudflare does not have a saved Command Center yet. Showing this browser's temporary copy.", true);
+      showDashboardSaveStatus("Cloudflare does not have a saved Command Center yet. Browser data was not loaded.", true);
       return;
     }
     applyDashboardBackup(dashboard, { preserveMissing: false });

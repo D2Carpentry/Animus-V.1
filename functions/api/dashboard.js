@@ -345,15 +345,24 @@ async function handleBackupList(context) {
   const { env } = context;
   const url = new URL(context.request.url);
   const limit = Math.min(Math.max(Number(url.searchParams.get("limit")) || 30, 1), 100);
-  const listed = await env.ANIMUS_BUCKET.list({ prefix: BACKUP_PREFIX, limit });
-  const objects = (listed.objects || [])
+  let cursor = url.searchParams.get("cursor") || undefined;
+  let truncated = false;
+  const objects = [];
+  do {
+    const listed = await env.ANIMUS_BUCKET.list({ prefix: BACKUP_PREFIX, limit: 100, cursor });
+    objects.push(...(listed.objects || []));
+    truncated = Boolean(listed.truncated);
+    cursor = listed.cursor;
+  } while (truncated && cursor && objects.length < 1000);
+  const backups = objects
     .filter((object) => object.key.endsWith(".json"))
-    .sort((a, b) => String(b.uploaded || "").localeCompare(String(a.uploaded || "")));
-  const backups = objects.map((objectInfo) => ({
-    key: objectInfo.key,
-    uploaded: objectInfo.uploaded || "",
-    size: objectInfo.size || 0,
-  }));
+    .sort((a, b) => String(b.uploaded || "").localeCompare(String(a.uploaded || "")))
+    .slice(0, limit)
+    .map((objectInfo) => ({
+      key: objectInfo.key,
+      uploaded: objectInfo.uploaded || "",
+      size: objectInfo.size || 0,
+    }));
   return jsonResponse({ ok: true, backups });
 }
 
