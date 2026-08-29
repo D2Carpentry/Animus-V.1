@@ -2,9 +2,9 @@
 (() => {
   const views = [
     ["dashboard", "⌂", "Dashboard"], ["calendar", "□", "Calendar"], ["estimator", "▤", "Estimates"], ["files", "▱", "Work Files"], ["contacts", "◉", "Contacts"],
-    ["revenue", "↗", "Revenue"], ["expenses", "▧", "Expenses"], ["payroll", "♙", "Payroll"], ["prices", "▦", "Price Database"], ["business", "◈", "Business Performance"],
+    ["testzone", "◎", "Test Zone"], ["revenue", "↗", "Revenue"], ["expenses", "▧", "Expenses"], ["payroll", "♙", "Payroll"], ["prices", "▦", "Price Database"], ["business", "◈", "Business Performance"],
   ];
-  const titles = { dashboard:"Command Center", files:"Work Files", contacts:"Contacts", calendar:"Calendar", revenue:"Revenue", expenses:"Expenses", payroll:"Payroll", prices:"Price Database", business:"Business Performance", estimator:"Estimate Studio", invoice:"Invoice" };
+  const titles = { dashboard:"Command Center", files:"Work Files", contacts:"Contacts", calendar:"Calendar", revenue:"Revenue", expenses:"Expenses", payroll:"Payroll", prices:"Price Database", business:"Business Performance", estimator:"Estimate Studio", testzone:"Test Zone", invoice:"Invoice" };
   function currentView() {
     if (!document.querySelector("#crmExpensesView")?.hidden) return "expenses";
     if (!document.querySelector("#crmRevenueView")?.hidden) return "revenue";
@@ -14,6 +14,7 @@
     if (!document.querySelector("#crmPriceView")?.hidden) return "prices";
     if (!document.querySelector("#crmBusinessView")?.hidden) return "business";
     if (!document.querySelector("#crmEstimatorView")?.hidden) return "estimator";
+    if (!document.querySelector("#crmTestZoneView")?.hidden) return "testzone";
     return document.body.dataset.animusView === "files" ? "files" : "dashboard";
   }
   function syncShell() {
@@ -24,8 +25,8 @@
   function createShell() {
     if (document.querySelector("#animusGlobalSidebar")) return;
     document.body.classList.add("animus-unified-ui");
-    const workspace = views.slice(0,5);
-    const business = views.slice(5);
+    const workspace = views.slice(0,6);
+    const business = views.slice(6);
     const makeButtons = (items) => items.map(([view, icon, label]) => `<button type="button" data-animus-shell-view="${view}"><span class="animus-global-icon">${icon}</span>${label}</button>`).join("");
     document.body.insertAdjacentHTML("afterbegin", `<aside class="animus-global-sidebar" id="animusGlobalSidebar"><div class="animus-global-brand"><img src="assets/d2-logo.png" alt="D2 logo"><span>ANIMUS<small>Command Center</small></span></div><p class="animus-global-label">Workspace</p><nav class="animus-global-nav">${makeButtons(workspace)}</nav><p class="animus-global-label">Business</p><nav class="animus-global-nav">${makeButtons(business)}</nav><div class="animus-sidebar-footer"><div class="animus-account-wrap"><button class="animus-global-account" id="animusAccountToggle" type="button"><span><strong>D2 Carpentry &amp; Design</strong>Owner</span><b aria-hidden="true">⌄</b></button><div class="animus-account-menu" id="animusAccountMenu" hidden></div></div></div></aside>`);
     const accountMenu = document.querySelector("#animusAccountMenu");
@@ -45,7 +46,7 @@
     document.querySelectorAll("[data-animus-shell-view]").forEach((button) => button.addEventListener("click", () => { const view = button.dataset.animusShellView; if (view === "files" && typeof activateCrmFilter === "function") activateCrmFilter("open"); if (typeof switchCrmView === "function") switchCrmView(view); if (view === "files" && typeof renderCrm === "function") renderCrm(); syncShell(); }));
     document.addEventListener("click", (event) => { if (event.target.closest?.("[data-crm-view]")) setTimeout(syncShell, 0); });
     const observer = new MutationObserver(syncShell);
-    ["crmExpensesView","crmRevenueView","crmPayrollView","crmCalendarView","crmContactsView","crmPriceView","crmBusinessView","crmEstimatorView"].map((id) => document.getElementById(id)).filter(Boolean).forEach((element) => observer.observe(element, { attributes:true, attributeFilter:["hidden"] }));
+    ["crmExpensesView","crmRevenueView","crmPayrollView","crmCalendarView","crmContactsView","crmPriceView","crmBusinessView","crmEstimatorView","crmTestZoneView"].map((id) => document.getElementById(id)).filter(Boolean).forEach((element) => observer.observe(element, { attributes:true, attributeFilter:["hidden"] }));
     syncShell();
     // Do not reveal the legacy HTML while the shared ANIMUS shell is being built.
     requestAnimationFrame(() => requestAnimationFrame(() => {

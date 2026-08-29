@@ -534,6 +534,15 @@ function defaultRevenueRows() {
 }
 
 function loadCrmFiles() {
+  // Cloudflare is now the source of truth for work files. Browser storage is
+  // kept only as a temporary local scratch/backup and must not hydrate the CRM.
+  const restoredFiles = restoredDashboardFiles();
+  if (restoredFiles.length) {
+    crmRestoreAppliedThisLoad = true;
+    return repairCrmFileCategories(filterDeletedCrmFiles(restoredFiles).map((file) => normalizeCrmFile({ ...file })));
+  }
+  return [];
+/*
   const restoredFiles = restoredDashboardFiles();
   const applyRestore = shouldApplyDashboardRestore();
   try {
@@ -564,6 +573,7 @@ function loadCrmFiles() {
     return repairCrmFileCategories(filterDeletedCrmFiles(restoredFiles).map((file) => normalizeCrmFile({ ...file })));
   }
   return defaultFiles();
+*/
 }
 
 function loadRevenueRows() {
@@ -759,21 +769,7 @@ function saveCrmFiles(options = {}) {
 }
 
 function refreshCrmFilesFromStorage() {
-  try {
-    const saved = localStorage.getItem(CRM_STORAGE_KEY);
-    const files = saved ? JSON.parse(saved) : [];
-    if (!Array.isArray(files) || !files.length) return false;
-    const currentActiveId = activeFileId;
-    crmFiles = repairCrmFileCategories(files.map((file) => normalizeCrmFile(file)));
-    if (currentActiveId && crmFiles.some((file) => file.id === currentActiveId)) {
-      activeFileId = currentActiveId;
-    } else {
-      activeFileId = crmFiles[0] ? crmFiles[0].id : null;
-    }
-    return true;
-  } catch (error) {
-    return false;
-  }
+  return false;
 }
 
 function saveRevenueRows() {
@@ -7848,11 +7844,12 @@ function switchCrmView(view) {
   const showPrices = view === "prices";
   const showBusiness = view === "business";
   const showEstimator = view === "estimator";
+  const showTestZone = view === "testzone";
   const estimatorShell = $("crmEstimatorView")?.closest(".crm-dashboard-view");
-  document.body.classList.toggle("crm-estimator-active", showEstimator);
+  document.body.classList.toggle("crm-estimator-active", showEstimator || showTestZone);
   document.querySelectorAll(".crm-dashboard-view").forEach((section) => {
-    const keepEstimatorShell = showEstimator && estimatorShell && section === estimatorShell;
-    section.hidden = !keepEstimatorShell && (showRevenue || showPayroll || showCalendar || showContacts || showInvoice || showExpenses || showPrices || showBusiness || showEstimator);
+    const keepEstimatorShell = (showEstimator || showTestZone) && estimatorShell && section === estimatorShell;
+    section.hidden = !keepEstimatorShell && (showRevenue || showPayroll || showCalendar || showContacts || showInvoice || showExpenses || showPrices || showBusiness || showEstimator || showTestZone);
   });
   $("crmRevenueView").hidden = !showRevenue;
   $("crmPayrollView").hidden = !showPayroll;
@@ -7863,6 +7860,7 @@ function switchCrmView(view) {
   $("crmPriceView").hidden = !showPrices;
   $("crmBusinessView").hidden = !showBusiness;
   $("crmEstimatorView").hidden = !showEstimator;
+  $("crmTestZoneView").hidden = !showTestZone;
 document.querySelectorAll("[data-crm-view]").forEach((button) => {
   button.classList.toggle("active", button.dataset.crmView === view);
 });
@@ -7904,6 +7902,12 @@ document.querySelectorAll("[data-crm-view]").forEach((button) => {
       estimatorUrl.searchParams.set("embedded", "1");
       estimatorUrl.searchParams.set("open", Date.now().toString());
       frame.src = estimatorUrl.toString();
+    }
+  }
+  if (showTestZone) {
+    const frame = $("crmTestZoneFrame");
+    if (frame && (!frame.getAttribute("src") || frame.getAttribute("src") === "about:blank")) {
+      frame.src = `animus-estimate-demo.html?testZone=${Date.now()}`;
     }
   }
 }
@@ -9014,6 +9018,10 @@ $("crmEstimatorOpenEstimate")?.addEventListener("click", () => openActiveEstimat
 $("crmEstimatorCreateSupplement")?.addEventListener("click", () => createSupplementForFile());
 $("crmEstimatorOpenInvoice")?.addEventListener("click", () => openActiveInvoice());
 $("crmEstimatorOpenAssignment")?.addEventListener("click", () => openActiveEstimate("#assignment"));
+$("crmTestZoneRefresh")?.addEventListener("click", () => {
+  const frame = $("crmTestZoneFrame");
+  if (frame) frame.src = `animus-estimate-demo.html?testZone=${Date.now()}`;
+});
 window.addEventListener("storage", (event) => {
   if (event.key !== "d2EstimateStudio" || !event.newValue) return;
   try {
@@ -9174,9 +9182,8 @@ document.querySelectorAll("[data-crm-view]").forEach((button) => {
   button.addEventListener("click", () => switchCrmView(button.dataset.crmView));
 });
 window.addEventListener("focus", () => {
-  const intakeModal = $("animusNewFileModal");
-  if (intakeModal && !intakeModal.hidden) return;
-  if (refreshCrmFilesFromStorage()) renderCrm();
+  // Do not hydrate work files from browser storage when returning to the tab.
+  // Cloudflare load/Restore Backup are the only pull paths.
 });
 
 $("crmFileStatus").addEventListener("change", () => {

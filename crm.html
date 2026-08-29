@@ -110,6 +110,20 @@
             </div>
             <iframe id="crmEstimatorFrame" title="D2 Estimator" src="index.html?embedded=1&amp;new=1&amp;open=crm-template"></iframe>
           </section>
+
+          <section class="crm-estimator-embed crm-test-zone-embed" id="crmTestZoneView" hidden>
+            <div class="crm-estimator-toolbar">
+              <div>
+                <p class="eyebrow">Test Zone</p>
+                <strong>New estimate UI sandbox.</strong>
+                <span>This area is isolated for testing and can be removed without affecting the live estimator.</span>
+              </div>
+              <div>
+                <button type="button" class="icon-button" id="crmTestZoneRefresh">Reset Test View</button>
+              </div>
+            </div>
+            <iframe id="crmTestZoneFrame" title="ANIMUS Estimate UI Test Zone" src="animus-estimate-demo.html?testZone=1"></iframe>
+          </section>
         </section>
 
         <section class="crm-layout crm-dashboard-view animus-work-files-layout">
@@ -1024,9 +1038,9 @@
         caches.keys().then((keys) => keys.forEach((key) => caches.delete(key)));
       }
     </script>
-<script src="crm.js?v=20260828-cloud-authoritative"></script>
+<script src="crm.js?v=20260828-test-zone-cloud-authoritative"></script>
     <script src="calendar-upgrade.js?v=20260808-calendar-popups"></script>
-    <script src="animus-shell.js?v=20260824-active-workfiles-status-colors"></script>
+    <script src="animus-shell.js?v=20260828-test-zone"></script>
     <script src="animus-dashboard.js?v=20260823-topbar-actions"></script>
     <link rel="stylesheet" href="animus-business-performance.css?v=20260822-business-performance">
     <script src="animus-business-performance.js?v=20260822-business-performance"></script>
