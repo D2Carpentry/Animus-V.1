@@ -14,7 +14,6 @@
     <link rel="stylesheet" href="animus-work-file.css?v=20260827-file-note-cloud-save">
     <link rel="stylesheet" href="animus-operations.css?v=20260822-operations-layout">
     <link rel="stylesheet" href="animus-contacts.css?v=20260823-manual-add-contact">
-    <link rel="stylesheet" href="animus-mobile-responsive.css?v=20260828-mobile-overhaul-foundation">
     <style>
       body.crm-booting .crm-shell,
       body.crm-booting .animus-global-sidebar { visibility: hidden; }
@@ -23,9 +22,6 @@
       .animus-boot-screen small { color: #64748b; font-weight: 700; }
       .animus-boot-mark { width: 40px; height: 40px; border: 4px solid #dce8f8; border-top-color: #2563eb; border-radius: 50%; animation: animus-boot-spin .7s linear infinite; }
       body.animus-ready .animus-boot-screen { opacity: 0; visibility: hidden; pointer-events: none; }
-      body.animus-boot-timeout .crm-shell,
-      body.animus-boot-timeout .animus-global-sidebar { visibility: visible; }
-      body.animus-boot-timeout .animus-boot-screen { opacity: 0; visibility: hidden; pointer-events: none; }
       @keyframes animus-boot-spin { to { transform: rotate(360deg); } }
     </style>
   </head>
@@ -35,15 +31,6 @@
       <strong>ANIMUS</strong>
       <small>Opening Command Center</small>
     </div>
-    <script>
-      window.setTimeout(function () {
-        if (!document.body.classList.contains("animus-ready")) {
-          document.body.classList.remove("crm-booting");
-          document.body.classList.add("animus-ready", "animus-boot-timeout");
-          console.warn("ANIMUS boot guard released the loading screen.");
-        }
-      }, 3500);
-    </script>
     <main class="crm-shell">
       <header class="crm-topbar">
         <div class="crm-brand">
@@ -1079,6 +1066,5 @@
     <script src="animus-contacts.js?v=20260823-new-file-intake"></script>
     <link rel="stylesheet" href="animus-payroll.css?v=20260822-payroll-center">
     <script src="animus-payroll.js?v=20260822-payroll-center"></script>
-    <script src="animus-mobile-responsive.js?v=20260828-mobile-overhaul-foundation"></script>
   </body>
 </html>

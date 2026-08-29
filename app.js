@@ -1260,7 +1260,6 @@ function showEstimateDocument(mode) {
   setCopyMode(mode);
   $("paymentInvoicePreview").hidden = true;
   $("assignmentSheetPreview").hidden = true;
-  $("warrantySheetPreview").hidden = true;
   $("estimatePreview").hidden = false;
   $("estimatePreview").scrollIntoView({ behavior: "smooth", block: "start" });
 }
@@ -1268,28 +1267,13 @@ function showEstimateDocument(mode) {
 function showPaymentDocument() {
   document.querySelectorAll(".copy-mode-button").forEach((button) => button.classList.remove("active"));
   document.querySelectorAll("[data-document-view='payment']").forEach((button) => button.classList.add("active"));
-  $("assignmentSheetPreview").hidden = true;
-  $("warrantySheetPreview").hidden = true;
-  $("estimatePreview").hidden = true;
   generatePaymentInvoice();
 }
 
 function showAssignmentDocument() {
   document.querySelectorAll(".copy-mode-button").forEach((button) => button.classList.remove("active"));
   document.querySelectorAll("[data-document-view='assignment']").forEach((button) => button.classList.add("active"));
-  $("paymentInvoicePreview").hidden = true;
-  $("warrantySheetPreview").hidden = true;
-  $("estimatePreview").hidden = true;
   generateAssignmentSheet();
-}
-
-function showWarrantyDocument() {
-  document.querySelectorAll(".copy-mode-button").forEach((button) => button.classList.remove("active"));
-  document.querySelectorAll("[data-document-view='warranty']").forEach((button) => button.classList.add("active"));
-  $("paymentInvoicePreview").hidden = true;
-  $("assignmentSheetPreview").hidden = true;
-  $("estimatePreview").hidden = true;
-  generateWarrantySheet();
 }
 
 function setDocumentView(value) {
@@ -1298,8 +1282,6 @@ function setDocumentView(value) {
     showPaymentDocument();
   } else if (value === "assignment") {
     showAssignmentDocument();
-  } else if (value === "warranty") {
-    showWarrantyDocument();
   } else {
     showEstimateDocument(value);
   }
@@ -1629,202 +1611,6 @@ function buildAssignmentPhotosHtml() {
   `;
 }
 
-function buildWarrantySheetHtml() {
-  const logoUrl = new URL("assets/d2-logo.png", window.location.href).href;
-  const companyName = $("companyName").value || COMPANY_DEFAULTS.name;
-  const companyPhone = $("companyPhone").value || COMPANY_DEFAULTS.phone;
-  const companyEmail = $("companyEmail").value || COMPANY_DEFAULTS.email;
-  const companyAddress = normalizeCompanyAddress($("companyAddress").value || COMPANY_DEFAULTS.address);
-  const clientName = $("clientName").value.trim() || "Original Client";
-  const projectTitle = $("estimateTitle").value.trim() || "Customer Estimate";
-  const estimateNumber = $("showEstimateNumber").checked ? $("estimateNumber").value.trim() : "";
-  const completionDate = $("assignmentStartDate").value || $("estimateDate").value;
-  const completionLabel = completionDate ? formatDate(completionDate) : "Date of completion to be confirmed";
-  const projectAddress = $("projectAddress").value.trim();
-
-  return `<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>${escapeHtml(clientName)} - D2 Limited Warranty</title>
-    <style>
-      :root { --navy:#071a33; --blue:#2563eb; --gold:#c99a42; --ink:#10213f; --muted:#64748b; --line:#dfe7f2; --wash:#f7f9fc; --green:#15803d; }
-      * { box-sizing:border-box; print-color-adjust:exact; -webkit-print-color-adjust:exact; }
-      body { margin:0; background:#fff; color:var(--ink); font:13px/1.48 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
-      main { width:min(820px,100%); margin:0 auto; padding:0; }
-      .warranty-sheet { background:#fff; padding:30px; }
-      .warranty-header { display:grid; grid-template-columns:minmax(0,1fr) 250px; gap:22px; padding-bottom:20px; border-bottom:4px solid var(--blue); }
-      .brand { display:flex; align-items:center; gap:13px; color:var(--navy); font-size:18px; font-weight:900; }
-      .brand img { width:58px; height:46px; object-fit:contain; }
-      .badge { display:inline-flex; align-items:center; min-height:26px; margin:22px 0 10px; padding:0 10px; border-radius:999px; color:var(--green); background:#dcfce7; font-size:11px; font-weight:900; }
-      h1 { margin:0; color:var(--navy); font-size:27px; line-height:1.12; letter-spacing:0; }
-      .subtitle { margin:8px 0 0; color:var(--muted); font-size:14px; font-weight:800; }
-      .project-card { align-self:start; padding:15px; border:1px solid var(--line); border-radius:10px; background:#f8fbff; }
-      .project-card div + div { margin-top:12px; padding-top:12px; border-top:1px solid #e2e8f0; }
-      .project-card span { display:block; color:var(--muted); font-size:10px; font-weight:900; letter-spacing:.07em; text-transform:uppercase; }
-      .project-card strong { display:block; margin-top:5px; color:#0f2d5a; font-size:14px; }
-      .intro { padding:22px 0 6px; color:#334155; font-size:13.5px; }
-      p { margin:0 0 11px; }
-      section { padding:18px 0; border-top:1px solid #edf1f6; break-inside:avoid; }
-      h2 { display:flex; gap:9px; align-items:flex-start; margin:0 0 10px; color:var(--navy); font-size:16px; line-height:1.25; }
-      .number { display:grid; flex:0 0 auto; width:25px; height:25px; place-items:center; border-radius:7px; color:#fff; background:var(--blue); font-size:12px; font-weight:900; }
-      ul { display:grid; gap:6px; margin:10px 0 0; padding:0; list-style:none; }
-      li { position:relative; padding-left:18px; color:#334155; }
-      li::before { position:absolute; left:0; top:.67em; width:5px; height:5px; content:""; border-radius:50%; background:var(--gold); }
-      .summary { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-top:12px; }
-      .summary div { padding:13px; border:1px solid #dbe8f8; border-radius:9px; background:#f8fbff; }
-      .summary small { display:block; color:var(--muted); font-size:10px; font-weight:900; letter-spacing:.05em; text-transform:uppercase; }
-      .summary strong { display:block; margin-top:5px; color:var(--navy); font-size:18px; }
-      .commitment { margin-top:18px; padding:16px; border:1px solid #f0d9a5; border-radius:10px; background:#fffaf0; color:#56441d; }
-      .commitment h2 { display:block; margin:0 0 8px; color:#47360f; }
-      .footer { display:grid; grid-template-columns:max-content minmax(0,1fr) minmax(0,1.15fr); gap:10px; margin-top:26px; padding-top:13px; border-top:1px solid var(--line); color:#4b5563; font-size:9px; }
-      .footer strong { color:var(--ink); }
-      .footer span:last-child { text-align:right; }
-      @media (max-width:640px) { .warranty-sheet { padding:18px; } .warranty-header, .summary, .footer { grid-template-columns:1fr; } .footer span:last-child { text-align:left; } h1 { font-size:23px; } }
-      @media print { @page { size:letter; margin:.4in; } main { width:100%; } .warranty-sheet { padding:0; } }
-    </style>
-  </head>
-  <body>
-    <main>
-      <article class="warranty-sheet">
-        <header class="warranty-header">
-          <div>
-            <div class="brand"><img src="${escapeHtml(logoUrl)}" alt="D2 Carpentry and Design logo"><span>${escapeHtml(companyName)}</span></div>
-            <span class="badge">Limited Warranty</span>
-            <h1>Limited Cabinet Door &amp; Drawer Front Warranty</h1>
-            <p class="subtitle">Custom Cabinet Refacing - Doors &amp; Drawer Fronts</p>
-          </div>
-          <aside class="project-card">
-            <div><span>Client</span><strong>${escapeHtml(clientName)}</strong></div>
-            <div><span>Project</span><strong>${escapeHtml(projectTitle)}</strong></div>
-            ${estimateNumber ? `<div><span>Estimate / Project #</span><strong>${escapeHtml(estimateNumber)}</strong></div>` : ""}
-            ${projectAddress ? `<div><span>Project Address</span><strong>${escapeHtml(projectAddress)}</strong></div>` : ""}
-            <div><span>Warranty Start</span><strong>${escapeHtml(completionLabel)}</strong></div>
-          </aside>
-        </header>
-
-        <div class="intro">
-          <p>D2 Carpentry &amp; Design takes pride in the craftsmanship and professional finishing of our custom cabinetry. This Limited Warranty is provided to the original client and applies specifically to the custom cabinet doors and drawer fronts manufactured, finished, and installed by D2 Carpentry &amp; Design.</p>
-          <p>For this project, doors and drawer fronts are constructed using poplar hardwood frames with birch wood center panels and finished using a professional cabinet-grade coating system.</p>
-          <p>This warranty does not apply to existing cabinet boxes, cabinet interiors, existing components, or other surfaces that were not manufactured or finished by D2 Carpentry &amp; Design.</p>
-        </div>
-
-        <section>
-          <h2><span class="number">1</span>Three-Year Limited Structural &amp; Workmanship Warranty</h2>
-          <p>D2 Carpentry &amp; Design warrants the custom cabinet doors and drawer fronts against defects resulting from our construction, assembly, or workmanship for three (3) years from the date of completion.</p>
-          <p>Covered workmanship defects may include:</p>
-          <ul>
-            <li>Failure of joints or assembled components resulting from improper construction.</li>
-            <li>Separation of components resulting from a defect in our workmanship.</li>
-            <li>Structural failure of a door or drawer front resulting directly from improper fabrication.</li>
-            <li>Other manufacturing defects determined by D2 Carpentry &amp; Design to have resulted from our workmanship.</li>
-          </ul>
-          <p>If a covered workmanship defect occurs during the warranty period, D2 Carpentry &amp; Design will, at its discretion, repair or replace the affected component at no charge to the original client.</p>
-        </section>
-
-        <section>
-          <h2><span class="number">2</span>Three-Year Limited Finish Warranty</h2>
-          <p>D2 Carpentry &amp; Design warrants our professionally applied cabinet finish for three (3) years from the date of substantial completion.</p>
-          <p>This warranty covers premature coating failure resulting directly from improper preparation or application by D2 Carpentry &amp; Design, including:</p>
-          <ul><li>Peeling</li><li>Flaking</li><li>Bubbling</li><li>Loss of adhesion</li></ul>
-          <p>This warranty applies only when the cabinetry has been subjected to normal residential use and properly maintained according to D2 Carpentry &amp; Design's Care &amp; Maintenance Guidelines.</p>
-          <p>Normal wear and tear or damage caused after installation is not considered a coating failure.</p>
-        </section>
-
-        <section>
-          <h2><span class="number">3</span>One-Year Installation &amp; Adjustment Warranty</h2>
-          <p>For one (1) year following substantial completion, D2 Carpentry &amp; Design warrants the installation of the cabinet doors, drawer fronts, hinges, and other hardware installed as part of our work.</p>
-          <p>During this period, we will correct installation-related issues such as:</p>
-          <ul>
-            <li>Door alignment requiring reasonable adjustment.</li>
-            <li>Hinge adjustments resulting from the original installation.</li>
-            <li>Hardware installed incorrectly by D2 Carpentry &amp; Design.</li>
-            <li>Installation-related fitment issues.</li>
-          </ul>
-          <p>Routine adjustments resulting from normal use, excessive force, overloading, impact, or modification by another party are not considered installation defects.</p>
-        </section>
-
-        <section>
-          <h2><span class="number">4</span>What This Warranty Does Not Cover</h2>
-          <p>This Limited Warranty does not cover damage or deterioration resulting from:</p>
-          <ul>
-            <li>Normal wear and tear.</li>
-            <li>Scratches, dents, chips, impacts, or abrasions.</li>
-            <li>Misuse, abuse, neglect, or excessive force.</li>
-            <li>Standing water, water leaks, flooding, or excessive moisture.</li>
-            <li>Excessive heat or prolonged exposure to steam.</li>
-            <li>Damage caused by appliances or heat-producing equipment.</li>
-            <li>Harsh household chemicals, solvents, bleach, ammonia, abrasive cleaners, scouring pads, or similar products.</li>
-            <li>Adhesive tape or other materials applied to the finished surface.</li>
-            <li>Alterations, repairs, refinishing, or modifications performed by anyone other than D2 Carpentry &amp; Design.</li>
-            <li>Improper adjustment or removal of doors, drawer fronts, hinges, or hardware by others.</li>
-            <li>Damage caused by plumbing, electrical, HVAC, appliance, structural, or other conditions outside the scope of our work.</li>
-            <li>Commercial use when the project was contracted for residential use.</li>
-          </ul>
-          <p>Minor changes associated with normal household use and aging that do not affect the structural integrity or performance of the cabinetry are not considered warrantable defects.</p>
-        </section>
-
-        <section>
-          <h2><span class="number">5</span>Care &amp; Maintenance Requirements</h2>
-          <p>Proper care is required to maintain warranty coverage.</p>
-          <p>Cabinet doors and drawer fronts should be cleaned using a soft cloth, warm water, and a mild household soap or dish detergent when necessary.</p>
-          <p>Do not use abrasive cleaners, scouring pads, Magic Erasers, bleach, ammonia, acetone, strong solvents, or other aggressive cleaning products.</p>
-          <p>Spills and standing water should be wiped away promptly.</p>
-          <p>Special care should also be taken around sinks, dishwashers, ovens, coffee makers, kettles, and other areas where cabinetry may experience repeated exposure to water, heat, or steam.</p>
-        </section>
-
-        <section>
-          <h2><span class="number">6</span>Warranty Claims</h2>
-          <p>Warranty concerns should be reported to D2 Carpentry &amp; Design within a reasonable period after the issue is discovered.</p>
-          <p>The client may be asked to provide photographs or allow D2 Carpentry &amp; Design reasonable access to inspect the affected component.</p>
-          <p>D2 Carpentry &amp; Design will determine whether the condition constitutes a covered defect under this warranty.</p>
-          <p>For an approved warranty claim, D2 Carpentry &amp; Design may elect to repair, refinish, adjust, or replace the affected component, depending upon the nature of the issue.</p>
-          <p>Replacement rather than repair is not guaranteed when a reasonable repair can restore the component to proper function and appearance.</p>
-        </section>
-
-        <section>
-          <h2><span class="number">7</span>Color &amp; Finish Matching</h2>
-          <p>If a component requires repair, refinishing, or replacement at a later date, D2 Carpentry &amp; Design will make reasonable efforts to match the existing finish.</p>
-          <p>However, coatings and surrounding cabinetry may naturally change in appearance over time due to age, cleaning, environmental conditions, and exposure to light. For this reason, an exact color or sheen match between an original and repaired or replaced component cannot be guaranteed.</p>
-          <p>A reasonable variation in appearance does not constitute a warranty defect.</p>
-        </section>
-
-        <section>
-          <h2><span class="number">8</span>Warranty Limitations</h2>
-          <p>This warranty is provided to the original client/property owner and is non-transferable unless otherwise agreed to in writing by D2 Carpentry &amp; Design.</p>
-          <p>Warranty coverage applies only to work specifically performed by D2 Carpentry &amp; Design.</p>
-          <p>The exclusive remedy under this warranty is the repair, adjustment, refinishing, or replacement of the affected component, as determined by D2 Carpentry &amp; Design.</p>
-          <p>This warranty does not cover consequential or incidental damages resulting from conditions outside the scope of D2 Carpentry &amp; Design's work, to the extent permitted by applicable law.</p>
-        </section>
-
-        <section>
-          <h2>Warranty Summary</h2>
-          <div class="summary">
-            <div><small>Structural Construction &amp; Workmanship</small><strong>3 Years</strong></div>
-            <div><small>Professional Cabinet Finish</small><strong>3 Years</strong></div>
-            <div><small>Installation, Hinges &amp; Adjustments</small><strong>1 Year</strong></div>
-          </div>
-        </section>
-
-        <section class="commitment">
-          <h2>Our Commitment</h2>
-          <p>Our cabinet doors and drawer fronts are individually constructed and finished using professional woodworking practices and a cabinet-grade coating system designed for cabinetry and millwork rather than conventional wall or trim paint.</p>
-          <p>Our goal is to provide cabinetry that performs beautifully for years when used and maintained as intended.</p>
-          <strong>D2 Carpentry &amp; Design</strong>
-        </section>
-
-        <footer class="footer">
-          <span><strong>Office:</strong> ${escapeHtml(formatPhone(companyPhone))}</span>
-          <span><strong>Email:</strong> ${escapeHtml(companyEmail)}</span>
-          <span><strong>Address:</strong> ${formatPaymentAddressHtml(companyAddress)}</span>
-        </footer>
-      </article>
-    </main>
-  </body>
-</html>`;
-}
-
 function getAssignmentLabels() {
   const spanish = $("assignmentLanguage").value === "es";
   return spanish
@@ -2028,36 +1814,10 @@ function showAssignmentSheetPreview(html) {
   preview.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-function showWarrantySheetPreview(html) {
-  const preview = $("warrantySheetPreview");
-  const frame = $("warrantySheetFrame");
-  frame.style.display = "block";
-  frame.style.width = "100%";
-  frame.style.minHeight = "820px";
-  frame.srcdoc = html;
-  preview.hidden = false;
-  preview.scrollIntoView({ behavior: "smooth", block: "start" });
-}
-
 function generateAssignmentSheet() {
   updatePreview();
   showAssignmentSheetPreview(buildAssignmentSheetHtml());
   $("submitStatus").textContent = "Assignment sheet is ready below.";
-}
-
-function generateWarrantySheet() {
-  ensureEstimateNumber();
-  updatePreview();
-  showWarrantySheetPreview(buildWarrantySheetHtml());
-  $("submitStatus").textContent = "Warranty is ready below.";
-}
-
-function attachWarrantyToEstimate() {
-  ensureEstimateNumber();
-  $("warrantyStatus").value = "Attached";
-  saveEstimate({ silent: true });
-  generateWarrantySheet();
-  $("submitStatus").textContent = "Warranty attached to this estimate and saved in the editable estimate data.";
 }
 
 function generateAssignmentSheetLanguage(language) {
@@ -2069,23 +1829,10 @@ function printAssignmentSheet() {
   generateAssignmentPdf().catch(() => printAssignmentSheetFallback());
 }
 
-function printWarrantySheet() {
-  generateWarrantyPdf().catch(() => printWarrantySheetFallback());
-}
-
 function printAssignmentSheetFallback() {
   const frame = $("assignmentSheetFrame");
   if (!frame.srcdoc) {
     generateAssignmentSheet();
-    return;
-  }
-  if (frame.contentWindow) frame.contentWindow.print();
-}
-
-function printWarrantySheetFallback() {
-  const frame = $("warrantySheetFrame");
-  if (!frame.srcdoc) {
-    generateWarrantySheet();
     return;
   }
   if (frame.contentWindow) frame.contentWindow.print();
@@ -2536,12 +2283,6 @@ async function generatePaymentPdf() {
   ensureEstimateNumber();
   updatePreview();
   await generateVisualPdfFromHtml(buildPaymentInvoiceHtml(), getPdfFileName("Payment Invoice"), ".invoice-sheet");
-}
-
-async function generateWarrantyPdf() {
-  ensureEstimateNumber();
-  updatePreview();
-  await generateVisualPdfFromHtml(buildWarrantySheetHtml(), getPdfFileName("Limited Warranty"), ".warranty-sheet");
 }
 
 async function printEstimateCopy(options = {}) {
@@ -3486,8 +3227,6 @@ $("printPaymentInvoice").addEventListener("click", () => printPaymentInvoice());
 $("assignmentEnglish").addEventListener("click", () => generateAssignmentSheetLanguage("en"));
 $("assignmentSpanish").addEventListener("click", () => generateAssignmentSheetLanguage("es"));
 $("printAssignmentSheet").addEventListener("click", () => printAssignmentSheet());
-$("printWarrantySheet").addEventListener("click", () => printWarrantySheet());
-$("attachWarrantyToEstimate").addEventListener("click", () => attachWarrantyToEstimate());
 window.addEventListener("pagehide", saveDraftBeforeLeaving);
 document.querySelectorAll("[data-copy-mode]").forEach((button) => {
   button.addEventListener("click", () => showEstimateDocument(button.dataset.copyMode));
@@ -3496,7 +3235,6 @@ document.querySelectorAll("[data-document-view]").forEach((button) => {
   button.addEventListener("click", () => {
     if (button.dataset.documentView === "payment") showPaymentDocument();
     if (button.dataset.documentView === "assignment") showAssignmentDocument();
-    if (button.dataset.documentView === "warranty") showWarrantyDocument();
   });
 });
 document.querySelectorAll("#documentViewSelect, [data-document-view-select]").forEach((select) => {
@@ -3535,7 +3273,6 @@ document.querySelectorAll("[data-action-button]").forEach((button) => {
     if (action === "open-file") runButtonAction(openEditableEstimatePicker);
     if (action === "submit") runButtonAction(submitEstimateToGoogle);
     if (action === "invoice") runButtonAction(showPaymentDocument);
-    if (action === "warranty") runButtonAction(showWarrantyDocument);
     if (action === "print") runButtonAction(() => printEstimateCopy({ userRequested: true }));
     closeEstimateActionMenu();
   });
