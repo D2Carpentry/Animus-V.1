@@ -3057,19 +3057,10 @@ function createSupplementForFile(file = activeFile()) {
   const supplementNumber = (Array.isArray(file.supplements) ? file.supplements.length : 0) + 1;
   const supplementId = `supplement-${Date.now()}`;
   const data = JSON.parse(JSON.stringify(file.editableEstimate));
-  const baseNumber = String(file.editableEstimate.estimateNumber || file.fileNumber || "Estimate").replace(/-S\d+$/i, "");
-  data.estimateTitle = "Estimate Supplement";
-  data.estimateNumber = `${baseNumber}-S${supplementNumber}`;
-  data.lineItems = [];
-  data.materialItems = [];
-  data.flatTotal = "";
-  data.total = 0;
+  data.estimateTitle = "Supplement";
   data.supplementFor = file.id;
   data.supplementId = supplementId;
-  data.totals = {
-    ...(data.totals || {}), subtotal:0, discount:0, tax:0, total:0, deposit:0,
-    lineSubtotal:0, showDiscount:false, showTax:false, showDeposit:false, showSubtotal:false, hasFlatTotal:false,
-  };
+  data.submittedAt = new Date().toISOString();
   // Keep the supplement as a draft until the estimator explicitly saves it.
   // Closing or deleting the draft must not add anything to this work file.
   sendEstimateToEstimator(data);
@@ -3084,8 +3075,8 @@ function syncSupplementFromEstimator(data) {
   if (!supplement) {
     supplement = {
       id: data.supplementId,
-      title: `Supplement ${file.supplements.length + 1}`,
-      estimateNumber: data.estimateNumber || `${file.fileNumber || "Estimate"}-S${file.supplements.length + 1}`,
+      title: data.estimateTitle || `Supplement ${file.supplements.length + 1}`,
+      estimateNumber: data.estimateNumber || file.editableEstimate?.estimateNumber || file.fileNumber || "Supplement",
       data,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -3094,6 +3085,7 @@ function syncSupplementFromEstimator(data) {
     addSystemNote(file, `${supplement.estimateNumber} saved to this work file.`);
   }
   supplement.data = data;
+  supplement.title = data.estimateTitle || supplement.title || "Supplement";
   supplement.estimateNumber = data.estimateNumber || supplement.estimateNumber;
   supplement.updatedAt = new Date().toISOString();
   saveCrmFiles();
