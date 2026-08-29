@@ -154,13 +154,13 @@ const trackedStatusFields = {
 const $ = (id) => document.getElementById(id);
 
 let crmRestoreAppliedThisLoad = false;
-let crmFiles = loadCrmFiles();
+let crmFiles = [];
 let activeFileId = crmFiles[0] ? crmFiles[0].id : null;
-let crmRevenueRows = loadRevenueRows();
+let crmRevenueRows = [];
 let activeRevenueId = crmRevenueRows[0] ? crmRevenueRows[0].id : null;
 let crmRevenueDateSort = "newest";
 let crmRevenueYearFilter = String(new Date().getFullYear());
-let crmPayrollRows = loadPayrollRows();
+let crmPayrollRows = [];
 let activePayrollId = crmPayrollRows[0] ? crmPayrollRows[0].id : null;
 let crmPayrollYearFilter = String(new Date().getFullYear());
 let crmPayrollStatusFilter = "all";
@@ -169,8 +169,8 @@ let crmCalendarCursor = new Date(new Date().getFullYear(), new Date().getMonth()
 let crmSelectedCalendarDate = todayIso(0);
 let crmSelectedCalendarEventKey = "";
 let crmExternalCalendarEvents = loadExternalCalendarEvents();
-let crmPriceRows = loadPriceRows();
-let crmDeletedPriceIds = loadDeletedPriceIds();
+let crmPriceRows = [];
+let crmDeletedPriceIds = [];
 let editingPriceId = "";
 let receiptDraft = loadReceiptDraft();
 let fileReceiptDraft = blankFileReceiptDraft();
@@ -1658,16 +1658,11 @@ async function autoRestoreDashboardFromCloud() {
       showDashboardSaveStatus("Cloudflare does not have a saved Command Center yet. Showing this browser's temporary copy.", true);
       return;
     }
-    const localFileCount = Array.isArray(crmFiles) ? crmFiles.length : 0;
-    if (localFileCount && files.length < localFileCount) {
-      showDashboardSaveStatus(`Cloud copy has only ${files.length} files while this device has ${localFileCount}. Kept this device's copy. Use Restore Backup to choose a full snapshot.`, true);
-      return;
-    }
-    applyDashboardBackup(dashboard, { preserveMissing: true });
+    applyDashboardBackup(dashboard, { preserveMissing: false });
     renderCrm();
     showDashboardSaveStatus(`Loaded the current cloud copy: ${files.length} files. ${dashboardCloudCountSummary(files)}.`);
   } catch (error) {
-    showDashboardSaveStatus("Cloudflare could not be reached. Showing this browser's temporary copy only.", true);
+    showDashboardSaveStatus("Cloudflare could not be reached. Browser data was not loaded. Use Restore Backup only if you need a manual snapshot.", true);
   }
 }
 

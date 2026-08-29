@@ -390,7 +390,7 @@ function applyMobileDashboardSnapshot(dashboard) {
 async function hydrateMobileFromCloud() {
   try {
     const dashboard = await fetchCloudDashboard();
-    if (dashboard && isMobileCloudDashboardNewer(dashboard)) {
+    if (dashboard) {
       applyMobileDashboardSnapshot(dashboard);
       renderAll();
     }
@@ -845,7 +845,6 @@ document.querySelectorAll("#mobileDetailView input, #mobileDetailView select, #m
   });
 });
 
-loadLocalData();
 renderAll();
 setTab("files");
 hydrateMobileFromCloud();
