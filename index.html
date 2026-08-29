@@ -45,9 +45,11 @@
               <option value="supply">Supplies</option>
               <option value="payment">Payment</option>
               <option value="assignment">Assignment</option>
+              <option value="warranty">Warranty</option>
             </select>
           </label>
           <button type="button" class="icon-button" data-action-button="invoice" title="Generate invoice" aria-label="Generate invoice">Invoice</button>
+          <button type="button" class="icon-button" data-action-button="warranty" title="Create warranty" aria-label="Create warranty">Warranty</button>
           <div class="share-menu">
             <button type="button" class="icon-button" id="shareEstimate" aria-expanded="false" aria-controls="shareEstimateMenu">Share</button>
             <div class="share-options" id="shareEstimateMenu" hidden>
@@ -604,6 +606,20 @@
           </div>
           <iframe id="assignmentSheetFrame" title="Assignment sheet preview" style="display:block;width:100%;min-height:820px;"></iframe>
         </aside>
+
+        <aside class="preview payment-preview warranty-preview" id="warrantySheetPreview" aria-live="polite" hidden>
+          <div class="preview-heading">
+            <div>
+              <p class="eyebrow">Warranty Draft</p>
+              <h2>Limited Warranty</h2>
+            </div>
+            <div class="preview-heading-actions">
+              <button class="icon-button" type="button" id="attachWarrantyToEstimate" title="Attach warranty to this estimate" aria-label="Attach warranty to this estimate">Attach</button>
+              <button class="icon-button" type="button" id="printWarrantySheet" title="Print warranty" aria-label="Print warranty">PDF</button>
+            </div>
+          </div>
+          <iframe id="warrantySheetFrame" title="Warranty preview" style="display:block;width:100%;min-height:820px;"></iframe>
+        </aside>
       </section>
 
       <footer class="bottom-actions">
@@ -621,9 +637,11 @@
               <option value="supply">Supplies</option>
               <option value="payment">Payment</option>
               <option value="assignment">Assignment</option>
+              <option value="warranty">Warranty</option>
             </select>
           </label>
           <button type="button" class="icon-button" data-action-button="invoice" title="Generate invoice" aria-label="Generate invoice">Invoice</button>
+          <button type="button" class="icon-button" data-action-button="warranty" title="Create warranty" aria-label="Create warranty">Warranty</button>
           <div class="share-menu">
             <button type="button" class="icon-button" data-share-toggle aria-expanded="false">Share</button>
             <div class="share-options" hidden>
@@ -644,6 +662,6 @@
     <script src="vendor/jspdf.umd.min.js"></script>
     <script src="vendor/html2canvas.min.js"></script>
     <script src="materials-database.js?v=20260804-price-update-2"></script>
-    <script src="app.js?v=20260823-project-type-other"></script>
+    <script src="app.js?v=20260828-warranty-document"></script>
   </body>
 </html>
