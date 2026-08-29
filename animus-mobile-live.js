@@ -192,33 +192,21 @@ function loadLocalData() {
   const restoredPrices = Array.isArray(restore.prices) ? restore.prices.map((row) => ({ ...row })) : [];
   try {
     const savedFiles = JSON.parse(localStorage.getItem(MOBILE_STORAGE_KEY) || "[]");
-    const fileSource = applyRestore && restoredFiles.length
-      ? mergeMobileRows(restoredFiles, Array.isArray(savedFiles) ? savedFiles : [])
-      : Array.isArray(savedFiles) && savedFiles.length
-        ? savedFiles
-        : restoredFiles;
+    const fileSource = Array.isArray(savedFiles) && savedFiles.length ? savedFiles : restoredFiles;
     mobileFiles = fileSource.map(normalizeFile);
   } catch (error) {
     mobileFiles = restoredFiles.map(normalizeFile);
   }
   try {
     const savedRevenue = JSON.parse(localStorage.getItem(MOBILE_REVENUE_KEY) || "[]");
-    const revenueSource = applyRestore && restoredRevenue.length
-      ? mergeMobileRows(restoredRevenue, Array.isArray(savedRevenue) ? savedRevenue : [])
-      : Array.isArray(savedRevenue) && savedRevenue.length
-        ? savedRevenue
-        : restoredRevenue;
+    const revenueSource = Array.isArray(savedRevenue) && savedRevenue.length ? savedRevenue : restoredRevenue;
     mobileRevenueRows = revenueSource;
   } catch (error) {
     mobileRevenueRows = restoredRevenue;
   }
   try {
     const savedPrices = JSON.parse(localStorage.getItem(MOBILE_PRICE_KEY) || "[]");
-    const priceSource = applyRestore && restoredPrices.length
-      ? mergeMobileRows(restoredPrices, Array.isArray(savedPrices) ? savedPrices : [])
-      : Array.isArray(savedPrices) && savedPrices.length
-        ? savedPrices
-        : restoredPrices;
+    const priceSource = Array.isArray(savedPrices) && savedPrices.length ? savedPrices : restoredPrices;
     mobilePriceRows = priceSource;
   } catch (error) {
     mobilePriceRows = restoredPrices;
@@ -234,10 +222,7 @@ function loadLocalData() {
   } catch (error) {
     mobileExternalCalendarEvents = [];
   }
-  if (applyRestore && restoredFiles.length) {
-    saveLocalData();
-    markMobileRestoreApplied();
-  }
+  if (applyRestore && restoredFiles.length && !mobileFiles.length) markMobileRestoreApplied();
   if (!mobileActiveFileId && mobileFiles[0]) mobileActiveFileId = mobileFiles[0].id;
 }
 
