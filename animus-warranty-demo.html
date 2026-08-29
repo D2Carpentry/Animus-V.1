@@ -753,6 +753,8 @@
   <script>
     (() => {
       const KEY = "animusWarrantyDraftV1";
+      const ESTIMATE_KEY = "d2EstimateStudio";
+      const PENDING_ATTACHMENT_KEY = "animusPendingWarrantyAttachment";
       const fields = ["clientName", "projectName", "projectNumber", "completionDate", "warrantyNotes"];
       const $ = (id) => document.getElementById(id);
 
@@ -773,6 +775,28 @@
         }, 3000);
       }
 
+      function readCurrentEstimate() {
+        try {
+          const estimate = JSON.parse(localStorage.getItem(ESTIMATE_KEY) || "null");
+          return estimate && typeof estimate === "object" ? estimate : null;
+        } catch (_) {
+          return null;
+        }
+      }
+
+      function prefillFromEstimate() {
+        const estimate = readCurrentEstimate();
+        if (!estimate) return;
+        const current = {};
+        fields.forEach((id) => current[id] = $(id).value.trim());
+        if (!current.clientName && estimate.clientName) $("clientName").value = estimate.clientName;
+        if (!current.projectName && estimate.estimateTitle) $("projectName").value = estimate.estimateTitle;
+        if (!current.projectNumber && estimate.estimateNumber) $("projectNumber").value = estimate.estimateNumber;
+        if (!current.completionDate && (estimate.assignmentStartDate || estimate.estimateDate)) {
+          $("completionDate").value = estimate.assignmentStartDate || estimate.estimateDate;
+        }
+      }
+
       function loadDraft() {
         try {
           const data = JSON.parse(localStorage.getItem(KEY) || "{}");
@@ -780,7 +804,31 @@
             if (data[id]) $(id).value = data[id];
           });
         } catch (_) {}
+        prefillFromEstimate();
         refreshDisplay();
+      }
+
+      function buildAttachment() {
+        return {
+          attached: true,
+          attachedAt: new Date().toISOString(),
+          clientName: $("clientName").value.trim(),
+          projectName: $("projectName").value.trim() || "Customer Estimate",
+          projectNumber: $("projectNumber").value.trim(),
+          completionDate: $("completionDate").value,
+          warrantyNotes: $("warrantyNotes").value.trim(),
+          notes: $("warrantyNotes").value.trim(),
+        };
+      }
+
+      function attachToEstimate() {
+        saveDraft();
+        const warranty = buildAttachment();
+        localStorage.setItem(PENDING_ATTACHMENT_KEY, JSON.stringify(warranty));
+        if (window.opener && !window.opener.closed) {
+          window.opener.postMessage({ type: "animus-warranty-attached", warranty }, "*");
+        }
+        $("warrantyToast").textContent = "Warranty attached. Return to the estimate and save/PDF.";
       }
 
       fields.forEach((id) => $(id).addEventListener("input", refreshDisplay));
@@ -789,10 +837,7 @@
         saveDraft();
         window.print();
       });
-      $("attachWarranty").addEventListener("click", () => {
-        saveDraft();
-        $("warrantyToast").textContent = "Attach button ready for estimate wiring";
-      });
+      $("attachWarranty").addEventListener("click", attachToEstimate);
       loadDraft();
     })();
   </script>

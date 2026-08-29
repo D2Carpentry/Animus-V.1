@@ -9,7 +9,7 @@
     <meta name="apple-mobile-web-app-title" content="Estimates">
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=20260809-estimator-action-menu">
+    <link rel="stylesheet" href="styles.css?v=20260828-warranty-attach">
   </head>
   <body>
     <main class="app-shell">
@@ -48,7 +48,7 @@
             </select>
           </label>
           <button type="button" class="icon-button" data-action-button="invoice" title="Generate invoice" aria-label="Generate invoice">Invoice</button>
-          <a class="icon-button" href="animus-warranty-demo.html" target="_blank" rel="noopener" title="Open warranty" aria-label="Open warranty">Warranty</a>
+          <a class="icon-button" href="animus-warranty-demo.html" target="_blank" rel="noopener" data-open-warranty title="Open warranty" aria-label="Open warranty">Warranty</a>
           <div class="share-menu">
             <button type="button" class="icon-button" id="shareEstimate" aria-expanded="false" aria-controls="shareEstimateMenu">Share</button>
             <div class="share-options" id="shareEstimateMenu" hidden>
@@ -564,6 +564,11 @@
               <div class="project-image-grid" id="previewPhotos"></div>
             </div>
 
+            <section class="estimate-warranty-attachment" id="previewWarrantyBlock" hidden>
+              <span>Limited Cabinet Door &amp; Drawer Front Warranty</span>
+              <div id="previewWarrantyContent"></div>
+            </section>
+
             <div class="internal-summary" id="internalSummary" hidden>
               <span>Supply List</span>
               <div class="internal-material-list" id="internalMaterialList"></div>
@@ -625,7 +630,7 @@
             </select>
           </label>
           <button type="button" class="icon-button" data-action-button="invoice" title="Generate invoice" aria-label="Generate invoice">Invoice</button>
-          <a class="icon-button" href="animus-warranty-demo.html" target="_blank" rel="noopener" title="Open warranty" aria-label="Open warranty">Warranty</a>
+          <a class="icon-button" href="animus-warranty-demo.html" target="_blank" rel="noopener" data-open-warranty title="Open warranty" aria-label="Open warranty">Warranty</a>
           <div class="share-menu">
             <button type="button" class="icon-button" data-share-toggle aria-expanded="false">Share</button>
             <div class="share-options" hidden>
@@ -646,6 +651,6 @@
     <script src="vendor/jspdf.umd.min.js"></script>
     <script src="vendor/html2canvas.min.js"></script>
     <script src="materials-database.js?v=20260804-price-update-2"></script>
-    <script src="app.js?v=20260823-project-type-other"></script>
+    <script src="app.js?v=20260828-warranty-attach"></script>
   </body>
 </html>

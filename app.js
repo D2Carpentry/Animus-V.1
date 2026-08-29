@@ -23,6 +23,77 @@ const COMPANY_DEFAULTS = {
 
 const FOOTER_VALUE_NOTE = "At D2 Carpentry & Design, our goal as a company is to provide exceptional value alongside quality craftsmanship and an outstanding customer experience. We understand that every project and budget is unique, and we are committed to helping our clients achieve the best possible outcome for their investment. When appropriate, we are happy to discuss alternative materials, design modifications, or review comparable proposals for potential price matching. Our goal is to ensure that price alone is not the only factor considered when selecting the right partner for your project.";
 
+const WARRANTY_BODY_SECTIONS = [
+  {
+    title: "Three-Year Limited Structural & Workmanship Warranty",
+    paragraphs: [
+      "D2 Carpentry & Design warrants the custom cabinet doors and drawer fronts against defects resulting from our construction, assembly, or workmanship for three (3) years from the date of completion.",
+      "If a covered workmanship defect occurs during the warranty period, D2 Carpentry & Design will, at its discretion, repair or replace the affected component at no charge to the original client.",
+    ],
+    bullets: [
+      "Failure of joints or assembled components resulting from improper construction.",
+      "Separation of components resulting from a defect in our workmanship.",
+      "Structural failure of a door or drawer front resulting directly from improper fabrication.",
+      "Other manufacturing defects determined by D2 Carpentry & Design to have resulted from our workmanship.",
+    ],
+  },
+  {
+    title: "Three-Year Limited Finish Warranty",
+    paragraphs: [
+      "D2 Carpentry & Design warrants our professionally applied cabinet finish for three (3) years from the date of substantial completion.",
+      "This warranty applies only when the cabinetry has been subjected to normal residential use and properly maintained according to D2 Carpentry & Design's Care & Maintenance Guidelines.",
+      "Normal wear and tear or damage caused after installation is not considered a coating failure.",
+    ],
+    bullets: ["Peeling", "Flaking", "Bubbling", "Loss of adhesion"],
+  },
+  {
+    title: "One-Year Installation & Adjustment Warranty",
+    paragraphs: [
+      "For one (1) year following substantial completion, D2 Carpentry & Design warrants the installation of the cabinet doors, drawer fronts, hinges, and other hardware installed as part of our work.",
+      "Routine adjustments resulting from normal use, excessive force, overloading, impact, or modification by another party are not considered installation defects.",
+    ],
+    bullets: [
+      "Door alignment requiring reasonable adjustment.",
+      "Hinge adjustments resulting from the original installation.",
+      "Hardware installed incorrectly by D2 Carpentry & Design.",
+      "Installation-related fitment issues.",
+    ],
+  },
+  {
+    title: "What This Warranty Does Not Cover",
+    paragraphs: [
+      "This Limited Warranty does not cover damage or deterioration resulting from normal wear and tear, damage after installation, misuse, water, heat, harsh cleaning products, modifications by others, or conditions outside the scope of D2 Carpentry & Design's work.",
+      "Minor changes associated with normal household use and aging that do not affect the structural integrity or performance of the cabinetry are not considered warrantable defects.",
+    ],
+    bullets: [
+      "Scratches, dents, chips, impacts, or abrasions.",
+      "Standing water, water leaks, flooding, or excessive moisture.",
+      "Excessive heat or prolonged exposure to steam.",
+      "Harsh household chemicals, solvents, bleach, ammonia, abrasive cleaners, scouring pads, or similar products.",
+      "Alterations, repairs, refinishing, or modifications performed by anyone other than D2 Carpentry & Design.",
+      "Commercial use when the project was contracted for residential use.",
+    ],
+  },
+  {
+    title: "Care & Maintenance Requirements",
+    paragraphs: [
+      "Cabinet doors and drawer fronts should be cleaned using a soft cloth, warm water, and a mild household soap or dish detergent when necessary.",
+      "Do not use abrasive cleaners, scouring pads, Magic Erasers, bleach, ammonia, acetone, strong solvents, or other aggressive cleaning products. Spills and standing water should be wiped away promptly.",
+    ],
+    bullets: [],
+  },
+  {
+    title: "Warranty Claims, Finish Matching & Limitations",
+    paragraphs: [
+      "Warranty concerns should be reported to D2 Carpentry & Design within a reasonable period after the issue is discovered. The client may be asked to provide photographs or allow reasonable access to inspect the affected component.",
+      "For an approved warranty claim, D2 Carpentry & Design may elect to repair, refinish, adjust, or replace the affected component, depending upon the nature of the issue.",
+      "D2 Carpentry & Design will make reasonable efforts to match an existing finish, but an exact color or sheen match cannot be guaranteed due to age, cleaning, environmental conditions, and exposure to light.",
+      "This warranty is provided to the original client/property owner and is non-transferable unless otherwise agreed to in writing by D2 Carpentry & Design.",
+    ],
+    bullets: [],
+  },
+];
+
 const COPY_MODE_LABELS = {
   customer: "Customer",
   internal: "Office",
@@ -132,6 +203,7 @@ const state = {
   estimateNumberCommitted: false,
   estimateSequence: {},
   invoicePaid: false,
+  warrantyAttachment: null,
 };
 
 function isInvoiceMode() {
@@ -217,6 +289,78 @@ function writeEstimateSequence(sequence) {
 
 function formatPercent(value) {
   return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+}
+
+function warrantyAttachmentFromEstimate(extra = {}) {
+  return {
+    attached: true,
+    attachedAt: new Date().toISOString(),
+    clientName: extra.clientName || $("clientName")?.value?.trim() || "",
+    projectName: extra.projectName || $("estimateTitle")?.value?.trim() || "Customer Estimate",
+    projectNumber: extra.projectNumber || $("estimateNumber")?.value?.trim() || "",
+    completionDate: extra.completionDate || $("assignmentStartDate")?.value || $("estimateDate")?.value || "",
+    notes: extra.notes || extra.warrantyNotes || "",
+  };
+}
+
+function setWarrantyAttachment(attachment) {
+  state.warrantyAttachment = attachment && attachment.attached ? { ...attachment, attached: true } : null;
+  if ($("warrantyStatus")) $("warrantyStatus").value = state.warrantyAttachment ? "Attached" : "Not Sent";
+  updatePreview();
+}
+
+function loadPendingWarrantyAttachment() {
+  let attachment = null;
+  try {
+    attachment = JSON.parse(localStorage.getItem("animusPendingWarrantyAttachment") || "null");
+  } catch (error) {
+    attachment = null;
+  }
+  if (!attachment?.attached) return false;
+  setWarrantyAttachment(attachment);
+  try {
+    localStorage.removeItem("animusPendingWarrantyAttachment");
+  } catch (error) {
+    // Storage may be unavailable in direct file previews.
+  }
+  saveEstimate({ silent: true });
+  setSubmitStatus("Warranty attached to this estimate.");
+  return true;
+}
+
+function renderWarrantyAttachment() {
+  const block = $("previewWarrantyBlock");
+  const content = $("previewWarrantyContent");
+  if (!block || !content) return;
+  const attachment = state.warrantyAttachment;
+  block.hidden = !attachment;
+  if (!attachment) {
+    content.innerHTML = "";
+    return;
+  }
+  const completionLabel = attachment.completionDate ? formatDate(attachment.completionDate) : "Date of completion to be confirmed";
+  content.innerHTML = `
+    <p>D2 Carpentry &amp; Design takes pride in the craftsmanship and professional finishing of our custom cabinetry. This Limited Warranty is provided to the original client and applies specifically to the custom cabinet doors and drawer fronts manufactured, finished, and installed by D2 Carpentry &amp; Design.</p>
+    <p>For this project, doors and drawer fronts are constructed using poplar hardwood frames with birch wood center panels and finished using a professional cabinet-grade coating system.</p>
+    <div class="estimate-warranty-summary">
+      <div><small>Client</small><strong>${escapeHtml(attachment.clientName || $("clientName").value || "Original Client")}</strong></div>
+      <div><small>Project</small><strong>${escapeHtml(attachment.projectName || $("estimateTitle").value || "Customer Estimate")}</strong></div>
+      <div><small>Warranty Start</small><strong>${escapeHtml(completionLabel)}</strong></div>
+      <div><small>Structural / Workmanship</small><strong>3 Years</strong></div>
+      <div><small>Professional Finish</small><strong>3 Years</strong></div>
+      <div><small>Installation / Adjustments</small><strong>1 Year</strong></div>
+    </div>
+    ${WARRANTY_BODY_SECTIONS.map((section, index) => `
+      <h3>${index + 1}. ${escapeHtml(section.title)}</h3>
+      ${section.paragraphs.map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join("")}
+      ${section.bullets.length ? `<ul>${section.bullets.map((bullet) => `<li>${escapeHtml(bullet)}</li>`).join("")}</ul>` : ""}
+    `).join("")}
+    ${attachment.notes ? `<h4>Warranty Notes</h4><p>${escapeHtml(attachment.notes)}</p>` : ""}
+    <h3>Our Commitment</h3>
+    <p>Our cabinet doors and drawer fronts are individually constructed and finished using professional woodworking practices and a cabinet-grade coating system designed for cabinetry and millwork rather than conventional wall or trim paint.</p>
+    <p>Our goal is to provide cabinetry that performs beautifully for years when used and maintained as intended.</p>
+    <p><strong>D2 Carpentry &amp; Design</strong></p>
+  `;
 }
 
 function formatPhone(value) {
@@ -1186,6 +1330,7 @@ function updatePreview() {
   $("previewAdditionalNotesBlock").hidden = !additionalNotes;
   $("previewFooterValueNote").textContent = FOOTER_VALUE_NOTE;
   $("previewFooterValueNoteBlock").hidden = !$("addFooterValueNote").checked;
+  renderWarrantyAttachment();
 
   const tbody = $("previewRows");
   tbody.innerHTML = "";
@@ -2395,6 +2540,7 @@ function serializeEstimate() {
     materialItems: state.materialItems,
     photos: state.photos,
     assignmentPhotos: state.assignmentPhotos,
+    warrantyAttachment: state.warrantyAttachment || null,
     totals,
     backend: {
       estimatedMaterialCost: calculateMaterialCost(),
@@ -2690,6 +2836,7 @@ function applyEstimateData(data) {
   state.supplementId = data.supplementId || "";
   refreshSupplementActions();
   state.invoicePaid = data.invoicePaid === true || data.invoicePaid === "Yes";
+  state.warrantyAttachment = data.warrantyAttachment?.attached ? { ...data.warrantyAttachment, attached: true } : null;
   $("invoicePaidCheckbox").checked = state.invoicePaid;
   applyCompanyDefaults();
   $("companyAddress").value = normalizeCompanyAddress($("companyAddress").value);
@@ -3172,6 +3319,11 @@ document.addEventListener("click", (event) => {
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") closeImagePreview();
 });
+document.querySelectorAll("[data-open-warranty]").forEach((link) => {
+  link.addEventListener("click", () => {
+    saveEstimate({ silent: true });
+  });
+});
 $("assignmentPhotoUpload").addEventListener("change", (event) => {
   addAssignmentPhotos(event.target.files);
   event.target.value = "";
@@ -3283,10 +3435,24 @@ document.querySelectorAll("[data-action-button]").forEach((button) => {
 // estimate immediately after a file is uploaded.
 window.addEventListener("message", (event) => {
   const samePage = event.origin === window.location.origin || event.origin === "null";
-  if (!samePage || event.data?.type !== "animus-open-estimate") return;
-  if (applyEstimateData(event.data.estimate)) {
+  if (!samePage) return;
+  if (event.data?.type === "animus-open-estimate" && applyEstimateData(event.data.estimate)) {
     $("submitStatus").textContent = "Current work-file estimate opened.";
   }
+  if (event.data?.type === "animus-warranty-attached") {
+    setWarrantyAttachment(event.data.warranty || warrantyAttachmentFromEstimate());
+    saveEstimate({ silent: true });
+    $("submitStatus").textContent = "Warranty attached to this estimate.";
+  }
+});
+window.addEventListener("storage", (event) => {
+  if (event.key === "animusPendingWarrantyAttachment") loadPendingWarrantyAttachment();
+});
+window.addEventListener("focus", () => {
+  loadPendingWarrantyAttachment();
+});
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) loadPendingWarrantyAttachment();
 });
 
 setCopyMode("customer");
@@ -3310,6 +3476,7 @@ if (new URLSearchParams(window.location.search).has("invoice")) {
   applyInvoiceMode();
   updatePreview();
 }
+loadPendingWarrantyAttachment();
 
 if (window.location.hash === "#assignment") {
   window.requestAnimationFrame(() => generateAssignmentSheet());
