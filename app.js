@@ -339,27 +339,56 @@ function renderWarrantyAttachment() {
     return;
   }
   const completionLabel = attachment.completionDate ? formatDate(attachment.completionDate) : "Date of completion to be confirmed";
+  const projectLabel = [attachment.projectName || $("estimateTitle").value || "Customer Estimate", attachment.projectNumber || $("estimateNumber").value || ""]
+    .filter(Boolean)
+    .join(" - ");
   content.innerHTML = `
-    <p>D2 Carpentry &amp; Design takes pride in the craftsmanship and professional finishing of our custom cabinetry. This Limited Warranty is provided to the original client and applies specifically to the custom cabinet doors and drawer fronts manufactured, finished, and installed by D2 Carpentry &amp; Design.</p>
-    <p>For this project, doors and drawer fronts are constructed using poplar hardwood frames with birch wood center panels and finished using a professional cabinet-grade coating system.</p>
-    <div class="estimate-warranty-summary">
-      <div><small>Client</small><strong>${escapeHtml(attachment.clientName || $("clientName").value || "Original Client")}</strong></div>
-      <div><small>Project</small><strong>${escapeHtml(attachment.projectName || $("estimateTitle").value || "Customer Estimate")}</strong></div>
-      <div><small>Warranty Start</small><strong>${escapeHtml(completionLabel)}</strong></div>
-      <div><small>Structural / Workmanship</small><strong>3 Years</strong></div>
-      <div><small>Professional Finish</small><strong>3 Years</strong></div>
-      <div><small>Installation / Adjustments</small><strong>1 Year</strong></div>
-    </div>
+    <header class="estimate-warranty-header">
+      <div>
+        <div class="estimate-warranty-brand">
+          <img src="assets/d2-logo.png" alt="D2 Carpentry & Design logo">
+          <span>D2 Carpentry &amp; Design</span>
+        </div>
+        <div class="estimate-warranty-title">
+          <strong>Limited Warranty</strong>
+          <h2>Limited Cabinet Door &amp; Drawer Front Warranty</h2>
+          <p>Custom Cabinet Refacing - Doors &amp; Drawer Fronts</p>
+        </div>
+      </div>
+      <aside class="estimate-warranty-card">
+        <div><small>Project</small><b>${escapeHtml(projectLabel || "Customer Estimate Attachment")}</b></div>
+        <div><small>Coverage</small><b>3 years / 1 year</b></div>
+        <div><small>Client</small><b>${escapeHtml(attachment.clientName || $("clientName").value || "Original Client")}</b></div>
+      </aside>
+    </header>
+    <section class="estimate-warranty-intro">
+      <p>D2 Carpentry &amp; Design takes pride in the craftsmanship and professional finishing of our custom cabinetry. This Limited Warranty is provided to the original client and applies specifically to the custom cabinet doors and drawer fronts manufactured, finished, and installed by D2 Carpentry &amp; Design.</p>
+      <p>For this project, doors and drawer fronts are constructed using poplar hardwood frames with birch wood center panels and finished using a professional cabinet-grade coating system.</p>
+      <p>This warranty does not apply to existing cabinet boxes, cabinet interiors, existing components, or other surfaces that were not manufactured or finished by D2 Carpentry &amp; Design.</p>
+    </section>
     ${WARRANTY_BODY_SECTIONS.map((section, index) => `
-      <h3>${index + 1}. ${escapeHtml(section.title)}</h3>
-      ${section.paragraphs.map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join("")}
-      ${section.bullets.length ? `<ul>${section.bullets.map((bullet) => `<li>${escapeHtml(bullet)}</li>`).join("")}</ul>` : ""}
+      <section class="estimate-warranty-section">
+        <h3><span>${index + 1}</span>${escapeHtml(section.title)}</h3>
+        ${section.paragraphs.map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join("")}
+        ${section.bullets.length ? `<ul>${section.bullets.map((bullet) => `<li>${escapeHtml(bullet)}</li>`).join("")}</ul>` : ""}
+      </section>
     `).join("")}
-    ${attachment.notes ? `<h4>Warranty Notes</h4><p>${escapeHtml(attachment.notes)}</p>` : ""}
-    <h3>Our Commitment</h3>
-    <p>Our cabinet doors and drawer fronts are individually constructed and finished using professional woodworking practices and a cabinet-grade coating system designed for cabinetry and millwork rather than conventional wall or trim paint.</p>
-    <p>Our goal is to provide cabinetry that performs beautifully for years when used and maintained as intended.</p>
-    <p><strong>D2 Carpentry &amp; Design</strong></p>
+    <section class="estimate-warranty-section">
+      <h3>Warranty Summary</h3>
+      <div class="estimate-warranty-summary">
+        <div><small>Structural Construction &amp; Workmanship</small><strong>3 Years</strong></div>
+        <div><small>Professional Cabinet Finish</small><strong>3 Years</strong></div>
+        <div><small>Installation, Hinges &amp; Adjustments</small><strong>1 Year</strong></div>
+        <div><small>Warranty Start</small><strong>${escapeHtml(completionLabel)}</strong></div>
+      </div>
+    </section>
+    ${attachment.notes ? `<section class="estimate-warranty-section"><h3>Warranty Notes</h3><p>${escapeHtml(attachment.notes)}</p></section>` : ""}
+    <section class="estimate-warranty-commitment">
+      <h3>Our Commitment</h3>
+      <p>Our cabinet doors and drawer fronts are individually constructed and finished using professional woodworking practices and a cabinet-grade coating system designed for cabinetry and millwork rather than conventional wall or trim paint.</p>
+      <p>Our goal is to provide cabinetry that performs beautifully for years when used and maintained as intended.</p>
+      <strong>D2 Carpentry &amp; Design</strong>
+    </section>
   `;
 }
 

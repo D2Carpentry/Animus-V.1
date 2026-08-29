@@ -1712,77 +1712,215 @@ body[data-copy-mode="team"] .estimate-sheet td:first-child {
 }
 
 .estimate-warranty-attachment {
-  margin-top: 24px;
-  padding-top: 18px;
-  border-top: 2px solid var(--blue);
+  margin-top: 30px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #ffffff;
   color: var(--ink);
-  break-inside: auto;
-  page-break-inside: auto;
+  break-before: page;
+  page-break-before: always;
 }
 
 .estimate-warranty-attachment > span {
-  display: block;
-  margin-bottom: 10px;
-  color: var(--blue);
-  font-size: .72rem;
+  display: none;
+}
+
+.estimate-warranty-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: 18px;
+  align-items: start;
+  padding: 28px 32px;
+  border-bottom: 1px solid #e2e8f0;
+  background: linear-gradient(180deg, #ffffff, #fbfdff);
+}
+
+.estimate-warranty-brand {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  color: #071a33;
+  font-size: 1rem;
   font-weight: 900;
-  letter-spacing: .06em;
+}
+
+.estimate-warranty-brand img {
+  width: 58px;
+  height: 46px;
+  object-fit: contain;
+}
+
+.estimate-warranty-title {
+  margin-top: 22px;
+}
+
+.estimate-warranty-title > strong {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  color: #15803d;
+  background: #dcfce7;
+  font-size: .7rem;
+  font-weight: 850;
+}
+
+.estimate-warranty-title h2 {
+  margin: 10px 0 0;
+  color: #071a33;
+  font-size: 1.65rem;
+  line-height: 1.15;
+}
+
+.estimate-warranty-title p {
+  margin: 8px 0 0;
+  color: #64748b;
+  font-size: .9rem;
+  font-weight: 750;
+}
+
+.estimate-warranty-card {
+  padding: 16px;
+  border: 1px solid #dce8f7;
+  border-radius: 10px;
+  background: #f8fbff;
+}
+
+.estimate-warranty-card div + div {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.estimate-warranty-card small,
+.estimate-warranty-summary small {
+  display: block;
+  color: #64748b;
+  font-size: .62rem;
+  font-weight: 900;
+  letter-spacing: .08em;
   text-transform: uppercase;
 }
 
-.estimate-warranty-attachment h3,
-.estimate-warranty-attachment h4 {
-  margin: 12px 0 6px;
-  color: var(--ink);
-  font-size: .82rem;
+.estimate-warranty-card b {
+  display: block;
+  margin-top: 6px;
+  color: #0f2d5a;
+  font-size: .9rem;
+}
+
+.estimate-warranty-intro,
+.estimate-warranty-section {
+  padding: 22px 32px;
+  border-top: 1px solid #edf1f6;
+}
+
+.estimate-warranty-intro {
+  border-top: 0;
+  padding-bottom: 8px;
+}
+
+.estimate-warranty-section h3 {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin: 0 0 12px;
+  color: #071a33;
+  font-size: 1rem;
   line-height: 1.25;
 }
 
-.estimate-warranty-attachment p {
-  margin: 0 0 8px;
-  color: #374151;
+.estimate-warranty-section h3 span {
+  display: grid;
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 8px;
+  color: #ffffff;
+  background: #2563eb;
   font-size: .72rem;
-  line-height: 1.42;
+  font-weight: 900;
 }
 
-.estimate-warranty-attachment ul {
+.estimate-warranty-intro p,
+.estimate-warranty-section p,
+.estimate-warranty-commitment p {
+  margin: 0 0 12px;
+  color: #334155;
+  font-size: .82rem;
+  line-height: 1.55;
+}
+
+.estimate-warranty-section ul {
   display: grid;
-  gap: 4px;
-  margin: 7px 0 9px;
-  padding-left: 18px;
-  color: #374151;
-  font-size: .7rem;
-  line-height: 1.36;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.estimate-warranty-section li {
+  position: relative;
+  padding-left: 22px;
+  color: #334155;
+  font-size: .82rem;
+  line-height: 1.45;
+}
+
+.estimate-warranty-section li::before {
+  position: absolute;
+  left: 0;
+  top: .68em;
+  width: 6px;
+  height: 6px;
+  content: "";
+  border-radius: 50%;
+  background: #c99a42;
 }
 
 .estimate-warranty-summary {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  margin: 10px 0 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 12px 0 0;
 }
 
 .estimate-warranty-summary div {
-  padding: 8px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: #f8fafc;
-}
-
-.estimate-warranty-summary small {
-  display: block;
-  color: var(--muted);
-  font-size: .55rem;
-  font-weight: 900;
-  letter-spacing: .05em;
-  text-transform: uppercase;
+  padding: 14px;
+  border: 1px solid #dbe8f8;
+  border-radius: 10px;
+  background: #f8fbff;
 }
 
 .estimate-warranty-summary strong {
   display: block;
-  margin-top: 3px;
-  color: var(--ink);
-  font-size: .78rem;
+  margin-top: 6px;
+  color: #071a33;
+  font-size: 1rem;
+}
+
+.estimate-warranty-commitment {
+  margin: 18px 32px 32px;
+  padding: 20px;
+  border: 1px solid #f0d9a5;
+  border-radius: 11px;
+  background: #fffaf0;
+  color: #56441d;
+}
+
+.estimate-warranty-commitment h3 {
+  margin: 0 0 10px;
+  color: #47360f;
+  font-size: 1rem;
+}
+
+.estimate-warranty-commitment strong {
+  display: block;
+  margin-top: 16px;
+  color: #071a33;
 }
 
 @media (max-width: 680px) {
@@ -1927,6 +2065,29 @@ body[data-copy-mode="team"] .estimate-sheet td:first-child {
 
   .subline-editor-row .line-actions {
     grid-column: 1 / -1;
+  }
+
+  .estimate-warranty-header {
+    grid-template-columns: 1fr;
+    padding: 22px 18px;
+  }
+
+  .estimate-warranty-card {
+    width: 100%;
+  }
+
+  .estimate-warranty-intro,
+  .estimate-warranty-section {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .estimate-warranty-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .estimate-warranty-commitment {
+    margin: 12px 18px 24px;
   }
 }
 
@@ -2114,6 +2275,62 @@ body[data-copy-mode="team"] .estimate-sheet td:first-child {
   .notes span,
   .project-images > span {
     color: #0d4a91 !important;
+  }
+
+  .estimate-warranty-attachment {
+    break-before: page;
+    page-break-before: always;
+    border: 0;
+    border-radius: 0;
+    margin: 0;
+    overflow: visible;
+  }
+
+  .estimate-warranty-header {
+    grid-template-columns: minmax(0, 1fr) 2.25in;
+    gap: 0.14in;
+    padding: 0 0 0.2in;
+  }
+
+  .estimate-warranty-brand img {
+    width: 0.62in;
+    height: 0.5in;
+  }
+
+  .estimate-warranty-title {
+    margin-top: 0.18in;
+  }
+
+  .estimate-warranty-title h2 {
+    font-size: 1.35rem;
+  }
+
+  .estimate-warranty-intro,
+  .estimate-warranty-section {
+    padding: 0.16in 0;
+  }
+
+  .estimate-warranty-intro p,
+  .estimate-warranty-section p,
+  .estimate-warranty-section li,
+  .estimate-warranty-commitment p {
+    font-size: 0.72rem;
+    line-height: 1.42;
+  }
+
+  .estimate-warranty-section h3,
+  .estimate-warranty-commitment h3 {
+    font-size: 0.86rem;
+  }
+
+  .estimate-warranty-card b,
+  .estimate-warranty-summary strong {
+    font-size: 0.78rem;
+  }
+
+  .estimate-warranty-commitment {
+    margin: 0.16in 0 0;
+    padding: 0.16in;
   }
 }
 
