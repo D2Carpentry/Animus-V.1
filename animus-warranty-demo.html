@@ -827,8 +827,12 @@
         localStorage.setItem(PENDING_ATTACHMENT_KEY, JSON.stringify(warranty));
         if (window.opener && !window.opener.closed) {
           window.opener.postMessage({ type: "animus-warranty-attached", warranty }, "*");
+          window.opener.focus();
+          window.close();
+          $("warrantyToast").innerHTML = 'Warranty attached. <a href="index.html">Return to estimate</a>.';
+          return;
         }
-        $("warrantyToast").textContent = "Warranty attached. Return to the estimate and save/PDF.";
+        window.location.href = "index.html";
       }
 
       fields.forEach((id) => $(id).addEventListener("input", refreshDisplay));
