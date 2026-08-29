@@ -23,6 +23,9 @@
       .animus-boot-screen small { color: #64748b; font-weight: 700; }
       .animus-boot-mark { width: 40px; height: 40px; border: 4px solid #dce8f8; border-top-color: #2563eb; border-radius: 50%; animation: animus-boot-spin .7s linear infinite; }
       body.animus-ready .animus-boot-screen { opacity: 0; visibility: hidden; pointer-events: none; }
+      body.animus-boot-timeout .crm-shell,
+      body.animus-boot-timeout .animus-global-sidebar { visibility: visible; }
+      body.animus-boot-timeout .animus-boot-screen { opacity: 0; visibility: hidden; pointer-events: none; }
       @keyframes animus-boot-spin { to { transform: rotate(360deg); } }
     </style>
   </head>
@@ -32,6 +35,15 @@
       <strong>ANIMUS</strong>
       <small>Opening Command Center</small>
     </div>
+    <script>
+      window.setTimeout(function () {
+        if (!document.body.classList.contains("animus-ready")) {
+          document.body.classList.remove("crm-booting");
+          document.body.classList.add("animus-ready", "animus-boot-timeout");
+          console.warn("ANIMUS boot guard released the loading screen.");
+        }
+      }, 3500);
+    </script>
     <main class="crm-shell">
       <header class="crm-topbar">
         <div class="crm-brand">
