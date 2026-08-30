@@ -204,22 +204,99 @@ function todayIso(offset = 0) {
   return date.toISOString().slice(0, 10);
 }
 
+const CRM_FILE_NUMBER_PREFIX = "A";
+const CRM_FILE_NUMBER_PATTERN = /^A-(\d{4})$/i;
+
+function crmFileNumberValue(value) {
+  const match = String(value || "").trim().match(CRM_FILE_NUMBER_PATTERN);
+  return match ? Number(match[1]) : 0;
+}
+
+function formatCrmFileNumber(number) {
+  return `${CRM_FILE_NUMBER_PREFIX}-${String(Math.max(1, Number(number) || 1)).padStart(4, "0")}`;
+}
+
 function makeCrmFileNumber() {
-  const date = new Date();
-  const year = String(date.getFullYear()).slice(2);
-  const existingNumbers = crmFiles
-    .map((file) => String(file.fileNumber || ""))
-    .map((value) => value.match(new RegExp(`^${year}-([A-Z])(\\d{4})$`)))
-    .filter(Boolean)
-    .map((match) => ({ series: match[1], number: Number(match[2]) }));
-  for (let code = 65; code <= 90; code += 1) {
-    const series = String.fromCharCode(code);
-    const maxInSeries = existingNumbers
-      .filter((entry) => entry.series === series)
-      .reduce((max, entry) => Math.max(max, entry.number), 1000);
-    if (maxInSeries < 9999) return `${year}-${series}${String(maxInSeries + 1).padStart(4, "0")}`;
+  const used = new Set(
+    crmFiles
+      .map((file) => crmFileNumberValue(file?.fileNumber))
+      .filter((number) => number > 0),
+  );
+  let nextNumber = 1;
+  while (used.has(nextNumber)) nextNumber += 1;
+  return formatCrmFileNumber(nextNumber);
+}
+
+function syncEstimateNumbersToFile(file) {
+  if (!file || !file.fileNumber) return;
+  if (file.editableEstimate && typeof file.editableEstimate === "object") {
+    file.editableEstimate.dashboardFileId = file.id || file.editableEstimate.dashboardFileId || "";
+    file.editableEstimate.fileNumber = file.fileNumber;
+    file.editableEstimate.estimateNumber = file.fileNumber;
   }
-  return `${year}-Z${Date.now()}`;
+  if (Array.isArray(file.supplements)) {
+    file.supplements.forEach((supplement, index) => {
+      const supplementNumber = `${file.fileNumber}-S${index + 1}`;
+      if (supplement && typeof supplement === "object") supplement.estimateNumber = supplementNumber;
+      if (supplement?.data && typeof supplement.data === "object") {
+        supplement.data.dashboardFileId = file.id || supplement.data.dashboardFileId || "";
+        supplement.data.fileNumber = file.fileNumber;
+        supplement.data.estimateNumber = supplementNumber;
+      }
+    });
+  }
+}
+
+function updateRevenueFileNumberReferences() {
+  if (!Array.isArray(crmRevenueRows)) return;
+  crmRevenueRows.forEach((row) => {
+    if (!row || typeof row !== "object") return;
+    const rowNumbers = [
+      row.fileNumber,
+      row.attachedEstimate?.fileNumber,
+      row.attachedEstimate?.estimateNumber,
+    ].map((value) => String(value || "").trim()).filter(Boolean);
+    const linkedFile = crmFiles.find((file) => file?.id && row.dashboardFileId === file.id)
+      || crmFiles.find((file) => rowNumbers.includes(String(file?.fileNumber || "").trim()))
+      || crmFiles.find((file) => rowNumbers.includes(String(file?.legacyFileNumber || "").trim()));
+    if (!linkedFile?.fileNumber) return;
+    const previousNumber = String(row.fileNumber || "").trim();
+    row.dashboardFileId = linkedFile.id || row.dashboardFileId || "";
+    row.fileNumber = linkedFile.fileNumber;
+    if (typeof row.clientJob === "string" && previousNumber && previousNumber !== linkedFile.fileNumber) {
+      row.clientJob = row.clientJob.replace(previousNumber, linkedFile.fileNumber);
+    }
+    if (row.attachedEstimate && typeof row.attachedEstimate === "object") {
+      row.attachedEstimate.dashboardFileId = linkedFile.id || row.attachedEstimate.dashboardFileId || "";
+      row.attachedEstimate.fileNumber = linkedFile.fileNumber;
+      row.attachedEstimate.estimateNumber = linkedFile.fileNumber;
+    }
+  });
+}
+
+function ensureCrmFileNumbers(files = crmFiles) {
+  if (!Array.isArray(files)) return files;
+  const used = new Set();
+  let nextNumber = 1;
+  files.forEach((file) => {
+    if (!file || typeof file !== "object") return;
+    const currentNumber = String(file.fileNumber || "").trim();
+    const parsedNumber = crmFileNumberValue(currentNumber);
+    if (currentNumber && !parsedNumber && !file.legacyFileNumber) file.legacyFileNumber = currentNumber;
+    if (parsedNumber && !used.has(parsedNumber)) {
+      used.add(parsedNumber);
+      syncEstimateNumbersToFile(file);
+      return;
+    }
+    while (used.has(nextNumber)) nextNumber += 1;
+    if (currentNumber && !file.legacyFileNumber) file.legacyFileNumber = currentNumber;
+    file.fileNumber = formatCrmFileNumber(nextNumber);
+    used.add(nextNumber);
+    nextNumber += 1;
+    syncEstimateNumbersToFile(file);
+  });
+  updateRevenueFileNumberReferences();
+  return files;
 }
 
 function makeCrmId(prefix) {
@@ -272,7 +349,7 @@ function fileRecordKey(file = {}) {
   // File numbers are the business identity shown to the user. Use the same
   // precedence as the Cloudflare Worker so a cloud save cannot create a second
   // record simply because one device generated a different internal id.
-  return String(file.fileNumber || file.id || file.clientName || "").trim().toLowerCase();
+  return String(file.fileNumber || file.legacyFileNumber || file.id || file.clientName || "").trim().toLowerCase();
 }
 
 function loadDeletedFileKeys() {
@@ -883,6 +960,7 @@ function buildDashboardSyncPayload(options = {}) {
   crmFiles.forEach((file) => {
     syncExpenseFileForStorage(file);
   });
+  ensureCrmFileNumbers();
   if (includeRevenue && syncExpenses) syncAllFileExpensesToRevenue();
   const dashboard = {
     action: "dashboardSync",
@@ -1530,6 +1608,7 @@ function applyDashboardBackup(dashboard = {}, options = {}) {
   const deletedPriceIds = Array.isArray(dashboard.deletedPriceIds) ? dashboard.deletedPriceIds : (preserveMissing ? crmDeletedPriceIds : []);
   crmFiles = repairCrmFileCategories(filterDeletedCrmFiles(files).map((file) => normalizeCrmFile({ ...file })));
   crmRevenueRows = dedupeRevenueRows(revenueRows.map((row) => ({ ...row })));
+  ensureCrmFileNumbers();
   crmPayrollRows = payrollRows.map((row) => normalizePayrollRow(row));
   crmPriceRows = priceRows.map((row) => normalizedPriceRow(row));
   crmDeletedPriceIds = deletedPriceIds;

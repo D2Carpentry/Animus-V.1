@@ -39,10 +39,23 @@ function missingBucketResponse() {
   }, 500);
 }
 
+function normalizeMergeKey(value = "") {
+  return String(value || "").trim().toLowerCase();
+}
+
+function fileMergeKeys(file = {}) {
+  return [
+    file.fileNumber,
+    file.legacyFileNumber,
+    file.id,
+    file.clientName,
+  ].map(normalizeMergeKey).filter(Boolean);
+}
+
 function fileMergeKey(file = {}) {
-  // Match the client key exactly. Project/file number is the user-visible
-  // identity, while an internal id can differ between a restore and a device.
-  return String(file.fileNumber || file.id || file.clientName || "").trim().toLowerCase();
+  // File number remains the primary business identity. legacyFileNumber lets a
+  // renumbered work file merge with its old cloud copy instead of duplicating.
+  return fileMergeKeys(file)[0] || "";
 }
 
 function rowMergeKey(row = {}) {
@@ -185,15 +198,27 @@ function mergeTimeline(existing = [], incoming = []) {
 
 function mergeFiles(existing = [], incoming = []) {
   const merged = new Map();
+  const aliases = new Map();
+  const rememberAliases = (key, file) => {
+    fileMergeKeys(file).forEach((alias) => aliases.set(alias, key));
+  };
+  const resolveFileKey = (file) => {
+    const keys = fileMergeKeys(file);
+    return keys.find((key) => aliases.has(key) || merged.has(key)) || keys[0] || "";
+  };
   existing.forEach((file) => {
     const key = fileMergeKey(file);
-    if (key) merged.set(key, { ...file });
+    if (key) {
+      merged.set(key, { ...file });
+      rememberAliases(key, file);
+    }
   });
   incoming.forEach((file) => {
-    const key = fileMergeKey(file);
+    const key = resolveFileKey(file);
     if (!key) return;
-    const prior = merged.get(key) || {};
-    merged.set(key, {
+    const canonicalKey = aliases.get(key) || key;
+    const prior = merged.get(canonicalKey) || {};
+    const next = {
       ...prior,
       ...file,
       notes: mergeNotes(prior.notes, file.notes),
@@ -204,7 +229,9 @@ function mergeFiles(existing = [], incoming = []) {
       receiptHistory: mergeReceiptHistory(prior.receiptHistory, file.receiptHistory),
       animusManualExpenses: mergeManualExpenses(prior.animusManualExpenses, file.animusManualExpenses),
       animusExpenseLedgerV4: mergeManualExpenses(prior.animusExpenseLedgerV4, file.animusExpenseLedgerV4),
-    });
+    };
+    merged.set(canonicalKey, next);
+    rememberAliases(canonicalKey, next);
   });
   return [...merged.values()];
 }
@@ -268,7 +295,7 @@ function mergeDashboard(existing = {}, incoming = {}) {
     ...existing,
     ...incoming,
     dashboardFiles: mergeFiles(existing.dashboardFiles, incoming.dashboardFiles)
-      .filter((file) => !deletedFileKeys.has(fileMergeKey(file))),
+      .filter((file) => !fileMergeKeys(file).some((key) => deletedFileKeys.has(key))),
     deletedFileKeys: Array.from(deletedFileKeys),
     revenueRows: mergedRevenueRows,
     payrollRows: Array.isArray(incoming.payrollRows) ? incoming.payrollRows : (existing.payrollRows || []),
