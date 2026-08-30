@@ -24,7 +24,7 @@
   <div class="shell">
     <aside class="side">
       <div class="brand"><img src="assets/d2-logo.png" alt="D2 logo"><div><strong>ANIMUS</strong><small>COMMAND CENTER</small></div></div>
-      <div><div class="nav-label">WORKSPACE</div><nav class="nav"><a href="crm.html">Dashboard</a><a href="crm.html">Work Files</a><a class="active" href="#">Estimates</a><div class="estimator-subnav"><button type="button" id="sideNewFile">New File</button><button type="button" id="sideWorkFile">Work File</button><button type="button" id="sideUploadEstimate">Upload Estimate</button><button type="button" id="sideSupplement">Create Supplement</button><button type="button" id="sideInvoice">Invoice</button><button type="button" id="sideWorkOrder">Work Order</button></div><a href="crm.html">Calendar</a></nav></div>
+      <div><div class="nav-label">WORKSPACE</div><nav class="nav"><a href="crm.html">Dashboard</a><a href="crm.html">Work Files</a><a class="active" href="#">Estimates</a><div class="estimator-subnav"><button type="button" id="sideNewFile">New File</button><button type="button" id="sideUploadEstimate">Upload Estimate</button><button type="button" id="sideSupplement">Create Supplement</button><button type="button" id="sideInvoice">Invoice</button><button type="button" id="sideWorkOrder">Work Order</button></div><a href="crm.html">Calendar</a></nav></div>
       <div><div class="nav-label">BUSINESS</div><nav class="nav"><a href="crm.html">Revenue</a><a href="crm.html">Expenses</a><a href="crm.html">Payroll</a><a href="crm.html">Price Database</a></nav></div>
       <div class="side-foot"><b>Animus Estimation</b>Test Zone workspace</div>
     </aside>
@@ -57,7 +57,7 @@
       const $ = id => document.getElementById(id);
       const money = value => new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(Number(value)||0);
       const today = () => new Date().toISOString().slice(0,10);
-      let state = { mode:'estimate', estimateNumber:'', materials:[], scope:[] };
+      let state = { mode:'estimate', estimateNumber:'', materials:[], scope:[{type:'section',description:''}] };
       const fields = ['date','manualEstimateNumber','showEstimateNumber','companyName','title','companyPhone','companyEmail','companyAddress','dashboardFile','leadSource','inspectionDate','clientName','phone','email','address','projectType','finish','dimensions','description','materialTax','priceOverrideEnabled','priceOverride','taxEnabled','taxType','taxValue','discountEnabled','discountType','discountValue','depositType','deposit','assignmentLanguage','assignmentStartDate','assignmentArrival','assignedTo','assignmentScope','workOrderNotes','linearFeet','linearRate','laborHours','laborRate','notes','additionalNotes','valueFooterEnabled','warrantyEnabled','careEnabled'];
       function blankLine(kind, level = 0) { return kind === 'material' ? { description:'', vendor:'', qty:1, cost:0 } : { type:'item', description:'', qty:1, price:0, level }; }
       function dataFromForm(){ fields.forEach(id => { const el=$(id); if(!el) return; state[id] = el.type === 'checkbox' ? el.checked : el.value; }); }
@@ -76,25 +76,24 @@
       function dashboardFiles(){ try { const raw=JSON.parse(localStorage.getItem('d2CrmDemoFiles')||'[]'); return Array.isArray(raw)?raw:[]; } catch(_) { return []; } }
       function populateDashboardFiles(){ const select=$('dashboardFile'); const current=state.dashboardFile||''; dashboardFiles().forEach((file,index)=>{ const opt=document.createElement('option'); opt.value=String(index); opt.textContent=`${file.fileNumber||'No file #'} - ${file.clientName||'Unnamed Client'}`; select.appendChild(opt); }); select.value=current; }
       function loadDashboardFile(){ const index=Number($('dashboardFile').value); const file=dashboardFiles()[index]; if(!file){ $('saveNote').textContent='Choose a dashboard file first'; return; } const map={clientName:'clientName',clientPhone:'phone',clientEmail:'email',projectAddress:'address',fileNumber:'workFile',leadSource:'leadSource',inspectionDate:'inspectionDate',projectType:'projectType',otherProjectType:'description'}; Object.entries(map).forEach(([from,to])=>{ if(file[from]!==undefined && $(to)) $(to).value=file[from]||''; }); state.dashboardFile=String(index); dataFromForm(); calculate(); $('estimateStatus').textContent=`Loaded from ${file.fileNumber||'dashboard work file'} - demo copy only`; }
-      function newDraft(){ if(!confirm('Start a blank demo estimate? The saved demo draft will remain until you save the new one.')) return; state={mode:'estimate',estimateNumber:'',materials:[],scope:[],date:today(),taxType:'percent',taxValue:6.5,discountType:'percent',discountValue:0,depositType:'dollar',deposit:0}; fillForm(); syncModeUI(); renderLines(); $('estimateStatus').textContent='Draft estimate - not connected to a work file'; }
+      function newDraft(){ if(!confirm('Start a blank demo estimate? The saved demo draft will remain until you save the new one.')) return; state={mode:'estimate',estimateNumber:'',materials:[],scope:[{type:'section',description:''}],date:today(),taxType:'percent',taxValue:6.5,discountType:'percent',discountValue:0,depositType:'dollar',deposit:0}; fillForm(); syncModeUI(); renderLines(); $('estimateStatus').textContent='Draft estimate - not connected to a work file'; }
       function closeEstimateMenu(){ const menu=$('estimateMenu'), toggle=$('estimateMenuToggle'); if(menu) menu.hidden=true; if(toggle) toggle.setAttribute('aria-expanded','false'); }
       function bind(){
         const openShareMenu=()=>{const menu=$('shareMenu'); if(menu) menu.hidden=!menu.hidden;};
         const closeShareMenu=()=>{const menu=$('shareMenu'); if(menu) menu.hidden=true;};
-        const setMode=mode=>{state.mode=mode;document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));$('estimateStatus').textContent=mode==='supplement'?'Supplement draft - choose the work file that should receive this supplement copy':mode==='invoice'?'Invoice draft - invoice image tools are available below':'Draft estimate - not connected to a work file';syncModeUI();};
+        const setMode=mode=>{state.mode=mode;document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));$('estimateStatus').textContent=mode==='supplement'?'Supplement draft - choose the work file that should receive this supplement copy':mode==='invoice'?'Invoice draft - invoice image tools are available below':mode==='workorder'?'Work order draft - prepare employee instructions from this estimate':'Draft estimate - not connected to a work file';syncModeUI();};
         const openPhotoPreview=(src,alt='Project photo')=>{const modal=$('photoPreview'),img=$('photoPreviewImage'); if(!modal||!img)return; img.src=src; img.alt=alt; modal.hidden=false;};
         $('estimateMenuToggle').onclick=event=>{event.stopPropagation();const menu=$('estimateMenu'), toggle=$('estimateMenuToggle');menu.hidden=!menu.hidden;toggle.setAttribute('aria-expanded',String(!menu.hidden));};
         document.addEventListener('click',event=>{if(!event.target.closest('.actions')) closeEstimateMenu();if(!event.target.closest('.summary-actions')) closeShareMenu();});
         document.addEventListener('keydown',event=>{if(event.key==='Escape'){closeEstimateMenu();closeShareMenu();const modal=$('photoPreview'); if(modal) modal.hidden=true;}});
         $('addMaterial').onclick=()=>{state.materials.push(blankLine('material'));renderLines()};
         $('addScope').onclick=()=>{state.scope.push(blankLine('scope'));renderLines()};
-        $('addSection').onclick=()=>{state.scope.push({type:'section',description:'New Section'});renderLines()};
+        $('addSection').onclick=()=>{state.scope.push({type:'section',description:''});renderLines()};
         $('loadWorkFile').onclick=loadDashboardFile;
         $('sideNewFile').onclick=()=>newDraft();
-        $('sideWorkFile').onclick=()=>setMode('supplement');
         $('sideSupplement').onclick=()=>setMode('supplement');
         $('sideInvoice').onclick=()=>setMode('invoice');
-        $('sideWorkOrder').onclick=()=>$('assignmentBody')?.scrollIntoView({behavior:'smooth',block:'start'});
+        $('sideWorkOrder').onclick=()=>{setMode('workorder');const body=$('assignmentBody');if(body)body.hidden=false;document.querySelector('[data-collapse="assignmentBody"]')?.replaceChildren(document.createTextNode('Hide'));body?.scrollIntoView({behavior:'smooth',block:'start'});};
         $('sideUploadEstimate').onclick=()=>$('saveNote').textContent='Upload Estimate will connect when this demo becomes the live estimator.';
         const refreshInvoiceImages=()=>{const target=$('invoiceImages');const photos=[...document.querySelectorAll('.photo')];if(!photos.length){target.className='invoice-image-empty';target.textContent='Upload project photos first.';return;}target.className='invoice-gallery';target.innerHTML='';photos.forEach(photo=>{const img=document.createElement('img');img.src=photo.src;img.alt=photo.alt||'Project image';img.addEventListener('click',()=>openPhotoPreview(img.src,img.alt));target.appendChild(img);});};
         const addPhotos=files=>{const list=$('photoList');[...files].filter(file=>file.type.startsWith('image/')).forEach(file=>{const src=URL.createObjectURL(file);const wrap=document.createElement('div');wrap.className='photo-card';const img=document.createElement('img');img.className='photo';img.alt=file.name;img.src=src;img.addEventListener('click',()=>openPhotoPreview(src,file.name));const label=document.createElement('span');label.textContent=file.name;wrap.append(img,label);list.appendChild(wrap);});if(state.mode==='invoice')refreshInvoiceImages();};
@@ -120,6 +119,7 @@
       }
       try { const saved=JSON.parse(localStorage.getItem(KEY)); if(saved&&typeof saved==='object') state={...state,...saved,materials:Array.isArray(saved.materials)?saved.materials:[],scope:Array.isArray(saved.scope)?saved.scope:[]}; } catch(_){};
       const params=new URLSearchParams(window.location.search); if(params.get('mode')==='invoice') state.mode='invoice';
+      if(!state.scope.length) state.scope.push({type:'section',description:''});
       if(!state.date)state.date=today(); fillForm(); populateDashboardFiles(); bind(); syncModeUI(); renderLines(); document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode===state.mode));
     })();
   </script>
