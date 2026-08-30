@@ -175,11 +175,19 @@ function mergeManualExpenses(existing = [], incoming = []) {
 
 // Notes and timeline entries are append-only history. A later save from a
 // different device must combine them instead of replacing a newer note list.
-function mergeNotes(existing = [], incoming = []) {
+function mergeDeletedNoteIds(existing = [], incoming = []) {
+  return [...new Set([...(Array.isArray(existing) ? existing : []), ...(Array.isArray(incoming) ? incoming : [])]
+    .map((id) => String(id || "").trim())
+    .filter(Boolean))];
+}
+
+function mergeNotes(existing = [], incoming = [], deletedIds = []) {
+  const deleted = new Set((Array.isArray(deletedIds) ? deletedIds : []).map((id) => String(id || "").trim()).filter(Boolean));
   const merged = new Map();
   [...(Array.isArray(existing) ? existing : []), ...(Array.isArray(incoming) ? incoming : [])].forEach((note) => {
     if (!note || !String(note.text || "").trim()) return;
     const key = String(note.id || note.at || `${note.text || ""}`).trim();
+    if (deleted.has(key)) return;
     const prior = merged.get(key);
     const priorStamp = Date.parse(prior?.editedAt || prior?.at || "") || 0;
     const nextStamp = Date.parse(note.editedAt || note.at || "") || 0;
@@ -218,10 +226,12 @@ function mergeFiles(existing = [], incoming = []) {
     if (!key) return;
     const canonicalKey = aliases.get(key) || key;
     const prior = merged.get(canonicalKey) || {};
+    const deletedNoteIds = mergeDeletedNoteIds(prior.deletedNoteIds, file.deletedNoteIds);
     const next = {
       ...prior,
       ...file,
-      notes: mergeNotes(prior.notes, file.notes),
+      deletedNoteIds,
+      notes: mergeNotes(prior.notes, file.notes, deletedNoteIds),
       timeline: mergeTimeline(prior.timeline, file.timeline),
       freshExpenseReceipts: mergeReceiptHistory(prior.freshExpenseReceipts, file.freshExpenseReceipts),
       expenseReceipts: mergeReceiptHistory(prior.expenseReceipts, file.expenseReceipts),

@@ -441,10 +441,12 @@ function mergeManualExpenseArrays(primary = [], secondary = []) {
 }
 
 function mergeDashboardFileRecords(primaryFile = {}, secondaryFile = {}) {
+  const deletedNoteIds = mergeDeletedNoteIds(primaryFile.deletedNoteIds, secondaryFile.deletedNoteIds);
   return {
     ...primaryFile,
     ...secondaryFile,
-    notes: mergeCrmNotes(primaryFile.notes, secondaryFile.notes),
+    deletedNoteIds,
+    notes: mergeCrmNotes(primaryFile.notes, secondaryFile.notes, deletedNoteIds),
     timeline: mergeCrmTimeline(primaryFile.timeline, secondaryFile.timeline),
     freshExpenseReceipts: mergeReceiptHistoryArrays(primaryFile.freshExpenseReceipts, secondaryFile.freshExpenseReceipts),
     expenseReceipts: mergeReceiptHistoryArrays(primaryFile.expenseReceipts, secondaryFile.expenseReceipts),
@@ -455,11 +457,19 @@ function mergeDashboardFileRecords(primaryFile = {}, secondaryFile = {}) {
   };
 }
 
-function mergeCrmNotes(primary = [], secondary = []) {
+function mergeDeletedNoteIds(primary = [], secondary = []) {
+  return [...new Set([...(Array.isArray(primary) ? primary : []), ...(Array.isArray(secondary) ? secondary : [])]
+    .map((id) => String(id || "").trim())
+    .filter(Boolean))];
+}
+
+function mergeCrmNotes(primary = [], secondary = [], deletedIds = []) {
+  const deleted = new Set((Array.isArray(deletedIds) ? deletedIds : []).map((id) => String(id || "").trim()).filter(Boolean));
   const unique = new Map();
   [...(Array.isArray(primary) ? primary : []), ...(Array.isArray(secondary) ? secondary : [])].forEach((note) => {
     if (!note || !String(note.text || "").trim()) return;
     const key = String(note.id || note.at || `${note.text || ""}`).trim();
+    if (deleted.has(key)) return;
     const prior = unique.get(key);
     const priorStamp = Date.parse(prior?.editedAt || prior?.at || "") || 0;
     const nextStamp = Date.parse(note.editedAt || note.at || "") || 0;
@@ -1764,6 +1774,7 @@ window.clearActiveCrmFileSelection = function clearActiveCrmFileSelection() {
 function normalizeCrmFile(file) {
   if (!file) return file;
   if (!Array.isArray(file.notes)) file.notes = [];
+  if (!Array.isArray(file.deletedNoteIds)) file.deletedNoteIds = [];
   if (!Array.isArray(file.timeline)) file.timeline = [];
   if (!Array.isArray(file.expenseLines)) file.expenseLines = [];
   if (!Array.isArray(file.receiptHistory)) file.receiptHistory = [];
@@ -1803,9 +1814,17 @@ function normalizeCrmFile(file) {
   file.reviewRequested = file.reviewRequested || (["Requested", "Received"].includes(file.reviewStatus) || file.reviewSent === "Yes" ? "Yes" : "No");
   file.reviewSent = file.reviewSent || "No";
   if (file.fileNotes && !file.notes.length) {
-    file.notes.push({ at: new Date().toISOString(), text: file.fileNotes });
+    file.notes.push({ id: makeCrmId("note"), at: new Date().toISOString(), text: file.fileNotes, source: "manual" });
     file.fileNotes = "";
   }
+  file.notes = file.notes
+    .filter((note) => note && String(note.text || "").trim())
+    .map((note) => ({
+      ...note,
+      id: note.id || makeCrmId("note"),
+      source: note.source || (isSystemGeneratedNoteText(note.text) ? "system" : "manual"),
+    }))
+    .filter((note) => !file.deletedNoteIds.includes(note.id));
   return file;
 }
 
@@ -2335,10 +2354,22 @@ function canEditLatestNote(notes, index) {
 }
 
 function canManageManualFileNote(note) {
-  if (!note || note.source !== "manual") return false;
+  if (!note || !isManualFileNote(note)) return false;
   const createdAt = new Date(note.at || "");
   if (Number.isNaN(createdAt.getTime())) return false;
   return Date.now() - createdAt.getTime() <= NOTE_EDIT_WINDOW_MS;
+}
+
+function isSystemGeneratedNoteText(text = "") {
+  return /^(work file updated\.?|lead fee changed|status detail changed|editable estimate attached|restored from|details restored|file note (added|edited|deleted)|revenue row|approved estimate|estimate file|lead file created|expense (saved|updated|deleted))/i
+    .test(String(text || "").trim());
+}
+
+function isManualFileNote(note) {
+  if (!note || !String(note.text || "").trim()) return false;
+  if (note.source === "manual") return true;
+  if (note.source === "system") return false;
+  return !isSystemGeneratedNoteText(note.text);
 }
 
 function renderNotes(file) {
@@ -2369,7 +2400,7 @@ function addCrmNote() {
   const text = $("crmNewNote").value.trim();
   if (!text) return;
   const timestamp = new Date().toISOString();
-  file.notes.push({ at: timestamp, text, source: "manual" });
+  file.notes.push({ id: makeCrmId("note"), at: timestamp, text, source: "manual" });
   file.timeline = [...(file.timeline || []), `Note added ${formatNoteTimestamp(timestamp)}`];
   $("crmNewNote").value = "";
   saveCrmFiles();
@@ -2440,7 +2471,7 @@ function saveFileNoteModal() {
     file.notes[noteIndex] = { ...note, text, editedAt: timestamp };
     file.timeline = [...file.timeline, `File note edited ${formatNoteTimestamp(timestamp)}`];
   } else {
-    file.notes = [...file.notes, { at: timestamp, text, source: "manual" }];
+    file.notes = [...file.notes, { id: makeCrmId("note"), at: timestamp, text, source: "manual" }];
     file.timeline = [...file.timeline, `File note added ${formatNoteTimestamp(timestamp)}`];
   }
   crmLocalChangeVersion += 1;
@@ -2479,7 +2510,9 @@ function deleteFileNote(index) {
   if (!window.confirm("Delete this file note? This cannot be undone.")) return;
   const savedFileId = file.id;
   const savedFileKey = fileRecordKey(file);
+  const deletedNoteId = note.id || String(note.at || note.text || "").trim();
   file.notes.splice(index, 1);
+  file.deletedNoteIds = [...new Set([...(Array.isArray(file.deletedNoteIds) ? file.deletedNoteIds : []), deletedNoteId].filter(Boolean))];
   const timestamp = new Date().toISOString();
   file.timeline = [...file.timeline, `File note deleted ${formatNoteTimestamp(timestamp)}`];
   crmLocalChangeVersion += 1;
@@ -2492,6 +2525,14 @@ function deleteFileNote(index) {
     showDashboardSaveStatus("File note deleted in this browser. Cloud sync will retry with Save All.", true);
   });
 }
+
+window.openFileNoteModal = openFileNoteModal;
+window.openFileNoteModalForEdit = openFileNoteModalForEdit;
+window.closeFileNoteModal = closeFileNoteModal;
+window.saveFileNoteModal = saveFileNoteModal;
+window.deleteFileNote = deleteFileNote;
+window.canManageManualFileNote = canManageManualFileNote;
+window.isManualFileNote = isManualFileNote;
 
 function editCrmNote(index) {
   const file = normalizeCrmFile(activeFile());

@@ -130,7 +130,10 @@
   function importantNotesCard(file) {
     const notes = (Array.isArray(file?.notes) ? file.notes : [])
       .map((note, index) => ({ note, index }))
-      .filter(({ note }) => field(note, "text") && note?.source === "manual")
+      .filter(({ note }) => {
+        if (typeof window.isManualFileNote === "function") return window.isManualFileNote(note);
+        return field(note, "text") && note?.source === "manual";
+      })
       .reverse();
     const noteHistory = notes.map(({ note, index }) => {
       const updatedAt = note.editedAt || note.at || "";
@@ -290,6 +293,10 @@
   }
 
   function openFileNoteModal() {
+    if (typeof window.openFileNoteModal === "function") {
+      window.openFileNoteModal();
+      return;
+    }
     const modal = byId("animusFileNoteModal");
     const input = byId("animusFileNoteText");
     const file = currentFile();
@@ -315,6 +322,10 @@
   }
 
   function saveFileNote() {
+    if (typeof window.saveFileNoteModal === "function") {
+      window.saveFileNoteModal();
+      return;
+    }
     const file = currentFile();
     const input = byId("animusFileNoteText");
     const text = input?.value.trim();
@@ -323,7 +334,7 @@
       return;
     }
     const stamp = new Date().toISOString();
-    file.notes = [...(Array.isArray(file.notes) ? file.notes : []), { at: stamp, text, source: "manual" }];
+    file.notes = [...(Array.isArray(file.notes) ? file.notes : []), { id: `note-${Date.now()}`, at: stamp, text, source: "manual" }];
     file.timeline = [...(Array.isArray(file.timeline) ? file.timeline : []), `Note added ${new Date(stamp).toLocaleString("en-US")}`];
     if (typeof window.saveCrmFiles === "function") window.saveCrmFiles();
     closeFileNoteModal();
