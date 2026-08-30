@@ -587,6 +587,8 @@ body.animus-unified-ui .animus-work-files-layout .crm-file-workspace { gap: 16px
 .animus-empty-panel { padding: 36px; border: 1px dashed #cfd8e7; border-radius: 10px; background: #fff; color: #6b7a91; text-align: center; }
 .animus-financial-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
 .animus-financial-value { padding: 18px; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; }
+.animus-financial-value.clickable { cursor: pointer; text-align: left; }
+.animus-financial-value.clickable:hover { border-color: #9bbcff; background: #f7faff; }
 .animus-financial-value span { display: block; color: #71809a; font-size: 11px; font-weight: 800; text-transform: uppercase; }
 .animus-financial-value strong { display: block; margin-top: 9px; color: #0b3f94; font-size: 23px; }
 .animus-financial-value.danger strong { color: #d32929; }

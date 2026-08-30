@@ -40,6 +40,17 @@
     return 0;
   }
 
+  function expenseTotal(file) {
+    if (typeof window.fileExpenseTotal === "function") return window.fileExpenseTotal(file);
+    if (Array.isArray(file?.animusExpenseLedgerV4)) {
+      return file.animusExpenseLedgerV4.reduce((sum, entry) => sum + (Number(entry?.amount) || 0), 0);
+    }
+    if (Array.isArray(file?.expenseLines)) {
+      return file.expenseLines.reduce((sum, line) => sum + (Number(line?.amount || line?.baseAmount) || 0), 0);
+    }
+    return 0;
+  }
+
   function currentFile() {
     return typeof window.activeFile === "function" ? window.activeFile() : null;
   }
@@ -163,9 +174,9 @@
   }
 
   function financialsPanel(file) {
-    const estimate = Number(file.estimateTotal) || 0, paid = paidTotal(file), balance = Math.max(estimate - paid, 0), material = Number(file.materialTotal) || 0, labor = Number(file.laborTotal) || 0;
-    const values = [["Estimate Amount", money(estimate), ""], ["Materials", money(material), ""], ["Labor", money(labor), ""], ["Total Paid", money(paid), ""], ["Balance Owed", money(balance), balance ? "danger" : ""]];
-    return `<div class="animus-tab-panel"><div class="animus-financial-grid">${values.map(([label, value, tone]) => `<article class="animus-financial-value ${tone}"><span>${label}</span><strong>${value}</strong></article>`).join("")}</div><div class="animus-action-row"><button class="animus-record-button primary" data-animus-edit="financials">Edit Financials</button><button class="animus-record-button" data-animus-open="invoice">Open Invoice</button></div></div>`;
+    const estimate = Number(file.estimateTotal) || 0, paid = paidTotal(file), balance = Math.max(estimate - paid, 0), material = Number(file.materialTotal) || 0, labor = Number(file.laborTotal) || 0, expenses = expenseTotal(file);
+    const values = [["Estimate Amount", money(estimate), "", ""], ["Materials", money(material), "", ""], ["Expenses", money(expenses), "", "expenses"], ["Labor", money(labor), "", ""], ["Total Paid", money(paid), "", ""], ["Balance Owed", money(balance), balance ? "danger" : "", ""]];
+    return `<div class="animus-tab-panel"><div class="animus-financial-grid">${values.map(([label, value, tone, action]) => `<${action ? "button" : "article"} class="animus-financial-value ${tone} ${action ? "clickable" : ""}"${action ? ` type="button" data-animus-open="${action}"` : ""}><span>${label}</span><strong>${value}</strong></${action ? "button" : "article"}>`).join("")}</div><div class="animus-action-row"><button class="animus-record-button primary" data-animus-edit="financials">Edit Financials</button><button class="animus-record-button" data-animus-open="invoice">Open Invoice</button></div></div>`;
   }
 
   function expensesPanel(file) {

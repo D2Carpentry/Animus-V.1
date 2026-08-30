@@ -9443,6 +9443,7 @@ fileExpenseTotal = function fileExpenseTotalV4(file) {
   }
   return (file?.expenseLines || []).reduce((sum, line) => sum + receiptExpenseLineAmount(line), 0);
 };
+window.fileExpenseTotal = fileExpenseTotal;
 
 syncFileExpensesToRevenue = function syncFileExpensesToRevenueV4(file) {
   if (!file) return;
