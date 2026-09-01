@@ -173,7 +173,85 @@
 
   function estimatePanel(file) {
     const supplements = Array.isArray(file.supplements) ? file.supplements : [];
-    return `<div class="animus-tab-panel"><section class="animus-info-card animus-estimate-actions"><div class="animus-card-head"><h3>Estimate &amp; Documents</h3></div><div class="animus-estimate-actions-inner"><p>Open, create, or add to this work file's estimate and job documents.</p><div class="animus-action-row"><button class="animus-record-button primary" data-animus-open="estimate">Estimate</button><button class="animus-record-button" data-animus-open="supplement">Create Supplement</button><button class="animus-record-button" data-animus-open="invoice">Invoice</button><button class="animus-record-button" data-animus-open="assignment">Work Order</button></div>${supplements.length ? `<small>${supplements.length} supplement${supplements.length === 1 ? "" : "s"} saved to this work file.</small>` : ""}</div></section></div>`;
+    const document = latestEstimateDocument(file);
+    return `<div class="animus-tab-panel"><section class="animus-info-card animus-estimate-actions"><div class="animus-card-head"><h3>Estimate &amp; Documents</h3></div><div class="animus-estimate-actions-inner"><p>Use these actions when you need to edit the estimate, create a supplement, invoice the file, or build the work order.</p><div class="animus-action-row"><button class="animus-record-button primary" data-animus-open="estimate">Open / Edit Estimate</button><button class="animus-record-button" data-animus-open="supplement">Create Supplement</button><button class="animus-record-button" data-animus-open="invoice">Invoice</button><button class="animus-record-button" data-animus-open="assignment">Work Order</button></div>${supplements.length ? `<small>${supplements.length} supplement${supplements.length === 1 ? "" : "s"} saved to this work file. The newest saved document is shown below.</small>` : ""}</div>${document ? estimatePreviewMarkup(file, document) : `<div class="animus-estimate-empty"><strong>No estimate is attached to this work file yet.</strong><span>Open or upload an estimate to have it appear here inside the work file.</span></div>`}</section></div>`;
+  }
+
+  function latestEstimateDocument(file) {
+    const supplements = Array.isArray(file?.supplements) ? file.supplements : [];
+    const latestSupplement = supplements
+      .map((entry) => ({ entry, time: Date.parse(entry?.updatedAt || entry?.createdAt || "") || 0 }))
+      .sort((a, b) => b.time - a.time)[0]?.entry;
+    if (latestSupplement?.data) {
+      return { kind: "Supplement", source: latestSupplement, data: latestSupplement.data };
+    }
+    if (file?.editableEstimate && typeof file.editableEstimate === "object") {
+      return { kind: "Estimate", source: file, data: file.editableEstimate };
+    }
+    return null;
+  }
+
+  function estimateValue(data, key, fallback = "") {
+    return String(data?.[key] ?? fallback ?? "").trim();
+  }
+
+  function estimateTotal(data, key, fallback = 0) {
+    const totals = data?.totals && typeof data.totals === "object" ? data.totals : {};
+    const value = totals[key] ?? data?.[key] ?? fallback;
+    return Number(value) || 0;
+  }
+
+  function estimateLineTotal(item) {
+    const total = Number(item?.total);
+    if (Number.isFinite(total) && total) return total;
+    const qty = Number(item?.qty ?? item?.quantity) || 0;
+    const price = Number(item?.price ?? item?.unitCost ?? item?.unitPrice) || 0;
+    return qty && price ? qty * price : price;
+  }
+
+  function estimateLineItems(data) {
+    const rows = Array.isArray(data?.lineItems) ? data.lineItems : Array.isArray(data?.items) ? data.items : [];
+    return rows.filter((item) => item && typeof item === "object");
+  }
+
+  function estimateMaterialItems(data) {
+    const rows = Array.isArray(data?.materialItems) ? data.materialItems : Array.isArray(data?.materials) ? data.materials : [];
+    return rows.filter((item) => item && typeof item === "object");
+  }
+
+  function estimatePreviewMarkup(file, document) {
+    const data = document.data || {};
+    const title = estimateValue(data, "estimateTitle", document.source?.title || document.kind);
+    const estimateNo = estimateValue(data, "estimateNumber", document.source?.estimateNumber || file.fileNumber || "Not assigned");
+    const company = estimateValue(data, "companyName", "D2 Carpentry & Design");
+    const estimateDate = estimateValue(data, "estimateDate", document.source?.updatedAt?.slice?.(0, 10) || document.source?.createdAt?.slice?.(0, 10) || "");
+    const clientName = estimateValue(data, "clientName", file.clientName || "Unnamed Client");
+    const clientPhone = estimateValue(data, "clientPhone", file.clientPhone || "");
+    const clientEmail = estimateValue(data, "clientEmail", file.clientEmail || "");
+    const address = estimateValue(data, "projectAddress", file.projectAddress || "");
+    const projectType = estimateValue(data, "projectType", file.projectType || "");
+    const notes = estimateValue(data, "notes");
+    const additionalNotes = estimateValue(data, "additionalNotes");
+    const lines = estimateLineItems(data);
+    const materials = estimateMaterialItems(data);
+    const subtotal = estimateTotal(data, "subtotal", lines.reduce((sum, item) => sum + estimateLineTotal(item), 0));
+    const discount = estimateTotal(data, "discount");
+    const tax = estimateTotal(data, "tax");
+    const deposit = estimateTotal(data, "deposit");
+    const total = estimateTotal(data, "total", Number(file.estimateTotal) || subtotal + tax - discount);
+    return `<article class="animus-embedded-estimate"><header class="animus-estimate-preview-head"><div><span class="animus-estimate-kicker">${escape(document.kind)}</span><h3>${escape(title || document.kind)}</h3><p>${escape(company)}</p></div><div class="animus-estimate-document-meta"><span>Date <strong>${escape(estimateDate ? date(estimateDate) : "Not set")}</strong></span><span>Estimate # <strong>${escape(estimateNo)}</strong></span></div></header><div class="animus-estimate-preview-grid"><section><h4>Customer</h4><dl><div><dt>Name</dt><dd>${escape(clientName)}</dd></div><div><dt>Phone</dt><dd>${escape(clientPhone || "Not added")}</dd></div><div><dt>Email</dt><dd>${escape(clientEmail || "Not added")}</dd></div><div><dt>Address</dt><dd>${escape(address || "Not added")}</dd></div></dl></section><section><h4>Project</h4><dl><div><dt>File</dt><dd>${escape(file.fileNumber || "Not assigned")}</dd></div><div><dt>Type</dt><dd>${escape(projectType || "Not added")}</dd></div><div><dt>Status</dt><dd>${escape(field(file, "fileStatus", "New Lead"))}</dd></div><div><dt>Lead Source</dt><dd>${escape(field(file, "leadSource", "Manual"))}</dd></div></dl></section></div><section class="animus-estimate-lines"><div class="animus-estimate-section-title"><h4>Line Items</h4><span>${lines.length} line${lines.length === 1 ? "" : "s"}</span></div>${lines.length ? `<div class="animus-estimate-line-table">${lines.map((item) => estimateLineMarkup(item)).join("")}</div>` : `<div class="animus-estimate-mini-empty">No line items are saved on this estimate.</div>`}</section>${materials.length ? `<section class="animus-estimate-lines"><div class="animus-estimate-section-title"><h4>Materials &amp; Supplies</h4><span>${materials.length} item${materials.length === 1 ? "" : "s"}</span></div><div class="animus-estimate-line-table">${materials.map((item) => estimateLineMarkup(item, true)).join("")}</div></section>` : ""}${notes || additionalNotes ? `<section class="animus-estimate-notes">${notes ? `<div><h4>Notes</h4><p>${escape(notes)}</p></div>` : ""}${additionalNotes ? `<div><h4>Additional Notes</h4><p>${escape(additionalNotes)}</p></div>` : ""}</section>` : ""}<footer class="animus-estimate-totals"><div><span>Subtotal</span><strong>${money(subtotal)}</strong></div>${discount ? `<div><span>Discount</span><strong>-${money(discount)}</strong></div>` : ""}${tax ? `<div><span>Tax</span><strong>${money(tax)}</strong></div>` : ""}${deposit ? `<div><span>Deposit</span><strong>${money(deposit)}</strong></div>` : ""}<div class="grand"><span>Total</span><strong>${money(total)}</strong></div></footer></article>`;
+  }
+
+  function estimateLineMarkup(item, material = false) {
+    const type = String(item?.type || "").toLowerCase();
+    const isSection = type === "section" || type === "heading";
+    const isSubline = type === "subline" || type === "sub";
+    const name = field(item, "name") || field(item, "description") || field(item, "title") || (isSection ? "Section" : material ? "Material" : "Line item");
+    if (isSection) return `<div class="animus-estimate-line-row section"><strong>${escape(name)}</strong></div>`;
+    const qty = item?.qty ?? item?.quantity ?? "";
+    const unit = Number(item?.price ?? item?.unitCost ?? item?.unitPrice) || 0;
+    const total = estimateLineTotal(item);
+    return `<div class="animus-estimate-line-row ${isSubline ? "subline" : ""}"><div><strong>${escape(name)}</strong>${field(item, "note") || field(item, "details") ? `<small>${escape(field(item, "note") || field(item, "details"))}</small>` : ""}</div><span>${escape(qty ? `Qty ${qty}` : "")}</span><span>${unit ? money(unit) : ""}</span><strong>${money(total)}</strong></div>`;
   }
 
   function financialsPanel(file) {

@@ -1,8 +1,12 @@
 Upload these files to GitHub:
 
-crm.js
+crm.html
 animus-work-file.js
+animus-work-file.css
 
-Purpose:
-Prevents old hidden work-file form fields from overwriting the currently selected file.
-The Work File header Save button now saves the dashboard snapshot directly instead of scraping stale legacy inputs first.
+What changed:
+- The Work File Estimate tab now shows the latest attached estimate directly inside the tab.
+- If the file has supplements, the newest supplement appears first.
+- If no supplement exists, the current attached estimate appears.
+- The action buttons remain available for opening/editing the estimate, creating a supplement, invoice, or work order.
+- crm.html was cache-bumped so the live site pulls the updated workfile script and style.

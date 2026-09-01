@@ -596,6 +596,175 @@ body.animus-unified-ui .animus-work-files-layout .crm-file-workspace { gap: 16px
 .animus-estimate-actions-inner { padding: 18px; }
 .animus-estimate-actions-inner > p { margin: 0; color: #61718a; font-size: 13px; }
 .animus-estimate-actions-inner small { display: block; margin-top: 15px; color: #526681; font-size: 12px; font-weight: 700; }
+.animus-estimate-empty {
+  display: grid;
+  gap: 6px;
+  margin: 0 18px 18px;
+  padding: 28px;
+  border: 1px dashed #cfd8e7;
+  border-radius: 10px;
+  background: #fbfdff;
+  color: #66758c;
+  text-align: center;
+}
+.animus-estimate-empty strong { color: #17345f; font-size: 15px; }
+.animus-embedded-estimate {
+  margin: 0 18px 18px;
+  border: 1px solid #dfe7f2;
+  border-radius: 11px;
+  background: #fff;
+  overflow: hidden;
+}
+.animus-estimate-preview-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 20px;
+  border-bottom: 1px solid #edf1f6;
+  background: linear-gradient(180deg, #fbfdff, #fff);
+}
+.animus-estimate-kicker {
+  display: inline-flex;
+  margin-bottom: 6px;
+  color: #1558d6;
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+}
+.animus-estimate-preview-head h3 {
+  margin: 0;
+  color: #0f2347;
+  font-size: 23px;
+  line-height: 1.15;
+}
+.animus-estimate-preview-head p { margin: 7px 0 0; color: #65748c; font-size: 13px; font-weight: 700; }
+.animus-estimate-document-meta {
+  display: grid;
+  min-width: 190px;
+  align-content: start;
+  gap: 8px;
+  text-align: right;
+}
+.animus-estimate-document-meta span { color: #71809a; font-size: 11px; font-weight: 750; }
+.animus-estimate-document-meta strong { display: block; margin-top: 2px; color: #14325e; font-size: 13px; }
+.animus-estimate-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  padding: 18px 20px;
+  border-bottom: 1px solid #edf1f6;
+}
+.animus-estimate-preview-grid section {
+  border: 1px solid #e3eaf4;
+  border-radius: 9px;
+  background: #fbfcfe;
+}
+.animus-estimate-preview-grid h4,
+.animus-estimate-section-title h4,
+.animus-estimate-notes h4 {
+  margin: 0;
+  color: #17345f;
+  font-size: 13px;
+  font-weight: 850;
+}
+.animus-estimate-preview-grid h4 { padding: 12px 14px; border-bottom: 1px solid #e9eef6; }
+.animus-estimate-preview-grid dl { margin: 0; padding: 4px 14px 10px; }
+.animus-estimate-preview-grid dl div {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px solid #eef2f7;
+}
+.animus-estimate-preview-grid dl div:last-child { border-bottom: 0; }
+.animus-estimate-preview-grid dt { color: #71809a; font-size: 11px; font-weight: 800; }
+.animus-estimate-preview-grid dd { margin: 0; color: #152d56; font-size: 12px; font-weight: 760; line-height: 1.35; overflow-wrap: anywhere; }
+.animus-estimate-lines { padding: 18px 20px 0; }
+.animus-estimate-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.animus-estimate-section-title span { color: #71809a; font-size: 11px; font-weight: 800; }
+.animus-estimate-line-table {
+  overflow: hidden;
+  border: 1px solid #e3eaf4;
+  border-radius: 9px;
+}
+.animus-estimate-line-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 72px 92px 108px;
+  align-items: center;
+  gap: 12px;
+  min-height: 50px;
+  padding: 11px 14px;
+  border-bottom: 1px solid #edf1f6;
+  color: #263b5c;
+  font-size: 12px;
+}
+.animus-estimate-line-row:last-child { border-bottom: 0; }
+.animus-estimate-line-row > strong:last-child { color: #102354; text-align: right; }
+.animus-estimate-line-row span { color: #66758c; font-weight: 700; text-align: right; }
+.animus-estimate-line-row small { display: block; margin-top: 3px; color: #71809a; font-weight: 650; line-height: 1.35; }
+.animus-estimate-line-row.section {
+  display: block;
+  min-height: 0;
+  background: #f2f6fc;
+  color: #102354;
+}
+.animus-estimate-line-row.subline { padding-left: 30px; background: #fcfdff; }
+.animus-estimate-mini-empty {
+  padding: 18px;
+  border: 1px dashed #cfd8e7;
+  border-radius: 9px;
+  color: #66758c;
+  font-size: 13px;
+  text-align: center;
+}
+.animus-estimate-notes {
+  display: grid;
+  gap: 12px;
+  padding: 18px 20px 0;
+}
+.animus-estimate-notes div {
+  padding: 14px;
+  border: 1px solid #e3eaf4;
+  border-radius: 9px;
+  background: #fbfcfe;
+}
+.animus-estimate-notes p {
+  margin: 8px 0 0;
+  color: #334766;
+  font-size: 13px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+.animus-estimate-totals {
+  display: grid;
+  justify-content: end;
+  gap: 6px;
+  padding: 18px 20px 20px;
+}
+.animus-estimate-totals div {
+  display: grid;
+  grid-template-columns: 135px 125px;
+  align-items: center;
+  min-height: 32px;
+  color: #66758c;
+  font-size: 12px;
+}
+.animus-estimate-totals strong { color: #102354; font-size: 14px; text-align: right; }
+.animus-estimate-totals .grand {
+  margin-top: 4px;
+  padding-top: 10px;
+  border-top: 1px solid #dfe7f2;
+  color: #102354;
+  font-weight: 850;
+}
+.animus-estimate-totals .grand strong { color: #1558d6; font-size: 21px; }
 
 .animus-inline-editor { margin-bottom: 16px; padding: 16px; border: 1px solid #bfd4ff; border-radius: 10px; background: #f8fbff; }
 .animus-inline-editor h3 { margin: 0 0 13px; color: #123b80; font-size: 15px; }
@@ -633,4 +802,12 @@ body.animus-unified-ui .animus-work-files-layout .crm-file-workspace { gap: 16px
   .animus-financial-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .animus-work-grid-focused { grid-template-columns: 1fr; }
   .animus-detail-pair { grid-template-columns: 1fr; gap: 4px; padding: 12px 0; }
+  .animus-estimate-preview-head,
+  .animus-estimate-preview-grid { grid-template-columns: 1fr; }
+  .animus-estimate-preview-head { display: grid; }
+  .animus-estimate-document-meta { min-width: 0; text-align: left; }
+  .animus-estimate-line-row { grid-template-columns: minmax(0, 1fr) 62px 90px; }
+  .animus-estimate-line-row span:nth-of-type(2) { display: none; }
+  .animus-estimate-totals { justify-content: stretch; }
+  .animus-estimate-totals div { grid-template-columns: 1fr auto; }
 }
