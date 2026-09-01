@@ -765,6 +765,91 @@ body.animus-unified-ui .animus-work-files-layout .crm-file-workspace { gap: 16px
   font-weight: 850;
 }
 .animus-estimate-totals .grand strong { color: #1558d6; font-size: 21px; }
+.animus-documents-panel { min-width: 0; }
+.animus-document-grid {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+}
+.animus-document-box {
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fbfcfe;
+}
+.animus-document-box-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 52px;
+  padding: 0 15px;
+  border-bottom: 1px solid #e8edf5;
+  background: #fff;
+}
+.animus-document-box-head h4 {
+  margin: 0;
+  color: #102354;
+  font-size: 14px;
+  font-weight: 850;
+}
+.animus-document-box-head span {
+  color: #66758c;
+  font-size: 11px;
+  font-weight: 800;
+}
+.animus-document-list {
+  display: grid;
+  padding: 4px 12px 10px;
+}
+.animus-document-row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) minmax(76px, auto);
+  align-items: center;
+  gap: 12px;
+  min-height: 62px;
+  padding: 10px 0;
+  border: 0;
+  border-bottom: 1px solid #e8edf5;
+  background: transparent;
+  color: #263b5c;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.animus-document-row:last-child { border-bottom: 0; }
+.animus-document-row:hover { color: #1558d6; }
+.animus-document-icon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 10px;
+  background: #eaf1ff;
+  color: #1558d6;
+  font-size: 10px;
+  font-weight: 900;
+}
+.animus-document-row strong,
+.animus-document-row small,
+.animus-document-row b {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.animus-document-row strong { color: inherit; font-size: 13px; font-weight: 850; }
+.animus-document-row small { margin-top: 4px; color: #6d7b91; font-size: 11px; font-weight: 700; }
+.animus-document-row b { color: #102354; font-size: 12px; font-weight: 850; text-align: right; }
+.animus-document-empty {
+  padding: 24px 18px;
+  color: #66758c;
+  font-size: 13px;
+  line-height: 1.45;
+  text-align: center;
+}
+.animus-document-actions { background: #fff; }
+.animus-document-actions .animus-action-row { margin: 0; padding: 15px; }
 
 .animus-inline-editor { margin-bottom: 16px; padding: 16px; border: 1px solid #bfd4ff; border-radius: 10px; background: #f8fbff; }
 .animus-inline-editor h3 { margin: 0 0 13px; color: #123b80; font-size: 15px; }
@@ -810,4 +895,7 @@ body.animus-unified-ui .animus-work-files-layout .crm-file-workspace { gap: 16px
   .animus-estimate-line-row span:nth-of-type(2) { display: none; }
   .animus-estimate-totals { justify-content: stretch; }
   .animus-estimate-totals div { grid-template-columns: 1fr auto; }
+  .animus-document-grid { padding: 14px; }
+  .animus-document-row { grid-template-columns: 40px minmax(0, 1fr); }
+  .animus-document-row b { grid-column: 2; text-align: left; }
 }

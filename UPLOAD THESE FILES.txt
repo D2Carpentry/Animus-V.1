@@ -5,8 +5,9 @@ animus-work-file.js
 animus-work-file.css
 
 What changed:
-- The Work File Estimate tab now shows the latest attached estimate directly inside the tab.
-- If the file has supplements, the newest supplement appears first.
-- If no supplement exists, the current attached estimate appears.
-- The action buttons remain available for opening/editing the estimate, creating a supplement, invoice, or work order.
-- crm.html was cache-bumped so the live site pulls the updated workfile script and style.
+- Work File > Documents now has a Receipts box.
+- The Receipts box lists receipt images/details already attached through that file's saved expenses.
+- Work File > Documents now has an Upload Document button.
+- Uploaded documents are saved directly on the current work file under workFileDocuments.
+- Clicking a saved receipt or uploaded document opens it for review.
+- crm.html was cache-bumped so the live site loads the updated script and style.

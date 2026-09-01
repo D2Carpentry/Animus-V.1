@@ -271,9 +271,35 @@
     return `<div class="animus-tab-panel"><section class="animus-info-card"><div class="animus-card-head"><h3>Expenses</h3><button class="animus-record-button primary small" data-animus-open="expenses">Open Expense Center</button></div>${records.length ? `<div class="animus-activity">${records.map((entry) => `<article class="animus-activity-row"><span class="animus-activity-icon">R</span><div class="animus-activity-main"><strong>${escape(entry.vendor || entry.title || "Expense")}</strong><p>${escape(entry.category || "Other")} · ${escape(date(entry.date))}</p></div><time class="animus-activity-time">${money(entry.amount)}</time></article>`).join("")}</div>` : `<div class="animus-empty-panel">No saved expenses for this file.</div>`}</section></div>`;
   }
 
+  function fileExpenseRecords(file) {
+    const stored = Array.isArray(file?.animusExpenseLedgerV4) ? file.animusExpenseLedgerV4 : [];
+    const cloud = typeof window.getAnimusExpensesForFile === "function" ? window.getAnimusExpensesForFile(file.id || file.fileNumber) : [];
+    return [...cloud, ...stored].reduce((unique, entry) => {
+      const key = String(entry?.id || `${entry?.date || ""}-${entry?.vendor || ""}-${entry?.amount || ""}-${entry?.imageTitle || ""}`);
+      if (!unique.some((item) => item.key === key)) unique.push({ key, entry });
+      return unique;
+    }, []).map((item) => item.entry).sort((a, b) => String(b.updatedAt || b.createdAt || "").localeCompare(String(a.updatedAt || a.createdAt || "")));
+  }
+
+  function receiptSource(entry = {}) {
+    return entry.imageDataUrl || entry.receiptImageUrl || entry.receiptDataUrl || "";
+  }
+
+  function receiptDetail(entry = {}) {
+    const items = Array.isArray(entry.items) ? entry.items : Array.isArray(entry.lines) ? entry.lines : [];
+    const firstItem = items.map((item) => item?.name || item?.description || item?.note || "").find(Boolean);
+    return firstItem || entry.notes || entry.category || "Receipt details saved";
+  }
+
+  function documentRows(file) {
+    return Array.isArray(file?.workFileDocuments) ? file.workFileDocuments : Array.isArray(file?.documents) ? file.documents : [];
+  }
+
   function documentsPanel(file) {
     const supplements = Array.isArray(file.supplements) ? file.supplements : [];
-    return `<div class="animus-tab-panel"><section class="animus-info-card"><div class="animus-card-head"><h3>Documents</h3></div><div class="animus-empty-panel">${supplements.length ? `${supplements.length} supplement${supplements.length === 1 ? "" : "s"} saved for this file.` : "Estimates, invoices, supplements, receipts, and other documents for this file are available here."}<div class="animus-action-row"><button class="animus-record-button" data-animus-open="estimate">Estimate</button><button class="animus-record-button" data-animus-open="invoice">Invoice</button><button class="animus-record-button" data-animus-open="assignment">Assignment</button></div></div></section></div>`;
+    const receipts = fileExpenseRecords(file).filter((entry) => receiptSource(entry) || entry.imageTitle || entry.vendor || entry.title);
+    const docs = documentRows(file);
+    return `<div class="animus-tab-panel animus-documents-panel"><section class="animus-info-card"><div class="animus-card-head"><h3>Documents</h3><button class="animus-record-button primary small" data-animus-upload-document>Upload Document</button><input id="animusWorkFileDocumentUpload" type="file" hidden></div><div class="animus-document-grid"><section class="animus-document-box"><div class="animus-document-box-head"><h4>Receipts</h4><span>${receipts.length}</span></div>${receipts.length ? `<div class="animus-document-list">${receipts.map((entry) => `<button type="button" class="animus-document-row" data-animus-open-receipt="${escape(entry.id || "")}"><span class="animus-document-icon">${receiptSource(entry) ? "IMG" : "REC"}</span><span><strong>${escape(entry.title || entry.vendor || entry.imageTitle || "Receipt")}</strong><small>${escape(date(entry.date))} · ${escape(receiptDetail(entry))}</small></span><b>${money(entry.amount)}</b></button>`).join("")}</div>` : `<div class="animus-document-empty">Receipt images and receipt details for this work file will appear here after expenses are saved.</div>`}</section><section class="animus-document-box"><div class="animus-document-box-head"><h4>Uploaded Documents</h4><span>${docs.length}</span></div>${docs.length ? `<div class="animus-document-list">${docs.map((doc) => `<button type="button" class="animus-document-row" data-animus-open-document="${escape(doc.id || "")}"><span class="animus-document-icon">${escape((doc.type || doc.name || "DOC").split("/").pop().slice(0, 3).toUpperCase())}</span><span><strong>${escape(doc.name || "Uploaded document")}</strong><small>${escape(date((doc.createdAt || "").slice(0, 10)))} · ${escape(doc.notes || doc.type || "Saved to this work file")}</small></span><b>${escape(doc.size ? `${Math.round(Number(doc.size) / 1024)} KB` : "")}</b></button>`).join("")}</div>` : `<div class="animus-document-empty">Upload contracts, drawings, photos, PDFs, or other file notes here.</div>`}</section><section class="animus-document-box animus-document-actions"><div class="animus-document-box-head"><h4>Work File Documents</h4><span>${supplements.length ? `${supplements.length} supplement${supplements.length === 1 ? "" : "s"}` : "Actions"}</span></div><div class="animus-action-row"><button class="animus-record-button" data-animus-open="estimate">Estimate</button><button class="animus-record-button" data-animus-open="invoice">Invoice</button><button class="animus-record-button" data-animus-open="assignment">Work Order</button></div></section></div></section></div>`;
   }
 
   function detailsPanel(file) {
@@ -419,6 +445,69 @@
     if (typeof window.renderCrm === "function") window.renderCrm(); else renderWorkFile();
   }
 
+  function readDocumentAsDataUrl(uploadFile) {
+    if (typeof window.readUploadFileAsDataUrl === "function") return window.readUploadFileAsDataUrl(uploadFile);
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.addEventListener("load", () => resolve(reader.result));
+      reader.addEventListener("error", () => reject(new Error("Document could not be opened.")));
+      reader.readAsDataURL(uploadFile);
+    });
+  }
+
+  async function uploadWorkFileDocument(input) {
+    const file = currentFile();
+    const uploadFile = input?.files?.[0];
+    if (!file || !uploadFile) return;
+    try {
+      const dataUrl = await readDocumentAsDataUrl(uploadFile);
+      const stamp = new Date().toISOString();
+      file.workFileDocuments = Array.isArray(file.workFileDocuments) ? file.workFileDocuments : [];
+      file.workFileDocuments = [{
+        id: `doc-${Date.now()}`,
+        name: uploadFile.name || "Uploaded document",
+        type: uploadFile.type || "application/octet-stream",
+        size: uploadFile.size || 0,
+        dataUrl,
+        createdAt: stamp,
+        updatedAt: stamp,
+      }, ...file.workFileDocuments];
+      if (typeof window.addSystemNote === "function") window.addSystemNote(file, `Document uploaded: ${uploadFile.name || "Uploaded document"}.`);
+      if (typeof window.saveCrmFiles === "function") window.saveCrmFiles({ syncExpenses: false });
+      if (typeof window.saveDashboardToGoogle === "function") window.saveDashboardToGoogle();
+      input.value = "";
+      if (typeof window.renderCrm === "function") window.renderCrm(); else renderWorkFile();
+    } catch (error) {
+      input.value = "";
+      window.alert?.("Document could not be uploaded. Please try again.");
+    }
+  }
+
+  function openDataDocument(src, title = "Document") {
+    if (!src) return;
+    const opened = window.open("", "_blank");
+    if (!opened) return;
+    const safeTitle = escape(title);
+    if (/^data:image\//i.test(src) || /\.(png|jpe?g|gif|webp|heic)$/i.test(title)) {
+      opened.document.write(`<!doctype html><title>${safeTitle}</title><style>body{margin:0;background:#0f172a;display:grid;min-height:100vh;place-items:center}img{max-width:96vw;max-height:96vh;object-fit:contain;background:#fff}</style><img src="${src}" alt="${safeTitle}">`);
+      return;
+    }
+    opened.location.href = src;
+  }
+
+  function openWorkFileReceipt(id) {
+    const file = currentFile();
+    const receipts = fileExpenseRecords(file);
+    const receipt = receipts.find((entry) => String(entry?.id || "") === String(id || "")) || receipts[0];
+    openDataDocument(receiptSource(receipt), receipt?.imageTitle || receipt?.title || receipt?.vendor || "Receipt");
+  }
+
+  function openWorkFileDocument(id) {
+    const file = currentFile();
+    const document = documentRows(file).find((entry) => String(entry?.id || "") === String(id || ""));
+    openDataDocument(document?.dataUrl || document?.url || "", document?.name || "Document");
+  }
+
   function openExisting(action) {
     if (action === "editFile") {
       if (typeof window.openCrmFileIntakeEditor === "function") window.openCrmFileIntakeEditor();
@@ -460,6 +549,21 @@
       return;
     }
     const target = event.target.closest("[data-animus-tab], [data-animus-edit], [data-animus-save], [data-animus-save-editor], [data-animus-cancel-editor], [data-animus-complete-action], [data-animus-open], [data-animus-add-note], [data-animus-back], [data-animus-summary]");
+    const receiptButton = event.target.closest("[data-animus-open-receipt]");
+    if (receiptButton) {
+      openWorkFileReceipt(receiptButton.dataset.animusOpenReceipt);
+      return;
+    }
+    const documentButton = event.target.closest("[data-animus-open-document]");
+    if (documentButton) {
+      openWorkFileDocument(documentButton.dataset.animusOpenDocument);
+      return;
+    }
+    const uploadButton = event.target.closest("[data-animus-upload-document]");
+    if (uploadButton) {
+      byId("animusWorkFileDocumentUpload")?.click();
+      return;
+    }
     if (!target) return;
     if (target.dataset.animusTab) { state.tab = target.dataset.animusTab; state.editor = ""; renderWorkFile(); return; }
     if (target.dataset.animusEdit) { state.editor = target.dataset.animusEdit; renderWorkFile(); return; }
@@ -488,6 +592,10 @@
       if (typeof window.clearActiveCrmFileSelection === "function") window.clearActiveCrmFileSelection();
       document.querySelector(".crm-file-list-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
     }
+  });
+
+  document.addEventListener("change", (event) => {
+    if (event.target?.id === "animusWorkFileDocumentUpload") uploadWorkFileDocument(event.target);
   });
 
   const originalRenderCrm = window.renderCrm;
