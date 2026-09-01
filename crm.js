@@ -153,6 +153,28 @@ const trackedStatusFields = {
 
 const $ = (id) => document.getElementById(id);
 
+function crmFieldElementId(field) {
+  return `crm${field[0].toUpperCase()}${field.slice(1)}`;
+}
+
+function bindLegacyCrmFieldsToFile(file) {
+  crmFields.forEach((field) => {
+    const element = $(crmFieldElementId(field));
+    if (!element) return;
+    if (file?.id) element.dataset.crmBoundFileId = file.id;
+    else delete element.dataset.crmBoundFileId;
+  });
+}
+
+function legacyCrmFieldsMatchFile(file) {
+  if (!file?.id) return false;
+  const boundFields = crmFields
+    .map((field) => $(crmFieldElementId(field)))
+    .filter(Boolean);
+  if (!boundFields.length) return false;
+  return boundFields.every((element) => element.dataset.crmBoundFileId === file.id);
+}
+
 let crmRestoreAppliedThisLoad = false;
 let crmCloudAuthoritativeLoaded = false;
 let crmFiles = [];
@@ -2010,9 +2032,13 @@ function renderActiveFile() {
     $("activeClientName").textContent = "Create or select a customer file";
     $("crmSupplementSummary").textContent = "";
     crmFields.forEach((field) => {
-      const element = $(`crm${field[0].toUpperCase()}${field.slice(1)}`);
-      if (element) element.value = "";
+      const element = $(crmFieldElementId(field));
+      if (element) {
+        element.value = "";
+        delete element.dataset.crmBoundFileId;
+      }
     });
+    bindLegacyCrmFieldsToFile(null);
     toggleAngiLeadFeeField();
     $("crmEstimateTotal").textContent = crmCurrency.format(0);
     $("crmMaterialTotal").textContent = crmCurrency.format(0);
@@ -2032,8 +2058,11 @@ function renderActiveFile() {
     ? `${supplements.length} saved supplement${supplements.length === 1 ? "" : "s"} · Latest ${supplements[supplements.length - 1].estimateNumber || "Supplement"}`
     : "";
   crmFields.forEach((field) => {
-    const element = $(`crm${field[0].toUpperCase()}${field.slice(1)}`);
-    if (element) element.value = file[field] || "";
+    const element = $(crmFieldElementId(field));
+    if (element) {
+      element.value = file[field] || "";
+      element.dataset.crmBoundFileId = file.id;
+    }
   });
   toggleAngiLeadFeeField();
   renderStatusDetailOptions(file);
@@ -2069,10 +2098,15 @@ function saveActiveFile(options = {}) {
   if (!options.allowWhileIntakeOpen && intakeModal && !intakeModal.hidden) return;
   const file = normalizeCrmFile(activeFile());
   if (!file) return;
+  if (!options.forceLegacyFields && !legacyCrmFieldsMatchFile(file)) {
+    showDashboardSaveStatus?.("Skipped stale background form save. Use Save Work File in the edit popup for field changes.", true);
+    return;
+  }
   const changeNotes = [];
   crmFields.forEach((field) => {
-    const element = $(`crm${field[0].toUpperCase()}${field.slice(1)}`);
+    const element = $(crmFieldElementId(field));
     if (!element) return;
+    if (element.dataset.crmBoundFileId !== file.id) return;
     const oldValue = file[field] || "";
     const newValue = element.value;
     file[field] = newValue;
@@ -2112,10 +2146,12 @@ function isActiveFileEditorVisible() {
 function persistActiveFileDraftNow() {
   const file = normalizeCrmFile(activeFile());
   if (!file || !isActiveFileEditorVisible()) return;
+  if (!legacyCrmFieldsMatchFile(file)) return;
   const draft = { id: file.id, fields: {} };
   crmFields.forEach((field) => {
-    const element = $(`crm${field[0].toUpperCase()}${field.slice(1)}`);
+    const element = $(crmFieldElementId(field));
     if (element) {
+      if (element.dataset.crmBoundFileId !== file.id) return;
       file[field] = element.value;
       draft.fields[field] = element.value;
     }
@@ -9323,7 +9359,7 @@ $("crmLeadSource")?.addEventListener("change", toggleAngiLeadFeeField);
 $("crmStatusDetail").addEventListener("change", handleStatusWorkflow);
 
 crmFields.forEach((field) => {
-  const element = $(`crm${field[0].toUpperCase()}${field.slice(1)}`);
+  const element = $(crmFieldElementId(field));
   if (!element) return;
   element.addEventListener("input", saveActiveFileDraft);
   element.addEventListener("change", saveActiveFileDraft);
@@ -9339,6 +9375,10 @@ document.querySelectorAll("input, select, textarea").forEach((element) => {
   if (element.closest("#crmExpensesView")) return;
   if (["crmFileStatus", "crmStatusDetail", "crmEstimateAmountInput", "crmMaterialAmountInput", "crmNewNote"].includes(element.id)) return;
   element.addEventListener("change", (event) => {
+    const legacyFieldIds = new Set(crmFields.map(crmFieldElementId));
+    if (!legacyFieldIds.has(event.target.id)) return;
+    const file = activeFile();
+    if (!file?.id || event.target.dataset.crmBoundFileId !== file.id || !legacyCrmFieldsMatchFile(file)) return;
     handleCrmControlWorkflow(event);
     saveActiveFile();
     renderCrm();

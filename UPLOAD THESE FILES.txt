@@ -1,16 +1,8 @@
-Upload all four files in this folder to the root of the ANIMUS repository:
+Upload these files to GitHub:
 
-- crm.html
-- crm.js
-- animus-work-file.js
-- animus-shell.css
+crm.js
+animus-work-file.js
 
-This update adds Angi lead-fee tracking.
-
-- Selecting Angi in New Work File reveals an optional Lead Fee amount.
-- Existing Angi work files show Lead Tracking in Job Details.
-- Use Edit Job Details to update the fee for an older Angi file.
-- The fee is tracked separately and does not change existing project revenue or expense totals.
-
-After the deployment completes, open:
-https://animus-v-1.pages.dev/crm?angi-lead-fee=20260823
+Purpose:
+Prevents old hidden work-file form fields from overwriting the currently selected file.
+The Work File header Save button now saves the dashboard snapshot directly instead of scraping stale legacy inputs first.

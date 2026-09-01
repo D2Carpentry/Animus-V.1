@@ -400,7 +400,12 @@
       openFileNoteModal();
       return;
     }
-    if (target.hasAttribute("data-animus-save")) { if (typeof window.saveActiveFile === "function") window.saveActiveFile(); if (typeof window.saveDashboardToGoogle === "function") window.saveDashboardToGoogle(); renderWorkFile(); return; }
+    if (target.hasAttribute("data-animus-save")) {
+      if (typeof window.saveCrmFiles === "function") window.saveCrmFiles();
+      if (typeof window.saveDashboardToGoogle === "function") window.saveDashboardToGoogle();
+      renderWorkFile();
+      return;
+    }
     if (target.hasAttribute("data-animus-back")) {
       if (typeof window.clearActiveCrmFileSelection === "function") window.clearActiveCrmFileSelection();
       document.querySelector(".crm-file-list-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
