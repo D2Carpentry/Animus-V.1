@@ -1,0 +1,9 @@
+Upload this file to GitHub:
+
+animus-estimate-demo.html
+
+What changed:
+- Invoice mode now hides Project, Materials & Supplies, Project Photos, Invoice Images, and Assignment.
+- Estimate Summary changes to Invoice Summary when Invoice is selected.
+- Estimate Total changes to Invoice Total when Invoice is selected.
+- The top hamburger menu was left in place with New Draft, Save Draft, and Share / PDF.
