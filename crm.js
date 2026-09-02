@@ -7995,6 +7995,9 @@ async function importGoogleCalendarEvents(silent = false) {
     crmExternalCalendarEvents = dedupeCalendarEvents(events.map(normalizeExternalCalendarEvent).filter(Boolean));
     saveExternalCalendarEvents();
     renderCalendar();
+    if (document.body.dataset.animusView === "dashboard" && typeof window.animusDashboardRender === "function") {
+      window.animusDashboardRender();
+    }
     if (!silent) window.alert(`${crmExternalCalendarEvents.length} Google Calendar event${crmExternalCalendarEvents.length === 1 ? "" : "s"} imported into the CRM calendar.`);
   } finally {
     if (button) button.textContent = originalText || "Import Google Calendar";

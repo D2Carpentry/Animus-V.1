@@ -2,11 +2,9 @@ Upload these files to the GitHub repository root:
 
 - crm.html
 - crm.js
-- animus-shell.js
-- animus-estimate-demo.html
+- animus-dashboard.js
 
-Change included:
-- Sidebar Estimates now opens the new ANIMUS Estimation UI.
-- The original estimator is preserved as Legacy Estimator at the end of the sidebar.
-- Workfile estimate openings now route into the new estimator UI and pass the current estimate data into it.
-- Script cache versions were bumped to 20260901-standard-estimator.
+Fix included:
+- Today's Schedule on the Dashboard now uses the same Calendar event selector as the Calendar page.
+- Google Calendar import refreshes the Dashboard schedule when the Dashboard is open.
+- Script cache version bumped to 20260901-dashboard-calendar-feed.

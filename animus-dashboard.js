@@ -36,7 +36,16 @@
     const hour = new Date().getHours();
     return hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
   }
-  function todayEvents() { return (typeof allCrmCalendarEvents === "function" ? allCrmCalendarEvents() : []).filter((event) => String(event.date || "") === dayKey()).slice(0, 5); }
+  function todayEvents() {
+    const today = dayKey();
+    const events = typeof calendarEventsForDate === "function"
+      ? calendarEventsForDate(today)
+      : (typeof allCrmCalendarEvents === "function" ? allCrmCalendarEvents() : []).filter((event) => String(event.date || "").slice(0, 10) === today);
+    return events
+      .slice()
+      .sort((a, b) => String(a.startIso || `${a.date}T${a.time || "09:00"}`).localeCompare(String(b.startIso || `${b.date}T${b.time || "09:00"}`)))
+      .slice(0, 5);
+  }
   function futureEvents() { return (typeof allCrmCalendarEvents === "function" ? allCrmCalendarEvents() : []).filter((event) => String(event.date || "") >= dayKey()).slice(0, 5); }
   function openFile(fileId) { const file = crmFiles.find((item) => item.id === fileId); if (!file) return; activeFileId = file.id; activateCrmFilter(filterForCrmFile(file)); switchCrmView("files"); renderCrm(); }
   function openView(view) {
