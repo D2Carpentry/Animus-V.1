@@ -3071,6 +3071,7 @@ function openEstimatorInCommandCenter(url, estimateData = null) {
   }
   const estimatorUrl = new URL(url, window.location.href);
   estimatorUrl.searchParams.set("embedded", "1");
+  estimatorUrl.searchParams.set("v", "20260901-estimator-sidebar-submenu");
   estimatorUrl.searchParams.set("open", Date.now().toString());
   if (estimateData) {
     frame.addEventListener("load", () => {
@@ -3093,6 +3094,7 @@ function sendEstimateToEstimator(estimateData, target = "") {
   if (target) estimatorUrl.hash = target.replace(/^#/, "");
   estimatorUrl.searchParams.set("fromDashboard", "1");
   estimatorUrl.searchParams.set("standard", "1");
+  estimatorUrl.searchParams.set("v", "20260901-estimator-sidebar-submenu");
   estimatorUrl.searchParams.set("open", Date.now().toString());
   // The browser copy opens immediately, and the postMessage on iframe load
   // guarantees the same estimate arrives even when storage timing is slow.
@@ -8072,6 +8074,7 @@ document.querySelectorAll("[data-crm-view]").forEach((button) => {
     if (frame && (!currentSrc || currentSrc === "about:blank")) {
       const estimatorUrl = new URL("animus-estimate-demo.html", window.location.href);
       estimatorUrl.searchParams.set("standard", "1");
+      estimatorUrl.searchParams.set("v", "20260901-estimator-sidebar-submenu");
       estimatorUrl.searchParams.set("open", Date.now().toString());
       frame.src = estimatorUrl.toString();
     }

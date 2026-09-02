@@ -2,7 +2,7 @@
 (() => {
   const views = [
     ["dashboard", "⌂", "Dashboard"], ["calendar", "□", "Calendar"], ["estimator", "▤", "Estimates"], ["files", "▱", "Work Files"], ["contacts", "◉", "Contacts"],
-    ["revenue", "↗", "Revenue"], ["expenses", "▧", "Expenses"], ["payroll", "♙", "Payroll"], ["prices", "▦", "Price Database"], ["business", "◈", "Business Performance"], ["legacyEstimator", "◎", "Legacy Estimator"],
+    ["revenue", "↗", "Revenue"], ["expenses", "▧", "Expenses"], ["payroll", "♙", "Payroll"], ["prices", "▦", "Price Database"], ["business", "◈", "Business Performance"],
   ];
   const titles = { dashboard:"Command Center", files:"Work Files", contacts:"Contacts", calendar:"Calendar", revenue:"Revenue", expenses:"Expenses", payroll:"Payroll", prices:"Price Database", business:"Business Performance", estimator:"Estimate Studio", legacyEstimator:"Legacy Estimator", testzone:"Legacy Estimator", invoice:"Invoice" };
   function currentView() {
@@ -19,15 +19,17 @@
   }
   function syncShell() {
     const view = currentView();
+    const activeView = view === "legacyEstimator" ? "estimator" : view;
     document.querySelector(".crm-topbar")?.setAttribute("data-animus-title", titles[view] || "Command Center");
-    document.querySelectorAll("[data-animus-shell-view]").forEach((button) => button.classList.toggle("active", button.dataset.animusShellView === view));
+    document.querySelectorAll("[data-animus-shell-view]").forEach((button) => button.classList.toggle("active", button.dataset.animusShellView === activeView));
   }
   function createShell() {
     if (document.querySelector("#animusGlobalSidebar")) return;
     document.body.classList.add("animus-unified-ui");
     const workspace = views.filter(([view]) => ["dashboard", "calendar", "estimator", "files", "contacts"].includes(view));
-    const business = views.filter(([view]) => ["revenue", "expenses", "payroll", "prices", "business", "legacyEstimator"].includes(view));
-    const makeButtons = (items) => items.map(([view, icon, label]) => `<button type="button" data-animus-shell-view="${view}"><span class="animus-global-icon">${icon}</span>${label}</button>`).join("");
+    const business = views.filter(([view]) => ["revenue", "expenses", "payroll", "prices", "business"].includes(view));
+    const estimatorSubnav = `<div class="animus-estimator-subnav"><button type="button" data-animus-estimator-action="new-file">New File</button><button type="button" data-animus-estimator-action="import">Import Estimate</button><button type="button" data-animus-estimator-action="supplement">Create Supplement</button><button type="button" data-animus-estimator-action="invoice">Invoice</button><button type="button" data-animus-estimator-action="work-order">Work Order</button><button type="button" data-animus-estimator-action="legacy">Legacy Estimator</button></div>`;
+    const makeButtons = (items) => items.map(([view, icon, label]) => `<div class="animus-nav-item"><button type="button" data-animus-shell-view="${view}"><span class="animus-global-icon">${icon}</span>${label}</button>${view === "estimator" ? estimatorSubnav : ""}</div>`).join("");
     document.body.insertAdjacentHTML("afterbegin", `<aside class="animus-global-sidebar" id="animusGlobalSidebar"><div class="animus-global-brand"><img src="assets/d2-logo.png" alt="D2 logo"><span>ANIMUS<small>Command Center</small></span></div><p class="animus-global-label">Workspace</p><nav class="animus-global-nav">${makeButtons(workspace)}</nav><p class="animus-global-label">Business</p><nav class="animus-global-nav">${makeButtons(business)}</nav><div class="animus-sidebar-footer"><div class="animus-account-wrap"><button class="animus-global-account" id="animusAccountToggle" type="button"><span><strong>D2 Carpentry &amp; Design</strong>Owner</span><b aria-hidden="true">⌄</b></button><div class="animus-account-menu" id="animusAccountMenu" hidden></div></div></div></aside>`);
     const accountMenu = document.querySelector("#animusAccountMenu");
     [document.querySelector("#crmExportCurrentSnapshot"), document.querySelector("#crmCreateBackup"), document.querySelector("#crmLoadCloud"), document.querySelector("#crmImportBackupFile")].filter(Boolean).forEach((element) => accountMenu?.append(element));
@@ -44,6 +46,20 @@
       if (menu) menu.hidden = true;
     });
     document.querySelectorAll("[data-animus-shell-view]").forEach((button) => button.addEventListener("click", () => { const view = button.dataset.animusShellView; if (view === "files" && typeof activateCrmFilter === "function") activateCrmFilter("open"); if (typeof switchCrmView === "function") switchCrmView(view); if (view === "files" && typeof renderCrm === "function") renderCrm(); syncShell(); }));
+    document.querySelectorAll("[data-animus-estimator-action]").forEach((button) => button.addEventListener("click", () => {
+      const action = button.dataset.animusEstimatorAction;
+      if (action === "new-file" && typeof openLegacyNewCrmFileModal === "function") openLegacyNewCrmFileModal();
+      if (action === "import" && typeof activeFile === "function" && typeof startEstimateUploadForFile === "function") {
+        const file = activeFile();
+        if (file) startEstimateUploadForFile(file);
+        else if (typeof switchCrmView === "function") switchCrmView("estimator");
+      }
+      if (action === "supplement" && typeof createSupplementForFile === "function") createSupplementForFile();
+      if (action === "invoice" && typeof openActiveInvoice === "function") openActiveInvoice();
+      if (action === "work-order" && typeof openActiveEstimate === "function") openActiveEstimate("#assignment");
+      if (action === "legacy" && typeof switchCrmView === "function") switchCrmView("legacyEstimator");
+      syncShell();
+    }));
     document.addEventListener("click", (event) => { if (event.target.closest?.("[data-crm-view]")) setTimeout(syncShell, 0); });
     const observer = new MutationObserver(syncShell);
     ["crmExpensesView","crmRevenueView","crmPayrollView","crmCalendarView","crmContactsView","crmPriceView","crmBusinessView","crmEstimatorView","crmTestZoneView"].map((id) => document.getElementById(id)).filter(Boolean).forEach((element) => observer.observe(element, { attributes:true, attributeFilter:["hidden"] }));

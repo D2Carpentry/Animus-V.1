@@ -1,15 +1,14 @@
 Upload these files to the GitHub repository root:
 
-- _redirects
-- _headers
-- mobile-cloud.html
-- mobile-cloud.css
-- mobile-cloud.js
+- crm.html
+- crm.js
+- animus-shell.js
+- animus-shell.css
+- animus-estimate-demo.html
 
-Mobile-only changes:
-- /mobile now opens the cloud mobile app instead of the temporary safe page.
-- Work file status badges use the same colors as desktop.
-- File details now include View Estimate, Supplement, Invoice, and Work Order buttons.
-- File details now include Upload Receipt, with camera/file choices.
-- Receipt reader Cancel now aborts the active AI request instead of only hiding the overlay.
-- Mobile CSS/JS cache versions bumped to 20260901-file-docs-receipts.
+Change included:
+- Main ANIMUS sidebar now includes the estimator submenu: New File, Import Estimate, Create Supplement, Invoice, Work Order, and Legacy Estimator.
+- The embedded estimator no longer shows its own duplicate left sidebar.
+- Legacy Estimator is still available from the estimator submenu.
+- D2 Carpentry account/options area remains at the bottom of the main sidebar.
+- Cache versions were bumped to 20260901-estimator-sidebar-submenu.
