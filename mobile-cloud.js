@@ -10,6 +10,7 @@ let activeView = "home";
 let activeFilter = "open";
 let receiptDraft = null;
 let receipts = [];
+let receiptAbortController = null;
 
 function escapeHtml(value = "") { return String(value).replace(/[&<>'"]/g, (char) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", "'":"&#039;", '"':"&quot;" }[char])); }
 function uid(prefix) { return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`; }
@@ -71,7 +72,9 @@ function renderDetail() {
   if (!file) { $("fileDetail").innerHTML = `<section class="panel"><p class="subcopy">Choose a work file first.</p></section>`; return; }
   const paid = parseMoney(file.totalPaid) || parseMoney(file.initialDeposit) + parseMoney(file.midpointDeposit) + parseMoney(file.finalPaymentAmount);
   const estimate = parseMoney(file.estimateTotal); const balance = Math.max(estimate - paid, 0);
-  $("fileDetail").innerHTML = `<header class="detail-header"><p class="eyebrow">${escapeHtml(file.fileNumber)}</p><h1>${escapeHtml(file.clientName)}</h1><p>${escapeHtml(file.projectType)} · ${escapeHtml(file.fileStatus)}</p></header><div class="detail-cards"><article class="detail-card"><span>Estimate</span><strong>${money.format(estimate)}</strong></article><article class="detail-card"><span>Paid</span><strong>${money.format(paid)}</strong></article><article class="detail-card"><span>Balance</span><strong>${money.format(balance)}</strong></article><article class="detail-card"><span>Expenses</span><strong>${money.format(fileExpenseTotal(file))}</strong></article></div><section class="panel"><div class="panel-heading"><div><p class="eyebrow">Customer</p><h2>Contact information</h2></div></div><div class="compact-list"><div class="compact-item"><strong>${escapeHtml(file.clientPhone || "No phone")}</strong><small>Phone</small></div><div class="compact-item"><strong>${escapeHtml(file.clientEmail || "No email")}</strong><small>Email</small></div><div class="compact-item"><strong>${escapeHtml(file.projectAddress || "No address")}</strong><small>Address</small></div></div></section><div class="detail-actions"><button type="button" id="detailExpense">Expenses</button><button type="button" id="detailEstimate">Estimate</button><button class="primary" type="button" id="detailEdit">Edit in desktop</button></div>`;
+  $("fileDetail").innerHTML = `<header class="detail-header"><p class="eyebrow">${escapeHtml(file.fileNumber)}</p><h1>${escapeHtml(file.clientName)}</h1><p><i class="badge ${statusClass(file.fileStatus)}">${escapeHtml(file.fileStatus)}</i> <span>${escapeHtml(file.projectType)}</span></p></header><div class="detail-cards"><article class="detail-card"><span>Estimate</span><strong>${money.format(estimate)}</strong></article><article class="detail-card"><span>Paid</span><strong>${money.format(paid)}</strong></article><article class="detail-card"><span>Balance</span><strong>${money.format(balance)}</strong></article><article class="detail-card"><span>Expenses</span><strong>${money.format(fileExpenseTotal(file))}</strong></article></div><section class="panel"><div class="panel-heading"><div><p class="eyebrow">Customer</p><h2>Contact information</h2></div></div><div class="compact-list"><div class="compact-item"><strong>${escapeHtml(file.clientPhone || "No phone")}</strong><small>Phone</small></div><div class="compact-item"><strong>${escapeHtml(file.clientEmail || "No email")}</strong><small>Email</small></div><div class="compact-item"><strong>${escapeHtml(file.projectAddress || "No address")}</strong><small>Address</small></div></div></section><section class="panel"><div class="panel-heading"><div><p class="eyebrow">Documents</p><h2>Open file documents</h2></div></div><div class="document-actions"><button type="button" data-mobile-doc="estimate">View Estimate</button><button type="button" data-mobile-doc="supplement">Supplement</button><button type="button" data-mobile-doc="invoice">Invoice</button><button type="button" data-mobile-doc="workorder">Work Order</button></div></section><div class="detail-actions"><button type="button" id="detailReceipt" class="primary">Upload Receipt</button><button type="button" id="detailExpense">Expenses</button><button type="button" id="detailEstimate">Estimator</button><button type="button" id="detailEdit">Edit in desktop</button></div>`;
+  document.querySelectorAll("[data-mobile-doc]").forEach((button) => button.addEventListener("click", () => openFileDocument(button.dataset.mobileDoc)));
+  $("detailReceipt").addEventListener("click", receiptUploadSheet);
   $("detailExpense").addEventListener("click", async () => { await fetchReceipts(); openView("expenses"); });
   $("detailEstimate").addEventListener("click", () => openDesktop("estimate"));
   $("detailEdit").addEventListener("click", () => openDesktop("crm"));
@@ -97,6 +100,44 @@ function categoryOptions(selected = "Supplies") { return ["Supplies","Materials"
 function addReceiptItem() { captureReceiptDraft(); receiptDraft.items.push({ name:"", total:"", use:true }); renderReceiptReview(); }
 function captureReceiptDraft() { if (!receiptDraft || !$("receiptDate")) return; receiptDraft.date = $("receiptDate").value || dateToday(); receiptDraft.vendor = $("receiptVendor").value.trim(); receiptDraft.title = $("receiptTitle").value.trim(); receiptDraft.category = $("receiptCategory").value; receiptDraft.notes = $("receiptNotes").value.trim(); receiptDraft.items = [...document.querySelectorAll("[data-item]")].map((node) => ({ name:node.querySelector("[data-field='name']").value.trim(), total:node.querySelector("[data-field='total']").value, use:node.querySelector("[data-field='use']").checked })); }
 
+function firstUrl(...values) { return values.find((value) => /^https?:|^data:application\/pdf|^blob:/i.test(String(value || ""))) || ""; }
+function latestSupplement(file) { return (Array.isArray(file?.supplements) ? file.supplements : []).slice().sort((a,b) => String(b.updatedAt || b.createdAt || "").localeCompare(String(a.updatedAt || a.createdAt || "")))[0] || null; }
+function documentUrlFor(file, type) {
+  const supplement = latestSupplement(file);
+  if (type === "estimate") return firstUrl(file.estimatePdfUrl, file.estimateUrl, file.editableEstimate?.pdfUrl, file.editableEstimate?.documentUrl);
+  if (type === "supplement") return firstUrl(supplement?.pdfUrl, supplement?.documentUrl, supplement?.data?.pdfUrl, supplement?.data?.documentUrl);
+  if (type === "invoice") return firstUrl(file.invoicePdfUrl, file.invoiceUrl, file.invoice?.pdfUrl, file.invoice?.documentUrl);
+  if (type === "workorder") return firstUrl(file.workOrderPdfUrl, file.workOrderUrl, file.assignmentPdfUrl, file.assignmentUrl);
+  return "";
+}
+function openFileDocument(type) {
+  const file = activeFile();
+  if (!file) return;
+  const url = documentUrlFor(file, type);
+  if (url) {
+    window.open(url, "_blank", "noopener");
+    return;
+  }
+  if (type === "invoice") {
+    openDesktop("invoice");
+    return;
+  }
+  if (type === "workorder") {
+    openDesktop("workorder");
+    return;
+  }
+  openDesktop("estimate");
+}
+function receiptUploadSheet() {
+  openSheet(`<div class="sheet-heading"><div><p class="eyebrow">Receipt capture</p><h2>Upload receipt</h2></div><button class="sheet-close" type="button" data-close-sheet>×</button></div><div class="sheet-file-list"><button type="button" data-receipt-source="camera">Take photo with camera<small>Best for job-site receipt capture.</small></button><button type="button" data-receipt-source="file">Upload image or PDF<small>Choose an existing receipt file.</small></button></div>`);
+  document.querySelectorAll("[data-receipt-source]").forEach((button) => button.addEventListener("click", () => {
+    closeSheet();
+    openView("expenses");
+    if (button.dataset.receiptSource === "camera") $("cameraInput").click();
+    else $("uploadInput").click();
+  }));
+}
+
 function renderReceiptHistory() {
   const file = activeFile(); const owned = file ? receipts.filter((receipt) => receipt.fileId === file.id || receipt.fileId === file.fileNumber) : [];
   $("receiptCount").textContent = owned.length; $("receiptHistory").innerHTML = owned.length ? owned.map((receipt) => `<button class="receipt-row" type="button" data-receipt="${escapeHtml(receipt.id)}"><span class="receipt-info"><h3>${escapeHtml(receipt.title || receipt.vendor || "Receipt")}</h3><small>${formatDate(receipt.date)} · ${escapeHtml(receipt.vendor || "No vendor")}</small></span><strong class="money">${money.format(parseMoney(receipt.amount))}</strong></button>`).join("") : `<p class="subcopy">No saved receipts for this work file.</p>`;
@@ -111,13 +152,15 @@ async function prepareFile(file) {
 }
 async function receiveReceipt(file) {
   const received = await prepareFile(file); if (!received) return; showBusy("Reading receipt...", "ANIMUS is identifying the vendor, date, total, and line items.");
+  receiptAbortController?.abort();
+  receiptAbortController = new AbortController();
   try {
-    const response = await fetch(RECEIPT_API, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ imageDataUrl:received.dataUrl, fileName:received.name }), cache:"no-store" });
+    const response = await fetch(RECEIPT_API, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ imageDataUrl:received.dataUrl, fileName:received.name }), cache:"no-store", signal:receiptAbortController.signal });
     const result = await response.json().catch(() => ({})); const read = result.receipt || {};
     receiptDraft = { id:"", imageDataUrl:received.dataUrl, fileName:received.name, isPdf:received.isPdf, date:read.date || dateToday(), vendor:read.vendor || "", title:received.name.replace(/\.[^.]+$/, ""), category:read.category || "Supplies", notes:read.notes || "", items:(read.lineItems || []).map((item) => ({ name:item.name || "", total:item.total || item.lineTotal || item.price || "", use:true })), amount:read.total || "", ai:Boolean(result.aiAvailable) };
     if (!receiptDraft.items.length && receiptDraft.amount) receiptDraft.items.push({ name:receiptDraft.vendor || "Receipt expense", total:receiptDraft.amount, use:true });
-  } catch (_) { receiptDraft = { id:"", imageDataUrl:received.dataUrl, fileName:received.name, isPdf:received.isPdf, date:dateToday(), vendor:"", title:received.name.replace(/\.[^.]+$/, ""), category:"Supplies", notes:"", items:[], amount:"", ai:false }; }
-  finally { hideBusy(); renderExpenses(); window.scrollTo({ top:0, behavior:"smooth" }); }
+  } catch (error) { if (error?.name === "AbortError") return; receiptDraft = { id:"", imageDataUrl:received.dataUrl, fileName:received.name, isPdf:received.isPdf, date:dateToday(), vendor:"", title:received.name.replace(/\.[^.]+$/, ""), category:"Supplies", notes:"", items:[], amount:"", ai:false }; }
+  finally { receiptAbortController = null; hideBusy(); renderExpenses(); window.scrollTo({ top:0, behavior:"smooth" }); }
 }
 async function saveReceipt() {
   const file = activeFile(); if (!file) return; captureReceiptDraft(); const button = $("saveReceipt"); button.disabled = true; button.textContent = "Saving...";
@@ -152,7 +195,7 @@ function hideBusy() {
   busySafetyTimer = null;
   $("busyOverlay").hidden=true;
 }
-function openDesktop(route) { const url = new URL("crm.html", window.location.href); if (route === "calendar") url.searchParams.set("view","calendar"); if (route === "prices") url.searchParams.set("view","prices"); if (route === "revenue") url.searchParams.set("view","revenue"); if (route === "estimate") url.pathname = url.pathname.replace(/crm\.html$/, "index.html"); window.location.href=url.toString(); }
+function openDesktop(route) { const url = new URL("crm.html", window.location.href); if (route === "calendar") url.searchParams.set("view","calendar"); if (route === "prices") url.searchParams.set("view","prices"); if (route === "revenue") url.searchParams.set("view","revenue"); if (route === "invoice") url.searchParams.set("view","invoice"); if (route === "workorder") { url.searchParams.set("view","estimator"); url.hash = "assignment"; } if (route === "estimate") url.searchParams.set("view","estimator"); window.location.href=url.toString(); }
 
 async function fetchReceipts() { const file = activeFile(); if (!file) { receipts=[]; return; } const response = await fetch(`${EXPENSE_API}?fileId=${encodeURIComponent(file.id)}&t=${Date.now()}`, { cache:"no-store" }); const result = await response.json().catch(() => ({})); receipts = response.ok && result.ok !== false ? result.expenses || [] : []; }
 async function loadCloud() { notify("Loading cloud..."); const response = await fetch(`${API}?t=${Date.now()}`, { cache:"no-store" }); const result = await response.json().catch(() => ({})); if (!response.ok || result.ok === false) throw new Error(result.error || "Cloud could not be reached."); const cloud = result.dashboard || {}; state = { files:(cloud.dashboardFiles || []).map(normalizeFile).filter((file) => fileKey(file) !== "26-a1006"), revenue:cloud.revenueRows || [], prices:cloud.priceRows || [], payroll:cloud.payrollRows || [], deletedFileKeys:cloud.deletedFileKeys || [], deletedPriceIds:cloud.deletedPriceIds || [] }; activeFileId = state.files.find((file) => file.id === activeFileId)?.id || state.files[0]?.id || ""; saveLocal(); await fetchReceipts(); notify("Live cloud data"); renderAll(); }
@@ -163,7 +206,7 @@ document.querySelectorAll("[data-view]").forEach((button) => button.addEventList
 document.querySelectorAll("[data-open-desktop]").forEach((button) => button.addEventListener("click", () => openDesktop(button.dataset.openDesktop)));
 $("fileSearch").addEventListener("input", renderFiles); $("fileFilters").addEventListener("click", (event) => { const button=event.target.closest("[data-filter]"); if (!button) return; activeFilter=button.dataset.filter; document.querySelectorAll("[data-filter]").forEach((node) => node.classList.toggle("selected",node===button)); renderFiles(); });
 $("expenseChooseFile").addEventListener("click", chooseFileSheet); $("sheetBackdrop").addEventListener("click", closeSheet); $("cameraInput").addEventListener("change", (event) => { receiveReceipt(event.target.files?.[0]); event.target.value=""; }); $("uploadInput").addEventListener("change", (event) => { receiveReceipt(event.target.files?.[0]); event.target.value=""; });
-$("cancelBusy").addEventListener("click", () => { hideBusy(); notify("Receipt read cancelled"); });
+$("cancelBusy").addEventListener("click", () => { receiptAbortController?.abort(); receiptAbortController = null; receiptDraft = null; hideBusy(); notify("Receipt read cancelled"); });
 $("saveButton").addEventListener("click", async () => { const button=$("saveButton"); button.disabled=true; button.textContent="Saving"; try { await saveCloud(); notify("Saved to cloud"); } catch (error) { notify("Save failed",true); window.alert(error.message); } finally { button.disabled=false; button.textContent="Save"; } });
 $("newFileButton").addEventListener("click", () => { window.alert("Use the desktop Command Center to create a full work file. The mobile app is optimized for reviewing files and capturing expenses on the go."); });
 

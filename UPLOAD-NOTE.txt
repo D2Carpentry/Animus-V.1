@@ -1,7 +1,15 @@
-Upload this file to the GitHub repository root:
+Upload these files to the GitHub repository root:
 
-- crm.html
+- _redirects
+- _headers
+- mobile-cloud.html
+- mobile-cloud.css
+- mobile-cloud.js
 
-Change included:
-- Removed the redundant Estimate Workspace toolbar above the standard ANIMUS Estimation iframe.
-- Legacy Estimator still keeps its label/toolbar so it remains clearly marked as the old backup estimator.
+Mobile-only changes:
+- /mobile now opens the cloud mobile app instead of the temporary safe page.
+- Work file status badges use the same colors as desktop.
+- File details now include View Estimate, Supplement, Invoice, and Work Order buttons.
+- File details now include Upload Receipt, with camera/file choices.
+- Receipt reader Cancel now aborts the active AI request instead of only hiding the overlay.
+- Mobile CSS/JS cache versions bumped to 20260901-file-docs-receipts.
