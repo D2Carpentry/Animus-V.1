@@ -3384,6 +3384,9 @@ function renderCrm() {
   renderRevenue();
   renderPayroll();
   if (!$("crmExpensesView")?.hidden) renderFileExpenses();
+  if (document.body.dataset.animusView === "dashboard" && typeof window.animusDashboardRender === "function") {
+    window.animusDashboardRender();
+  }
 }
 
 function parseMoney(value) {

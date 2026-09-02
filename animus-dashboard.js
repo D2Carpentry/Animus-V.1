@@ -133,7 +133,17 @@
       });
     }
   }
-  function render() { const shell = document.querySelector(".crm-dashboard"); if (!shell) return; document.querySelector("#animusDashboardHome")?.remove(); shell.insertAdjacentHTML("afterbegin", template()); bind(); }
+  function render() {
+    const shell = document.querySelector(".crm-dashboard");
+    if (!shell) return;
+    const existing = document.querySelector("#animusDashboardHome");
+    const wasHidden = existing ? existing.hidden : document.body.dataset.animusView !== "dashboard";
+    existing?.remove();
+    shell.insertAdjacentHTML("afterbegin", template());
+    const next = document.querySelector("#animusDashboardHome");
+    if (next) next.hidden = wasHidden;
+    bind();
+  }
   function bind() {
     document.querySelectorAll("[data-animus-open]").forEach((button) => button.addEventListener("click", () => openView(button.dataset.animusOpen)));
     document.querySelectorAll("[data-animus-file]").forEach((button) => button.addEventListener("click", () => openFile(button.dataset.animusFile)));
