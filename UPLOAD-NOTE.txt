@@ -1,10 +1,7 @@
-Upload these files to the GitHub repository root:
+Upload this file to the GitHub repository root:
 
 - crm.html
-- crm.js
-- animus-dashboard.js
 
-Fix included:
-- Today's Schedule on the Dashboard now uses the same Calendar event selector as the Calendar page.
-- Google Calendar import refreshes the Dashboard schedule when the Dashboard is open.
-- Script cache version bumped to 20260901-dashboard-calendar-feed.
+Change included:
+- Removed the redundant Estimate Workspace toolbar above the standard ANIMUS Estimation iframe.
+- Legacy Estimator still keeps its label/toolbar so it remains clearly marked as the old backup estimator.
