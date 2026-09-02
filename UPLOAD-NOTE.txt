@@ -2,9 +2,11 @@ Upload these files to the GitHub repository root:
 
 - crm.html
 - crm.js
-- animus-dashboard.js
+- animus-shell.js
+- animus-estimate-demo.html
 
-Fix included:
-- Dashboard KPI boxes refresh after the Cloudflare workfile data finishes loading.
-- Dashboard render now preserves hidden state, so it will not pop over Work Files or other pages.
-- Script cache version bumped to 20260901-dashboard-first-render.
+Change included:
+- Sidebar Estimates now opens the new ANIMUS Estimation UI.
+- The original estimator is preserved as Legacy Estimator at the end of the sidebar.
+- Workfile estimate openings now route into the new estimator UI and pass the current estimate data into it.
+- Script cache versions were bumped to 20260901-standard-estimator.

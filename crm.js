@@ -3089,10 +3089,10 @@ function sendEstimateToEstimator(estimateData, target = "") {
     window.alert("The estimate could not be loaded into this browser. Try refreshing and opening it again.");
     return false;
   }
-  const estimatorUrl = new URL("index.html", window.location.href);
+  const estimatorUrl = new URL("animus-estimate-demo.html", window.location.href);
   if (target) estimatorUrl.hash = target.replace(/^#/, "");
   estimatorUrl.searchParams.set("fromDashboard", "1");
-  estimatorUrl.searchParams.set("embedded", "1");
+  estimatorUrl.searchParams.set("standard", "1");
   estimatorUrl.searchParams.set("open", Date.now().toString());
   // The browser copy opens immediately, and the postMessage on iframe load
   // guarantees the same estimate arrives even when storage timing is slow.
@@ -8014,12 +8014,12 @@ function switchCrmView(view) {
   const showPrices = view === "prices";
   const showBusiness = view === "business";
   const showEstimator = view === "estimator";
-  const showTestZone = view === "testzone";
+  const showLegacyEstimator = view === "legacyEstimator" || view === "testzone";
   const estimatorShell = $("crmEstimatorView")?.closest(".crm-dashboard-view");
-  document.body.classList.toggle("crm-estimator-active", showEstimator || showTestZone);
+  document.body.classList.toggle("crm-estimator-active", showEstimator || showLegacyEstimator);
   document.querySelectorAll(".crm-dashboard-view").forEach((section) => {
-    const keepEstimatorShell = (showEstimator || showTestZone) && estimatorShell && section === estimatorShell;
-    section.hidden = !keepEstimatorShell && (showRevenue || showPayroll || showCalendar || showContacts || showInvoice || showExpenses || showPrices || showBusiness || showEstimator || showTestZone);
+    const keepEstimatorShell = (showEstimator || showLegacyEstimator) && estimatorShell && section === estimatorShell;
+    section.hidden = !keepEstimatorShell && (showRevenue || showPayroll || showCalendar || showContacts || showInvoice || showExpenses || showPrices || showBusiness || showEstimator || showLegacyEstimator);
   });
   $("crmRevenueView").hidden = !showRevenue;
   $("crmPayrollView").hidden = !showPayroll;
@@ -8030,7 +8030,7 @@ function switchCrmView(view) {
   $("crmPriceView").hidden = !showPrices;
   $("crmBusinessView").hidden = !showBusiness;
   $("crmEstimatorView").hidden = !showEstimator;
-  $("crmTestZoneView").hidden = !showTestZone;
+  $("crmTestZoneView").hidden = !showLegacyEstimator;
 document.querySelectorAll("[data-crm-view]").forEach((button) => {
   button.classList.toggle("active", button.dataset.crmView === view);
 });
@@ -8067,17 +8067,16 @@ document.querySelectorAll("[data-crm-view]").forEach((button) => {
       return;
     }
     if (frame && (!currentSrc || currentSrc === "about:blank")) {
-      const estimatorUrl = new URL("index.html", window.location.href);
-      estimatorUrl.searchParams.set("new", "1");
-      estimatorUrl.searchParams.set("embedded", "1");
+      const estimatorUrl = new URL("animus-estimate-demo.html", window.location.href);
+      estimatorUrl.searchParams.set("standard", "1");
       estimatorUrl.searchParams.set("open", Date.now().toString());
       frame.src = estimatorUrl.toString();
     }
   }
-  if (showTestZone) {
+  if (showLegacyEstimator) {
     const frame = $("crmTestZoneFrame");
     if (frame && (!frame.getAttribute("src") || frame.getAttribute("src") === "about:blank")) {
-      frame.src = `animus-estimate-demo.html?testZone=${Date.now()}`;
+      frame.src = `index.html?embedded=1&new=1&open=legacy-${Date.now()}`;
     }
   }
 }
@@ -9190,7 +9189,7 @@ $("crmEstimatorOpenInvoice")?.addEventListener("click", () => openActiveInvoice(
 $("crmEstimatorOpenAssignment")?.addEventListener("click", () => openActiveEstimate("#assignment"));
 $("crmTestZoneRefresh")?.addEventListener("click", () => {
   const frame = $("crmTestZoneFrame");
-  if (frame) frame.src = `animus-estimate-demo.html?testZone=${Date.now()}`;
+  if (frame) frame.src = `index.html?embedded=1&new=1&open=legacy-${Date.now()}`;
 });
 window.addEventListener("storage", (event) => {
   if (event.key !== "d2EstimateStudio" || !event.newValue) return;

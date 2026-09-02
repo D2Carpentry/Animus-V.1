@@ -2,9 +2,9 @@
 (() => {
   const views = [
     ["dashboard", "⌂", "Dashboard"], ["calendar", "□", "Calendar"], ["estimator", "▤", "Estimates"], ["files", "▱", "Work Files"], ["contacts", "◉", "Contacts"],
-    ["testzone", "◎", "Test Zone"], ["revenue", "↗", "Revenue"], ["expenses", "▧", "Expenses"], ["payroll", "♙", "Payroll"], ["prices", "▦", "Price Database"], ["business", "◈", "Business Performance"],
+    ["revenue", "↗", "Revenue"], ["expenses", "▧", "Expenses"], ["payroll", "♙", "Payroll"], ["prices", "▦", "Price Database"], ["business", "◈", "Business Performance"], ["legacyEstimator", "◎", "Legacy Estimator"],
   ];
-  const titles = { dashboard:"Command Center", files:"Work Files", contacts:"Contacts", calendar:"Calendar", revenue:"Revenue", expenses:"Expenses", payroll:"Payroll", prices:"Price Database", business:"Business Performance", estimator:"Estimate Studio", testzone:"Test Zone", invoice:"Invoice" };
+  const titles = { dashboard:"Command Center", files:"Work Files", contacts:"Contacts", calendar:"Calendar", revenue:"Revenue", expenses:"Expenses", payroll:"Payroll", prices:"Price Database", business:"Business Performance", estimator:"Estimate Studio", legacyEstimator:"Legacy Estimator", testzone:"Legacy Estimator", invoice:"Invoice" };
   function currentView() {
     if (!document.querySelector("#crmExpensesView")?.hidden) return "expenses";
     if (!document.querySelector("#crmRevenueView")?.hidden) return "revenue";
@@ -14,7 +14,7 @@
     if (!document.querySelector("#crmPriceView")?.hidden) return "prices";
     if (!document.querySelector("#crmBusinessView")?.hidden) return "business";
     if (!document.querySelector("#crmEstimatorView")?.hidden) return "estimator";
-    if (!document.querySelector("#crmTestZoneView")?.hidden) return "testzone";
+    if (!document.querySelector("#crmTestZoneView")?.hidden) return "legacyEstimator";
     return document.body.dataset.animusView === "files" ? "files" : "dashboard";
   }
   function syncShell() {
@@ -25,8 +25,8 @@
   function createShell() {
     if (document.querySelector("#animusGlobalSidebar")) return;
     document.body.classList.add("animus-unified-ui");
-    const workspace = views.slice(0,6);
-    const business = views.slice(6);
+    const workspace = views.filter(([view]) => ["dashboard", "calendar", "estimator", "files", "contacts"].includes(view));
+    const business = views.filter(([view]) => ["revenue", "expenses", "payroll", "prices", "business", "legacyEstimator"].includes(view));
     const makeButtons = (items) => items.map(([view, icon, label]) => `<button type="button" data-animus-shell-view="${view}"><span class="animus-global-icon">${icon}</span>${label}</button>`).join("");
     document.body.insertAdjacentHTML("afterbegin", `<aside class="animus-global-sidebar" id="animusGlobalSidebar"><div class="animus-global-brand"><img src="assets/d2-logo.png" alt="D2 logo"><span>ANIMUS<small>Command Center</small></span></div><p class="animus-global-label">Workspace</p><nav class="animus-global-nav">${makeButtons(workspace)}</nav><p class="animus-global-label">Business</p><nav class="animus-global-nav">${makeButtons(business)}</nav><div class="animus-sidebar-footer"><div class="animus-account-wrap"><button class="animus-global-account" id="animusAccountToggle" type="button"><span><strong>D2 Carpentry &amp; Design</strong>Owner</span><b aria-hidden="true">⌄</b></button><div class="animus-account-menu" id="animusAccountMenu" hidden></div></div></div></aside>`);
     const accountMenu = document.querySelector("#animusAccountMenu");
