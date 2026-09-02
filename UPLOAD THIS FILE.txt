@@ -3,7 +3,9 @@ Upload this file to GitHub:
 animus-estimate-demo.html
 
 What changed:
-- Invoice mode now hides Project, Materials & Supplies, Project Photos, Invoice Images, and Assignment.
-- Estimate Summary changes to Invoice Summary when Invoice is selected.
-- Estimate Total changes to Invoice Total when Invoice is selected.
-- The top hamburger menu was left in place with New Draft, Save Draft, and Share / PDF.
+- Sidebar "Upload Estimate" is now "Import Estimate".
+- Invoice mode changes Estimate wording to Invoice wording.
+- Invoice mode uses Invoice Details, Invoice Number, Invoice Notes, Invoice Summary, and Invoice Total.
+- Invoice mode hides Project, Materials & Supplies, Project Photos, Invoice Images, Assignment, and Calculations.
+- Supplement mode uses Supplement Details, Supplement Number, Supplement Notes, Supplement Summary, and Supplement Total.
+- Work Order mode shows the Assignment box first and adds an Employee Work Order Preview below it.
