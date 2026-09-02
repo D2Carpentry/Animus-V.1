@@ -11,6 +11,8 @@ let activeFilter = "open";
 let receiptDraft = null;
 let receipts = [];
 let receiptAbortController = null;
+let receiptCaptureArmed = false;
+let receiptReadToken = 0;
 
 function escapeHtml(value = "") { return String(value).replace(/[&<>'"]/g, (char) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", "'":"&#039;", '"':"&quot;" }[char])); }
 function uid(prefix) { return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`; }
@@ -83,7 +85,10 @@ function renderDetail() {
 function renderExpenses() {
   const file = activeFile();
   $("expenseHero").innerHTML = file ? `<p class="eyebrow">Current work file</p><h2>${escapeHtml(file.clientName)}</h2><p>${escapeHtml(file.fileNumber)} · ${escapeHtml(file.projectType)}</p><div class="expense-total"><span>File expenses</span><strong>${money.format(fileExpenseTotal(file))}</strong></div><div class="receipt-capture"><button type="button" id="takePhoto">Take photo</button><button type="button" id="uploadReceipt">Upload image or PDF</button></div>` : `<p class="eyebrow">Receipt capture</p><h2>Select a work file</h2><p>Every receipt must be assigned to a customer file before it can be saved.</p><button class="primary-action" type="button" id="chooseFileFirst">Choose work file</button>`;
-  if (file) { $("takePhoto").addEventListener("click", () => $("cameraInput").click()); $("uploadReceipt").addEventListener("click", () => $("uploadInput").click()); } else { $("chooseFileFirst").addEventListener("click", chooseFileSheet); }
+  if (file) {
+    $("takePhoto").addEventListener("click", () => { armReceiptCapture(); $("cameraInput").click(); });
+    $("uploadReceipt").addEventListener("click", () => { armReceiptCapture(); $("uploadInput").click(); });
+  } else { $("chooseFileFirst").addEventListener("click", chooseFileSheet); }
   renderReceiptReview(); renderReceiptHistory();
 }
 
@@ -133,6 +138,7 @@ function receiptUploadSheet() {
   document.querySelectorAll("[data-receipt-source]").forEach((button) => button.addEventListener("click", () => {
     closeSheet();
     openView("expenses");
+    armReceiptCapture();
     if (button.dataset.receiptSource === "camera") $("cameraInput").click();
     else $("uploadInput").click();
   }));
@@ -151,11 +157,15 @@ async function prepareFile(file) {
   return { dataUrl, name:file.name || "receipt", isPdf:file.type === "application/pdf" };
 }
 async function receiveReceipt(file) {
-  const received = await prepareFile(file); if (!received) return; showBusy("Reading receipt...", "ANIMUS is identifying the vendor, date, total, and line items.");
+  if (!receiptCaptureArmed || activeView !== "expenses") return;
+  receiptCaptureArmed = false;
+  const thisRead = ++receiptReadToken;
+  const received = await prepareFile(file); if (!received || thisRead !== receiptReadToken) return; showBusy("Reading receipt...", "ANIMUS is identifying the vendor, date, total, and line items.");
   receiptAbortController?.abort();
   receiptAbortController = new AbortController();
   try {
     const response = await fetch(RECEIPT_API, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ imageDataUrl:received.dataUrl, fileName:received.name }), cache:"no-store", signal:receiptAbortController.signal });
+    if (thisRead !== receiptReadToken) return;
     const result = await response.json().catch(() => ({})); const read = result.receipt || {};
     receiptDraft = { id:"", imageDataUrl:received.dataUrl, fileName:received.name, isPdf:received.isPdf, date:read.date || dateToday(), vendor:read.vendor || "", title:received.name.replace(/\.[^.]+$/, ""), category:read.category || "Supplies", notes:read.notes || "", items:(read.lineItems || []).map((item) => ({ name:item.name || "", total:item.total || item.lineTotal || item.price || "", use:true })), amount:read.total || "", ai:Boolean(result.aiAvailable) };
     if (!receiptDraft.items.length && receiptDraft.amount) receiptDraft.items.push({ name:receiptDraft.vendor || "Receipt expense", total:receiptDraft.amount, use:true });
@@ -180,12 +190,21 @@ function chooseFileSheet() { const candidates = state.files.filter((file) => !is
 function openSheet(markup) { $("sheet").innerHTML=markup; $("sheet").hidden=false; $("sheetBackdrop").hidden=false; document.querySelectorAll("[data-close-sheet]").forEach((button) => button.addEventListener("click", closeSheet)); }
 function closeSheet() { $("sheet").hidden=true; $("sheetBackdrop").hidden=true; }
 let busySafetyTimer = null;
+function armReceiptCapture() {
+  receiptCaptureArmed = true;
+  if ($("cameraInput")) $("cameraInput").value = "";
+  if ($("uploadInput")) $("uploadInput").value = "";
+}
 function showBusy(title,message) {
   $("busyTitle").textContent=title;
   $("busyMessage").textContent=message;
   $("busyOverlay").hidden=false;
   clearTimeout(busySafetyTimer);
   busySafetyTimer = window.setTimeout(() => {
+    receiptReadToken += 1;
+    receiptAbortController?.abort();
+    receiptAbortController = null;
+    receiptCaptureArmed = false;
     hideBusy();
     window.alert("Receipt reading took too long, so it was cancelled. Please try the upload again.");
   }, 45000);
@@ -194,6 +213,16 @@ function hideBusy() {
   clearTimeout(busySafetyTimer);
   busySafetyTimer = null;
   $("busyOverlay").hidden=true;
+}
+function resetReceiptReaderState(message = "") {
+  receiptReadToken += 1;
+  receiptAbortController?.abort();
+  receiptAbortController = null;
+  receiptCaptureArmed = false;
+  hideBusy();
+  if ($("cameraInput")) $("cameraInput").value = "";
+  if ($("uploadInput")) $("uploadInput").value = "";
+  if (message) notify(message);
 }
 function openDesktop(route) { const url = new URL("crm.html", window.location.href); if (route === "calendar") url.searchParams.set("view","calendar"); if (route === "prices") url.searchParams.set("view","prices"); if (route === "revenue") url.searchParams.set("view","revenue"); if (route === "invoice") url.searchParams.set("view","invoice"); if (route === "workorder") { url.searchParams.set("view","estimator"); url.hash = "assignment"; } if (route === "estimate") url.searchParams.set("view","estimator"); window.location.href=url.toString(); }
 
@@ -206,9 +235,13 @@ document.querySelectorAll("[data-view]").forEach((button) => button.addEventList
 document.querySelectorAll("[data-open-desktop]").forEach((button) => button.addEventListener("click", () => openDesktop(button.dataset.openDesktop)));
 $("fileSearch").addEventListener("input", renderFiles); $("fileFilters").addEventListener("click", (event) => { const button=event.target.closest("[data-filter]"); if (!button) return; activeFilter=button.dataset.filter; document.querySelectorAll("[data-filter]").forEach((node) => node.classList.toggle("selected",node===button)); renderFiles(); });
 $("expenseChooseFile").addEventListener("click", chooseFileSheet); $("sheetBackdrop").addEventListener("click", closeSheet); $("cameraInput").addEventListener("change", (event) => { receiveReceipt(event.target.files?.[0]); event.target.value=""; }); $("uploadInput").addEventListener("change", (event) => { receiveReceipt(event.target.files?.[0]); event.target.value=""; });
-$("cancelBusy").addEventListener("click", () => { receiptAbortController?.abort(); receiptAbortController = null; receiptDraft = null; hideBusy(); notify("Receipt read cancelled"); });
+$("cancelBusy").addEventListener("click", () => { receiptDraft = null; resetReceiptReaderState("Receipt read cancelled"); renderExpenses(); });
 $("saveButton").addEventListener("click", async () => { const button=$("saveButton"); button.disabled=true; button.textContent="Saving"; try { await saveCloud(); notify("Saved to cloud"); } catch (error) { notify("Save failed",true); window.alert(error.message); } finally { button.disabled=false; button.textContent="Save"; } });
 $("newFileButton").addEventListener("click", () => { window.alert("Use the desktop Command Center to create a full work file. The mobile app is optimized for reviewing files and capturing expenses on the go."); });
+window.addEventListener("pageshow", () => resetReceiptReaderState());
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && $("busyOverlay") && !$("busyOverlay").hidden && !receiptAbortController) resetReceiptReaderState();
+});
 
 // Remove only ANIMUS mobile browser traces. CRM records stay in the cloud.
 for (let index = localStorage.length - 1; index >= 0; index -= 1) {
@@ -221,4 +254,5 @@ if ("serviceWorker" in navigator) {
 if (window.caches) {
   caches.keys().then((keys) => Promise.all(keys.filter((key) => /animus|mobile/i.test(key)).map((key) => caches.delete(key))));
 }
+resetReceiptReaderState();
 renderAll(); loadCloud().catch(() => { notify("Cloud unavailable",true); renderAll(); });
