@@ -68,16 +68,18 @@ const CRM_FILE_CATEGORY_RULES = {
 };
 
 function hasEstimateWorkflowDetail(file) {
-  return ["Inspection Pending", "Inspection Date Set", "Estimate Attached", "Estimate Pending", "Estimate Sent"].includes(file.statusDetail)
-    || ["Pending", "Sent", "Approved"].includes(file.estimateStatus);
+  const detail = String(file.statusDetail || "").trim();
+  const estimateStatus = String(file.estimateStatus || "").trim();
+  return ["Inspection Pending", "Inspection Date Set", "Estimate Attached", "Estimate Pending", "Estimate Sent"].includes(detail)
+    || ["Pending", "Sent"].includes(estimateStatus);
 }
 
 function crmFileCategory(file = {}) {
-  const status = file.fileStatus || "New Lead";
+  const status = String(file.fileStatus || "New Lead").trim();
   if (["Job Lost / Closed", "Closed / Paid"].includes(status)) return CRM_FILE_CATEGORY_RULES.archive;
   if (status === "In Negotiation") return CRM_FILE_CATEGORY_RULES.negotiation;
   if (status === "In Progress") return CRM_FILE_CATEGORY_RULES.active;
-  if (["Scheduled", "In Progress", "Completed"].includes(file.projectStage)) return CRM_FILE_CATEGORY_RULES.active;
+  if (["Scheduled", "In Progress", "Completed"].includes(String(file.projectStage || "").trim())) return CRM_FILE_CATEGORY_RULES.active;
   if (hasEstimateWorkflowDetail(file) || status === "Inspection Completed") return CRM_FILE_CATEGORY_RULES.estimate;
   if (["Contact Established", "Contact Attempted"].includes(status)) return CRM_FILE_CATEGORY_RULES.contact;
   if (status === "New Lead") return CRM_FILE_CATEGORY_RULES.new;
@@ -1026,7 +1028,7 @@ function dashboardCloudCounts(files = []) {
     archive: 0,
   };
   files.forEach((file) => {
-    const category = file.category || crmFileCategory(file);
+    const category = crmFileCategory(file);
     if (Object.prototype.hasOwnProperty.call(counts, category)) counts[category] += 1;
   });
   return counts;

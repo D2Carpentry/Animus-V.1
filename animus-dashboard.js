@@ -9,6 +9,19 @@
   const thisYear = now.getFullYear();
   const status = (file) => String(file?.fileStatus || "");
   const value = (file) => Number(file?.estimateTotal || file?.estimateAmount || 0) || 0;
+  const category = (file) => typeof crmFileCategory === "function" ? crmFileCategory(file) : fallbackCategory(file);
+  const fallbackCategory = (file) => {
+    const fileStatus = status(file).trim();
+    const detail = String(file?.statusDetail || "").trim();
+    const estimateStatus = String(file?.estimateStatus || "").trim();
+    if (["Closed / Paid", "Job Lost / Closed"].includes(fileStatus)) return "archive";
+    if (fileStatus === "In Progress") return "active";
+    if (fileStatus === "In Negotiation") return "negotiation";
+    if (fileStatus === "Inspection Completed" || ["Inspection Pending", "Inspection Date Set", "Estimate Attached", "Estimate Pending", "Estimate Sent"].includes(detail) || ["Pending", "Sent"].includes(estimateStatus)) return "estimate";
+    if (["Contact Established", "Contact Attempted"].includes(fileStatus)) return "contact";
+    return "new";
+  };
+  const filesInBucket = (bucket) => crmFiles.filter((file) => category(file) === bucket);
   const rowsForMonth = () => (crmRevenueRows || []).filter((row) => { const date = new Date(row.date || ""); return !Number.isNaN(date) && date.getMonth() === thisMonth && date.getFullYear() === thisYear; });
   const stageDefinitions = [
     ["New Lead", (file) => status(file) === "New Lead", "blue"],
@@ -74,7 +87,12 @@
     return `<svg class="animus-financial-chart" viewBox="0 0 280 108" aria-label="Revenue and expense chart"><path d="M14 92H266 M14 56H266 M14 20H266" class="animus-chart-grid"/><polyline points="${line("revenue")}" class="animus-chart-revenue"/><polyline points="${line("expenses")}" class="animus-chart-expenses"/></svg>`;
   }
   function template() {
-    const active = crmFiles.filter((file) => ["Job Won", "In Progress", "Work Completed"].includes(status(file)));
+    const newLeads = filesInBucket("new");
+    const pendingContact = filesInBucket("contact");
+    const pendingEstimates = filesInBucket("estimate");
+    const negotiation = filesInBucket("negotiation");
+    const active = filesInBucket("active");
+    const closed = filesInBucket("archive");
     const pending = crmFiles.filter((file) => file?.statusDetail === "Estimate Sent" || file?.estimateStatus === "Sent" || status(file) === "In Negotiation");
     const pipelineFiles = crmFiles.filter((file) => !["Closed / Paid", "Job Lost / Closed", "In Progress", "Work Completed"].includes(status(file)));
     const pipelineValue = pipelineFiles.reduce((sum,file) => sum + value(file), 0);
@@ -84,12 +102,12 @@
     return `<section class="animus-dashboard-home" id="animusDashboardHome">
       <header class="animus-home-header"><div><h1>${greeting()}, D2 Team <span aria-hidden="true">&#128075;</span></h1><p>Here's what's happening with your business today.</p></div></header>
       <section class="animus-kpi-grid">
-        ${kpi("◉","New Leads",crmFiles.filter((file) => status(file) === "New Lead").length,"blue","Open customer inquiries","files:new")}
-        ${kpi("☎","Pending Contact",crmFiles.filter((file) => ["Contact Established", "Contact Attempted"].includes(status(file))).length,"amber","Contact needs attention","files:contact")}
-        ${kpi("▤","Pending Estimates",crmFiles.filter((file) => status(file) === "Inspection Completed" || file?.statusDetail === "Estimate Pending").length,"violet","Estimate work to complete","files:estimate")}
-        ${kpi("↗","In Negotiation",crmFiles.filter((file) => status(file) === "In Negotiation").length,"amber","Customer decision pending","files:negotiation")}
-        ${kpi("▣","Active Jobs",active.length,"green","Won, in progress, or completed","files:active")}
-        ${kpi("✓","Closed Files",crmFiles.filter((file) => ["Closed / Paid", "Job Lost / Closed"].includes(status(file))).length,"blue","Archived work files","files:archive")}
+        ${kpi("◉","New Leads",newLeads.length,"blue","Open customer inquiries","files:new")}
+        ${kpi("☎","Pending Contact",pendingContact.length,"amber","Contact needs attention","files:contact")}
+        ${kpi("▤","Pending Estimates",pendingEstimates.length,"violet","Estimate work to complete","files:estimate")}
+        ${kpi("↗","In Negotiation",negotiation.length,"amber","Customer decision pending","files:negotiation")}
+        ${kpi("▣","Active Jobs",active.length,"green","Files currently in progress","files:active")}
+        ${kpi("✓","Closed Files",closed.length,"blue","Archived work files","files:archive")}
       </section>
       <section class="animus-home-grid animus-major-grid">
         <article class="animus-home-card animus-attention-card"><div class="animus-card-heading"><h2>Attention Required ${alertList.length ? `<b>${alertList.length}</b>` : ""}</h2></div>${alertList.length ? `<div class="animus-alert-list">${alertList.map((item) => `<button class="animus-alert ${item.tone}" data-animus-file="${safe(item.file.id)}"><span class="animus-alert-icon">!</span><span><strong>${safe(item.title)}</strong><small>${safe(item.detail)}</small></span><em>${safe(item.action)}</em></button>`).join("")}</div>` : empty("You're all caught up.", "No items require attention today.")}<button class="animus-card-link" data-animus-open="files">View all alerts</button></article>

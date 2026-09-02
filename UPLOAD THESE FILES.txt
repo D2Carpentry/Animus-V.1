@@ -1,13 +1,12 @@
 Upload these files to GitHub:
 
 crm.html
-animus-work-file.js
-animus-work-file.css
+crm.js
+animus-dashboard.js
 
 What changed:
-- Work File > Documents now has a Receipts box.
-- The Receipts box lists receipt images/details already attached through that file's saved expenses.
-- Work File > Documents now has an Upload Document button.
-- Uploaded documents are saved directly on the current work file under workFileDocuments.
-- Clicking a saved receipt or uploaded document opens it for review.
-- crm.html was cache-bumped so the live site loads the updated script and style.
+- Dashboard header boxes now count directly from each work file's fileStatus/statusDetail.
+- Work Files counts and Command Center KPI counts now use the same category logic.
+- Cloudflare backup/save count summaries no longer trust file.category, which can be unrelated to workflow status.
+- Active Jobs now counts files in the current In Progress bucket.
+- crm.html was cache-bumped so the live site loads the updated dashboard/counting scripts.
