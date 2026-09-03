@@ -6,7 +6,7 @@ const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD
 
 let state = { files: [], revenue: [], prices: [], payroll: [], deletedFileKeys: [], deletedPriceIds: [] };
 let activeFileId = "";
-let activeView = "home";
+let activeView = "files";
 let activeFilter = "open";
 let receiptDraft = null;
 let receipts = [];
@@ -22,7 +22,7 @@ function formatDate(value) { return value ? new Date(`${value}T12:00:00`).toLoca
 function fileKey(file = {}) { return String(file.fileNumber || file.id || "").trim().toLowerCase(); }
 function activeFile() { return state.files.find((file) => file.id === activeFileId) || state.files[0] || null; }
 function statusClass(status = "") { return `status-${String(status).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`; }
-function normalizeFile(file = {}) { return { ...file, id:file.id || uid("file"), fileNumber:file.fileNumber || "New File", clientName:file.clientName || "Unnamed Client", fileStatus:file.fileStatus || "New Lead", projectType:file.projectType || "Other", expenseLines:Array.isArray(file.expenseLines) ? file.expenseLines : [], receiptHistory:Array.isArray(file.receiptHistory) ? file.receiptHistory : [] }; }
+function normalizeFile(file = {}) { return { ...file, id:file.id || uid("file"), fileNumber:file.fileNumber || "New File", clientName:file.clientName || "Unnamed Client", fileStatus:file.fileStatus || "New Lead", projectType:file.projectType || "Other", expenseLines:Array.isArray(file.expenseLines) ? file.expenseLines : [], receiptHistory:Array.isArray(file.receiptHistory) ? file.receiptHistory : [], notes:Array.isArray(file.notes) ? file.notes : [], workPhotos:Array.isArray(file.workPhotos) ? file.workPhotos : [] }; }
 function saveLocal() { /* Cloud-only mobile view intentionally keeps no browser data copy. */ }
 function readLocal() { /* Cloud-only mobile view intentionally keeps no browser data copy. */ }
 function notify(message, error = false) { $("cloudState").textContent = message; $("cloudState").style.color = error ? "#dc2626" : ""; }
@@ -40,14 +40,26 @@ function openView(view) {
 }
 
 function countStatus(predicate) { return state.files.filter(predicate).length; }
-function isClosed(file) { return ["Closed / Paid", "Job Lost / Closed"].includes(file.fileStatus); }
-function isActive(file) { return ["In Progress", "Job Won", "Work Completed"].includes(file.fileStatus); }
+function fileCategory(file = {}) {
+  const status = String(file.fileStatus || "").trim();
+  const detail = String(file.statusDetail || "").trim();
+  const estimateStatus = String(file.estimateStatus || "").trim();
+  if (["Closed / Paid", "Job Lost / Closed"].includes(status)) return "closed";
+  if (status === "In Progress") return "active";
+  if (status === "In Negotiation") return "negotiation";
+  if (status === "Inspection Completed" || ["Inspection Pending", "Inspection Date Set", "Estimate Attached", "Estimate Pending", "Estimate Sent"].includes(detail) || ["Pending", "Sent"].includes(estimateStatus)) return "estimate";
+  if (["Contact Established", "Contact Attempted"].includes(status)) return "contact";
+  return "lead";
+}
+function isClosed(file) { return fileCategory(file) === "closed"; }
+function isActive(file) { return fileCategory(file) === "active"; }
+function isOpenFile(file) { return !isClosed(file); }
 function fileExpenseTotal(file) { return (file.expenseLines || []).reduce((sum, line) => sum + parseMoney(line.amount ?? line.lineTotal ?? line.total), 0); }
 function financialTotals() { return state.revenue.reduce((sum, row) => { sum.gross += parseMoney(row.gross); sum.expenses += parseMoney(row.expenses); sum.labor += parseMoney(row.labor); return sum; }, { gross:0, expenses:0, labor:0 }); }
 
 function renderHome() {
   const counts = [
-    ["Open Files", countStatus((file) => !isClosed(file))], ["Active Jobs", countStatus(isActive)], ["In Negotiation", countStatus((file) => file.fileStatus === "In Negotiation")], ["Closed Files", countStatus(isClosed)],
+    ["Open Files", countStatus(isOpenFile)], ["Active Jobs", countStatus(isActive)], ["In Negotiation", countStatus((file) => fileCategory(file) === "negotiation")], ["Pending", countStatus((file) => ["estimate", "contact", "lead"].includes(fileCategory(file)))],
   ];
   $("summaryGrid").innerHTML = counts.map(([label, value]) => `<article class="stat"><span>${label}</span><strong>${value}</strong><small>Live Cloudflare data</small></article>`).join("");
   const events = state.files.flatMap((file) => [[file.inspectionDate,"Inspection"],[file.startDate,"Start date"],[file.followUpDate,"Follow-up"]].filter(([date]) => date).map(([date,label]) => ({ date,label,file }))).filter((event) => event.date >= dateToday()).sort((a,b) => a.date.localeCompare(b.date)).slice(0,4);
@@ -58,13 +70,17 @@ function renderHome() {
 function filteredFiles() {
   const query = $("fileSearch").value.trim().toLowerCase();
   return state.files.filter((file) => {
-    const matches = activeFilter === "all" || (activeFilter === "open" && !isClosed(file) && !isActive(file)) || (activeFilter === "active" && isActive(file)) || (activeFilter === "closed" && isClosed(file));
-    const text = `${file.fileNumber} ${file.clientName} ${file.clientPhone || ""} ${file.clientEmail || ""} ${file.projectAddress || ""}`.toLowerCase();
+    const category = fileCategory(file);
+    const matches = activeFilter === "all" || (activeFilter === "open" && isOpenFile(file)) || activeFilter === category;
+    const text = `${file.fileNumber} ${file.clientName} ${file.clientPhone || ""} ${file.clientEmail || ""} ${file.projectAddress || ""} ${file.fileStatus || ""} ${file.statusDetail || ""} ${file.projectType || ""} ${file.nextAction || ""}`.toLowerCase();
     return matches && (!query || text.includes(query));
+  }).sort((a, b) => {
+    const rank = { active:0, negotiation:1, estimate:2, contact:3, lead:4, closed:5 };
+    return (rank[fileCategory(a)] ?? 9) - (rank[fileCategory(b)] ?? 9) || String(a.clientName || "").localeCompare(String(b.clientName || ""));
   });
 }
 function renderFiles() {
-  $("fileList").innerHTML = filteredFiles().map((file) => `<button type="button" class="file-row" data-file="${escapeHtml(file.id)}"><span><h3>${escapeHtml(file.clientName)}</h3><small>${escapeHtml(file.fileNumber)} · ${escapeHtml(file.projectType)}</small><span class="meta"><i class="badge ${statusClass(file.fileStatus)}">${escapeHtml(file.fileStatus)}</i></span></span><b class="arrow">›</b></button>`).join("") || `<section class="panel"><p class="subcopy">No work files in this view.</p></section>`;
+  $("fileList").innerHTML = filteredFiles().map((file) => `<button type="button" class="file-row" data-file="${escapeHtml(file.id)}"><span><h3>${escapeHtml(file.clientName)}</h3><small>${escapeHtml(file.fileNumber)} · ${escapeHtml(file.projectType)}</small><span class="meta"><i class="badge ${statusClass(file.fileStatus)}">${escapeHtml(file.fileStatus)}</i>${file.nextAction ? `<em>${escapeHtml(file.nextAction)}</em>` : ""}</span></span><b class="arrow">›</b></button>`).join("") || `<section class="panel"><p class="subcopy">No work files in this view.</p></section>`;
   bindFileLinks();
 }
 function bindFileLinks() { document.querySelectorAll("[data-file]").forEach((button) => button.addEventListener("click", () => { activeFileId = button.dataset.file; saveLocal(); openView("detail"); })); }
@@ -74,12 +90,17 @@ function renderDetail() {
   if (!file) { $("fileDetail").innerHTML = `<section class="panel"><p class="subcopy">Choose a work file first.</p></section>`; return; }
   const paid = parseMoney(file.totalPaid) || parseMoney(file.initialDeposit) + parseMoney(file.midpointDeposit) + parseMoney(file.finalPaymentAmount);
   const estimate = parseMoney(file.estimateTotal); const balance = Math.max(estimate - paid, 0);
-  $("fileDetail").innerHTML = `<header class="detail-header"><p class="eyebrow">${escapeHtml(file.fileNumber)}</p><h1>${escapeHtml(file.clientName)}</h1><p><i class="badge ${statusClass(file.fileStatus)}">${escapeHtml(file.fileStatus)}</i> <span>${escapeHtml(file.projectType)}</span></p></header><div class="detail-cards"><article class="detail-card"><span>Estimate</span><strong>${money.format(estimate)}</strong></article><article class="detail-card"><span>Paid</span><strong>${money.format(paid)}</strong></article><article class="detail-card"><span>Balance</span><strong>${money.format(balance)}</strong></article><article class="detail-card"><span>Expenses</span><strong>${money.format(fileExpenseTotal(file))}</strong></article></div><section class="panel"><div class="panel-heading"><div><p class="eyebrow">Customer</p><h2>Contact information</h2></div></div><div class="compact-list"><div class="compact-item"><strong>${escapeHtml(file.clientPhone || "No phone")}</strong><small>Phone</small></div><div class="compact-item"><strong>${escapeHtml(file.clientEmail || "No email")}</strong><small>Email</small></div><div class="compact-item"><strong>${escapeHtml(file.projectAddress || "No address")}</strong><small>Address</small></div></div></section><section class="panel"><div class="panel-heading"><div><p class="eyebrow">Documents</p><h2>Open file documents</h2></div></div><div class="document-actions"><button type="button" data-mobile-doc="estimate">View Estimate</button><button type="button" data-mobile-doc="supplement">Supplement</button><button type="button" data-mobile-doc="invoice">Invoice</button><button type="button" data-mobile-doc="workorder">Work Order</button></div></section><div class="detail-actions"><button type="button" id="detailReceipt" class="primary">Upload Receipt</button><button type="button" id="detailExpense">Expenses</button><button type="button" id="detailEstimate">Estimator</button><button type="button" id="detailEdit">Edit in desktop</button></div>`;
+  const notes = manualNotes(file).slice(-4).reverse();
+  const photos = (file.workPhotos || []).slice(-6).reverse();
+  $("fileDetail").innerHTML = `<header class="detail-header"><p class="eyebrow">${escapeHtml(file.fileNumber)}</p><h1>${escapeHtml(file.clientName)}</h1><p><i class="badge ${statusClass(file.fileStatus)}">${escapeHtml(file.fileStatus)}</i> <span>${escapeHtml(file.projectType)}</span></p></header><div class="detail-cards"><article class="detail-card"><span>Estimate</span><strong>${money.format(estimate)}</strong></article><article class="detail-card"><span>Paid</span><strong>${money.format(paid)}</strong></article><article class="detail-card"><span>Balance</span><strong>${money.format(balance)}</strong></article><article class="detail-card"><span>Expenses</span><strong>${money.format(fileExpenseTotal(file))}</strong></article></div><section class="panel"><div class="panel-heading"><div><p class="eyebrow">Customer</p><h2>Contact information</h2></div><button type="button" id="addPhoneContact">Add Contact</button></div><div class="contact-list">${contactLink("Phone", file.clientPhone, phoneHref(file.clientPhone))}${contactLink("Text", file.clientPhone, smsHref(file.clientPhone))}${contactLink("Email", file.clientEmail, emailHref(file.clientEmail))}${contactLink("Address", file.projectAddress, mapHref(file.projectAddress))}</div></section><section class="panel"><div class="panel-heading"><div><p class="eyebrow">Quick Actions</p><h2>Capture updates</h2></div></div><div class="detail-actions"><button type="button" id="detailReceipt" class="primary">Upload Receipt</button><button type="button" id="detailWorkPhoto">Take Work Photo</button><button type="button" id="detailPhotoRoll">Upload Photo</button><button type="button" id="detailExpense">Expenses</button></div></section><section class="panel"><div class="panel-heading"><div><p class="eyebrow">Documents</p><h2>Open saved files</h2></div></div><div class="document-actions"><button type="button" data-mobile-doc="estimate">View Estimate</button><button type="button" data-mobile-doc="supplement">Supplement</button><button type="button" data-mobile-doc="invoice">Invoice</button><button type="button" data-mobile-doc="workorder">Work Order</button></div></section><section class="panel"><div class="panel-heading"><div><p class="eyebrow">File Notes</p><h2>Manual notes</h2></div><button type="button" id="addMobileNote">Add Note</button></div><div class="compact-list">${notes.length ? notes.map((note) => `<article class="compact-item"><strong>${escapeHtml(note.text)}</strong><small>${formatDateTime(note.at)}</small></article>`).join("") : `<p class="subcopy">No manual notes yet.</p>`}</div></section><section class="panel"><div class="panel-heading"><div><p class="eyebrow">Photos</p><h2>Work progress</h2></div></div><div class="mobile-photo-grid">${photos.length ? photos.map((photo) => `<button type="button" data-photo="${escapeHtml(photo.id)}"><img src="${escapeHtml(photo.dataUrl)}" alt="${escapeHtml(photo.title || "Work photo")}"><span>${escapeHtml(photo.title || "Work photo")}</span></button>`).join("") : `<p class="subcopy">No work photos saved yet.</p>`}</div></section>`;
   document.querySelectorAll("[data-mobile-doc]").forEach((button) => button.addEventListener("click", () => openFileDocument(button.dataset.mobileDoc)));
   $("detailReceipt").addEventListener("click", receiptUploadSheet);
+  $("detailWorkPhoto").addEventListener("click", () => $("workPhotoCameraInput").click());
+  $("detailPhotoRoll").addEventListener("click", () => $("workPhotoUploadInput").click());
   $("detailExpense").addEventListener("click", async () => { await fetchReceipts(); openView("expenses"); });
-  $("detailEstimate").addEventListener("click", () => openDesktop("estimate"));
-  $("detailEdit").addEventListener("click", () => openDesktop("crm"));
+  $("addMobileNote").addEventListener("click", openMobileNoteSheet);
+  $("addPhoneContact").addEventListener("click", addToPhoneContacts);
+  document.querySelectorAll("[data-photo]").forEach((button) => button.addEventListener("click", () => openMobilePhotoPreview(button.dataset.photo)));
 }
 
 function renderExpenses() {
@@ -105,6 +126,58 @@ function categoryOptions(selected = "Supplies") { return ["Supplies","Materials"
 function addReceiptItem() { captureReceiptDraft(); receiptDraft.items.push({ name:"", total:"", use:true }); renderReceiptReview(); }
 function captureReceiptDraft() { if (!receiptDraft || !$("receiptDate")) return; receiptDraft.date = $("receiptDate").value || dateToday(); receiptDraft.vendor = $("receiptVendor").value.trim(); receiptDraft.title = $("receiptTitle").value.trim(); receiptDraft.category = $("receiptCategory").value; receiptDraft.notes = $("receiptNotes").value.trim(); receiptDraft.items = [...document.querySelectorAll("[data-item]")].map((node) => ({ name:node.querySelector("[data-field='name']").value.trim(), total:node.querySelector("[data-field='total']").value, use:node.querySelector("[data-field='use']").checked })); }
 
+function cleanPhone(value = "") { return String(value || "").replace(/[^\d+]/g, ""); }
+function phoneHref(value) { const phone = cleanPhone(value); return phone ? `tel:${phone}` : ""; }
+function smsHref(value) { const phone = cleanPhone(value); return phone ? `sms:${phone}` : ""; }
+function emailHref(value) { const email = String(value || "").trim(); return email && email !== "N/A" ? `mailto:${encodeURIComponent(email)}` : ""; }
+function mapHref(value) { const address = String(value || "").trim(); return address ? `https://maps.apple.com/?q=${encodeURIComponent(address)}` : ""; }
+function contactLink(label, value, href) {
+  const text = String(value || "").trim();
+  return href ? `<a class="contact-row" href="${escapeHtml(href)}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(text)}</strong></a>` : `<div class="contact-row disabled"><span>${escapeHtml(label)}</span><strong>${escapeHtml(text || `No ${label.toLowerCase()}`)}</strong></div>`;
+}
+function formatDateTime(value) {
+  const date = value ? new Date(value) : new Date();
+  if (Number.isNaN(date.getTime())) return "No date";
+  return date.toLocaleString("en-US", { month:"short", day:"numeric", year:"numeric", hour:"numeric", minute:"2-digit" });
+}
+function manualNotes(file) {
+  return (Array.isArray(file?.notes) ? file.notes : []).filter((note) => note && String(note.text || "").trim() && note.source !== "system");
+}
+function openMobileNoteSheet() {
+  const file = activeFile();
+  if (!file) return;
+  openSheet(`<div class="sheet-heading"><div><p class="eyebrow">File note</p><h2>Add manual note</h2></div><button class="sheet-close" type="button" data-close-sheet>×</button></div><textarea id="mobileNoteText" class="mobile-sheet-textarea" placeholder="Type the note for ${escapeHtml(file.clientName)}"></textarea><div class="sheet-actions"><button type="button" data-close-sheet>Cancel</button><button type="button" class="primary-action" id="saveMobileNote">Save Note</button></div>`);
+  $("saveMobileNote")?.addEventListener("click", async () => {
+    const text = $("mobileNoteText")?.value.trim();
+    if (!text) return;
+    file.notes = Array.isArray(file.notes) ? file.notes : [];
+    const timestamp = new Date().toISOString();
+    file.notes.push({ id:uid("mobile-note"), at:timestamp, text, source:"manual" });
+    file.timeline = [...(Array.isArray(file.timeline) ? file.timeline : []), `Note added ${formatDateTime(timestamp)}`];
+    closeSheet();
+    renderDetail();
+    try { await saveCloud(); notify("Note saved to cloud"); } catch (error) { notify("Note save failed", true); window.alert(error.message || "The note could not be saved."); }
+  });
+}
+function addToPhoneContacts() {
+  const file = activeFile();
+  if (!file) return;
+  const name = String(file.clientName || "ANIMUS Contact").trim();
+  const phone = cleanPhone(file.clientPhone);
+  const email = String(file.clientEmail || "").trim();
+  const address = String(file.projectAddress || "").replace(/\n/g, " ").trim();
+  const vcard = ["BEGIN:VCARD", "VERSION:3.0", `FN:${name}`, phone ? `TEL;TYPE=CELL:${phone}` : "", email && email !== "N/A" ? `EMAIL:${email}` : "", address ? `ADR;TYPE=WORK:;;${address};;;;` : "", `NOTE:ANIMUS work file ${file.fileNumber || ""}`, "END:VCARD"].filter(Boolean).join("\n");
+  const url = URL.createObjectURL(new Blob([vcard], { type:"text/vcard" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${name.replace(/[^a-z0-9]+/gi, "-") || "animus-contact"}.vcf`;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  notify("Contact card ready");
+}
+
 function firstUrl(...values) { return values.find((value) => /^https?:|^data:application\/pdf|^blob:/i.test(String(value || ""))) || ""; }
 function latestSupplement(file) { return (Array.isArray(file?.supplements) ? file.supplements : []).slice().sort((a,b) => String(b.updatedAt || b.createdAt || "").localeCompare(String(a.updatedAt || a.createdAt || "")))[0] || null; }
 function documentUrlFor(file, type) {
@@ -123,15 +196,8 @@ function openFileDocument(type) {
     window.open(url, "_blank", "noopener");
     return;
   }
-  if (type === "invoice") {
-    openDesktop("invoice");
-    return;
-  }
-  if (type === "workorder") {
-    openDesktop("workorder");
-    return;
-  }
-  openDesktop("estimate");
+  const labels = { estimate:"estimate", supplement:"supplement", invoice:"invoice", workorder:"work order" };
+  window.alert(`No saved ${labels[type] || "document"} file is attached to this work file yet.`);
 }
 function receiptUploadSheet() {
   openSheet(`<div class="sheet-heading"><div><p class="eyebrow">Receipt capture</p><h2>Upload receipt</h2></div><button class="sheet-close" type="button" data-close-sheet>×</button></div><div class="sheet-file-list"><button type="button" data-receipt-source="camera">Take photo with camera<small>Best for job-site receipt capture.</small></button><button type="button" data-receipt-source="file">Upload image or PDF<small>Choose an existing receipt file.</small></button></div>`);
@@ -155,6 +221,53 @@ async function prepareFile(file) {
   if (!file) return null;
   const dataUrl = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.onerror = reject; reader.readAsDataURL(file); });
   return { dataUrl, name:file.name || "receipt", isPdf:file.type === "application/pdf" };
+}
+async function prepareWorkPhoto(file) {
+  if (!file || !String(file.type || "").startsWith("image/")) return null;
+  const original = await prepareFile(file);
+  const image = await new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = original.dataUrl;
+  });
+  const maxSide = 1400;
+  const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(image.width * scale));
+  canvas.height = Math.max(1, Math.round(image.height * scale));
+  canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
+  return { dataUrl:canvas.toDataURL("image/jpeg", 0.82), name:file.name || "work-photo.jpg" };
+}
+async function saveWorkPhotos(fileList) {
+  const file = activeFile();
+  const files = [...(fileList || [])];
+  if (!file || !files.length) return;
+  showBusy("Saving work photo...", "ANIMUS is attaching the image to this work file.");
+  try {
+    const prepared = [];
+    for (const upload of files) {
+      const photo = await prepareWorkPhoto(upload);
+      if (photo) prepared.push({ id:uid("work-photo"), createdAt:new Date().toISOString(), title:photo.name.replace(/\.[^.]+$/, ""), fileName:photo.name, dataUrl:photo.dataUrl });
+    }
+    if (!prepared.length) throw new Error("Choose an image file to upload.");
+    file.workPhotos = [...(Array.isArray(file.workPhotos) ? file.workPhotos : []), ...prepared];
+    file.timeline = [...(Array.isArray(file.timeline) ? file.timeline : []), `${prepared.length} work photo${prepared.length === 1 ? "" : "s"} added ${formatDateTime(new Date().toISOString())}`];
+    await saveCloud();
+    notify("Work photo saved");
+    renderDetail();
+  } catch (error) {
+    notify("Photo save failed", true);
+    window.alert(error.message || "The work photo could not be saved.");
+  } finally {
+    hideBusy();
+  }
+}
+function openMobilePhotoPreview(photoId) {
+  const file = activeFile();
+  const photo = (file?.workPhotos || []).find((entry) => entry.id === photoId);
+  if (!photo) return;
+  openSheet(`<div class="sheet-heading"><div><p class="eyebrow">Work photo</p><h2>${escapeHtml(photo.title || "Work photo")}</h2></div><button class="sheet-close" type="button" data-close-sheet>×</button></div><img class="mobile-photo-preview" src="${escapeHtml(photo.dataUrl)}" alt="${escapeHtml(photo.title || "Work photo")}"><p class="subcopy">${escapeHtml(formatDateTime(photo.createdAt))}</p>`);
 }
 async function receiveReceipt(file) {
   if (!receiptCaptureArmed || activeView !== "expenses") return;
@@ -227,7 +340,7 @@ function resetReceiptReaderState(message = "") {
 function openDesktop(route) { const url = new URL("crm.html", window.location.href); if (route === "calendar") url.searchParams.set("view","calendar"); if (route === "prices") url.searchParams.set("view","prices"); if (route === "revenue") url.searchParams.set("view","revenue"); if (route === "invoice") url.searchParams.set("view","invoice"); if (route === "workorder") { url.searchParams.set("view","estimator"); url.hash = "assignment"; } if (route === "estimate") url.searchParams.set("view","estimator"); window.location.href=url.toString(); }
 
 async function fetchReceipts() { const file = activeFile(); if (!file) { receipts=[]; return; } const response = await fetch(`${EXPENSE_API}?fileId=${encodeURIComponent(file.id)}&t=${Date.now()}`, { cache:"no-store" }); const result = await response.json().catch(() => ({})); receipts = response.ok && result.ok !== false ? result.expenses || [] : []; }
-async function loadCloud() { notify("Loading cloud..."); const response = await fetch(`${API}?t=${Date.now()}`, { cache:"no-store" }); const result = await response.json().catch(() => ({})); if (!response.ok || result.ok === false) throw new Error(result.error || "Cloud could not be reached."); const cloud = result.dashboard || {}; state = { files:(cloud.dashboardFiles || []).map(normalizeFile).filter((file) => fileKey(file) !== "26-a1006"), revenue:cloud.revenueRows || [], prices:cloud.priceRows || [], payroll:cloud.payrollRows || [], deletedFileKeys:cloud.deletedFileKeys || [], deletedPriceIds:cloud.deletedPriceIds || [] }; activeFileId = state.files.find((file) => file.id === activeFileId)?.id || state.files[0]?.id || ""; saveLocal(); await fetchReceipts(); notify("Live cloud data"); renderAll(); }
+async function loadCloud() { notify("Loading cloud..."); const response = await fetch(`${API}?t=${Date.now()}`, { cache:"no-store" }); const result = await response.json().catch(() => ({})); if (!response.ok || result.ok === false) throw new Error(result.error || "Cloud could not be reached."); const cloud = result.dashboard || {}; state = { files:(cloud.dashboardFiles || []).map(normalizeFile).filter((file) => fileKey(file) !== "26-a1006"), revenue:cloud.revenueRows || [], prices:cloud.priceRows || [], payroll:cloud.payrollRows || [], deletedFileKeys:cloud.deletedFileKeys || [], deletedPriceIds:cloud.deletedPriceIds || [] }; activeFileId = state.files.find((file) => file.id === activeFileId)?.id || state.files.find(isOpenFile)?.id || state.files[0]?.id || ""; saveLocal(); await fetchReceipts(); notify("Live cloud data"); renderAll(); }
 async function saveCloud() { saveLocal(); const response = await fetch(API, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ action:"dashboardSync", syncedAt:new Date().toISOString(), source:"ANIMUS Mobile Fresh", dashboardFiles:state.files, revenueRows:state.revenue, payrollRows:state.payroll, priceRows:state.prices, deletedFileKeys:Array.from(new Set([...(state.deletedFileKeys || []),"26-a1006"])), deletedPriceIds:state.deletedPriceIds }), cache:"no-store" }); const result = await response.json().catch(() => ({})); if (!response.ok || result.ok === false) throw new Error(result.error || "Cloud save failed."); saveLocal(); return result; }
 function renderAll() { renderHome(); renderFiles(); renderDetail(); renderExpenses(); renderRevenue(); }
 
@@ -235,6 +348,8 @@ document.querySelectorAll("[data-view]").forEach((button) => button.addEventList
 document.querySelectorAll("[data-open-desktop]").forEach((button) => button.addEventListener("click", () => openDesktop(button.dataset.openDesktop)));
 $("fileSearch").addEventListener("input", renderFiles); $("fileFilters").addEventListener("click", (event) => { const button=event.target.closest("[data-filter]"); if (!button) return; activeFilter=button.dataset.filter; document.querySelectorAll("[data-filter]").forEach((node) => node.classList.toggle("selected",node===button)); renderFiles(); });
 $("expenseChooseFile").addEventListener("click", chooseFileSheet); $("sheetBackdrop").addEventListener("click", closeSheet); $("cameraInput").addEventListener("change", (event) => { receiveReceipt(event.target.files?.[0]); event.target.value=""; }); $("uploadInput").addEventListener("change", (event) => { receiveReceipt(event.target.files?.[0]); event.target.value=""; });
+$("workPhotoCameraInput").addEventListener("change", (event) => { saveWorkPhotos(event.target.files); event.target.value=""; });
+$("workPhotoUploadInput").addEventListener("change", (event) => { saveWorkPhotos(event.target.files); event.target.value=""; });
 $("cancelBusy").addEventListener("click", () => { receiptDraft = null; resetReceiptReaderState("Receipt read cancelled"); renderExpenses(); });
 $("saveButton").addEventListener("click", async () => { const button=$("saveButton"); button.disabled=true; button.textContent="Saving"; try { await saveCloud(); notify("Saved to cloud"); } catch (error) { notify("Save failed",true); window.alert(error.message); } finally { button.disabled=false; button.textContent="Save"; } });
 $("newFileButton").addEventListener("click", () => { window.alert("Use the desktop Command Center to create a full work file. The mobile app is optimized for reviewing files and capturing expenses on the go."); });
