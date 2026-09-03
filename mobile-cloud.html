@@ -8,7 +8,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <title>ANIMUS Mobile</title>
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="mobile-cloud.css?v=20260903-mobile-calendar">
+  <link rel="stylesheet" href="mobile-cloud.css?v=20260903-native-calendar">
 </head>
 <body>
   <main class="app-shell">
@@ -21,7 +21,7 @@
         <p class="eyebrow">Command Center</p><h1>Good day, D2 Team</h1><p class="subcopy">Your work, finances, and receipt capture in one place.</p>
         <div id="summaryGrid" class="summary-grid"></div>
         <div class="home-actions"><button class="primary-action" type="button" data-view="files">Open Work Files</button><button class="secondary-action" type="button" data-view="expenses">Capture an Expense</button></div>
-        <section class="panel"><div class="panel-heading"><div><p class="eyebrow">Today</p><h2>Upcoming work</h2></div><button type="button" data-view="calendar">Calendar</button></div><div id="todayList" class="compact-list"></div></section>
+        <section class="panel"><div class="panel-heading"><div><p class="eyebrow">Today</p><h2>Upcoming work</h2></div><button type="button" data-open-desktop="googleCalendar">Calendar</button></div><div id="todayList" class="compact-list"></div></section>
       </section>
       <section id="filesView" class="view active">
         <div class="page-heading"><div><p class="eyebrow">Field CRM</p><h1>Work Files</h1></div><button id="newFileButton" class="icon-button" type="button">+ New</button></div>
@@ -41,14 +41,14 @@
         <section class="panel calendar-agenda-panel"><div class="panel-heading"><div><p class="eyebrow" id="calendarRangeLabel">Today</p><h2>Mobile agenda</h2></div><strong id="calendarCount">0</strong></div><div id="calendarAgenda" class="calendar-agenda"></div></section>
       </section>
       <section id="revenueView" class="view"><div class="page-heading"><div><p class="eyebrow">Business</p><h1>Revenue</h1></div><button type="button" data-open-desktop="revenue">Open desktop</button></div><div id="revenueStats" class="summary-grid"></div><div id="revenueList" class="file-list"></div></section>
-      <section id="moreView" class="view"><div class="page-heading"><div><p class="eyebrow">ANIMUS</p><h1>More</h1></div></div><div class="tool-list"><button type="button" data-view="calendar">Calendar <span>›</span></button><button type="button" data-open-desktop="estimate">Estimator <span>›</span></button><button type="button" data-open-desktop="prices">Price Database <span>›</span></button><button type="button" data-open-desktop="crm">Desktop Command Center <span>›</span></button></div></section>
+      <section id="moreView" class="view"><div class="page-heading"><div><p class="eyebrow">ANIMUS</p><h1>More</h1></div></div><div class="tool-list"><button type="button" data-open-desktop="googleCalendar">Calendar <span>›</span></button><button type="button" data-open-desktop="estimate">Estimator <span>›</span></button><button type="button" data-open-desktop="prices">Price Database <span>›</span></button><button type="button" data-open-desktop="crm">Desktop Command Center <span>›</span></button></div></section>
     </section>
-    <nav class="bottom-nav"><button class="active" type="button" data-view="files">Files</button><button type="button" data-view="calendar">Calendar</button><button type="button" data-view="expenses">Expenses</button><button type="button" data-view="revenue">Revenue</button><button type="button" data-view="more">More</button></nav>
+    <nav class="bottom-nav"><button class="active" type="button" data-view="files">Files</button><button type="button" data-open-desktop="googleCalendar">Calendar</button><button type="button" data-view="expenses">Expenses</button><button type="button" data-view="revenue">Revenue</button><button type="button" data-view="more">More</button></nav>
   </main>
   <input id="cameraInput" type="file" accept="image/*" capture="environment" hidden><input id="uploadInput" type="file" accept="image/*,application/pdf" hidden>
   <input id="workPhotoCameraInput" type="file" accept="image/*" capture="environment" hidden><input id="workPhotoUploadInput" type="file" accept="image/*" multiple hidden>
   <div id="busyOverlay" class="busy-overlay" hidden><div class="busy-card"><i></i><p class="eyebrow">ANIMUS Receipt Reader</p><h2 id="busyTitle">Reading receipt...</h2><p id="busyMessage">Preparing your receipt for review.</p><button id="cancelBusy" type="button">Cancel receipt read</button></div></div>
   <div id="sheetBackdrop" class="sheet-backdrop" hidden></div><section id="sheet" class="bottom-sheet" hidden></section>
-  <script src="mobile-cloud.js?v=20260903-mobile-calendar"></script>
+  <script src="mobile-cloud.js?v=20260903-native-calendar"></script>
 </body>
 </html>
