@@ -830,6 +830,24 @@ body.animus-unified-ui .animus-work-files-layout .crm-file-workspace { gap: 16px
   font-size: 10px;
   font-weight: 900;
 }
+.animus-document-thumb {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid #d8e2ef;
+  border-radius: 10px;
+  background: #eaf1ff;
+  color: #1558d6;
+  font-size: 10px;
+  font-weight: 900;
+}
+.animus-document-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
 .animus-document-row strong,
 .animus-document-row small,
 .animus-document-row b {

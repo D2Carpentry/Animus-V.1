@@ -295,11 +295,20 @@
     return Array.isArray(file?.workFileDocuments) ? file.workFileDocuments : Array.isArray(file?.documents) ? file.documents : [];
   }
 
+  function workPhotoDocuments(file) {
+    return Array.isArray(file?.workPhotos) ? file.workPhotos : [];
+  }
+
+  function workPhotoPanel(file) {
+    const photos = workPhotoDocuments(file);
+    return `<section class="animus-document-box"><div class="animus-document-box-head"><h4>Work Photos</h4><span>${photos.length}</span></div>${photos.length ? `<div class="animus-document-list">${photos.map((photo) => `<button type="button" class="animus-document-row" data-animus-open-work-photo="${escape(photo.id || "")}"><span class="animus-document-thumb">${photo.dataUrl ? `<img src="${escape(photo.dataUrl)}" alt="${escape(photo.title || "Work photo")}">` : "IMG"}</span><span><strong>${escape(photo.title || photo.fileName || "Work photo")}</strong><small>${escape(date((photo.createdAt || "").slice(0, 10)))} · Saved from mobile</small></span><b>Photo</b></button>`).join("")}</div>` : `<div class="animus-document-empty">Work progress photos captured from mobile will appear here.</div>`}</section>`;
+  }
+
   function documentsPanel(file) {
     const supplements = Array.isArray(file.supplements) ? file.supplements : [];
     const receipts = fileExpenseRecords(file).filter((entry) => receiptSource(entry) || entry.imageTitle || entry.vendor || entry.title);
     const docs = documentRows(file);
-    return `<div class="animus-tab-panel animus-documents-panel"><section class="animus-info-card"><div class="animus-card-head"><h3>Documents</h3><button class="animus-record-button primary small" data-animus-upload-document>Upload Document</button><input id="animusWorkFileDocumentUpload" type="file" hidden></div><div class="animus-document-grid"><section class="animus-document-box"><div class="animus-document-box-head"><h4>Receipts</h4><span>${receipts.length}</span></div>${receipts.length ? `<div class="animus-document-list">${receipts.map((entry) => `<button type="button" class="animus-document-row" data-animus-open-receipt="${escape(entry.id || "")}"><span class="animus-document-icon">${receiptSource(entry) ? "IMG" : "REC"}</span><span><strong>${escape(entry.title || entry.vendor || entry.imageTitle || "Receipt")}</strong><small>${escape(date(entry.date))} · ${escape(receiptDetail(entry))}</small></span><b>${money(entry.amount)}</b></button>`).join("")}</div>` : `<div class="animus-document-empty">Receipt images and receipt details for this work file will appear here after expenses are saved.</div>`}</section><section class="animus-document-box"><div class="animus-document-box-head"><h4>Uploaded Documents</h4><span>${docs.length}</span></div>${docs.length ? `<div class="animus-document-list">${docs.map((doc) => `<button type="button" class="animus-document-row" data-animus-open-document="${escape(doc.id || "")}"><span class="animus-document-icon">${escape((doc.type || doc.name || "DOC").split("/").pop().slice(0, 3).toUpperCase())}</span><span><strong>${escape(doc.name || "Uploaded document")}</strong><small>${escape(date((doc.createdAt || "").slice(0, 10)))} · ${escape(doc.notes || doc.type || "Saved to this work file")}</small></span><b>${escape(doc.size ? `${Math.round(Number(doc.size) / 1024)} KB` : "")}</b></button>`).join("")}</div>` : `<div class="animus-document-empty">Upload contracts, drawings, photos, PDFs, or other file notes here.</div>`}</section><section class="animus-document-box animus-document-actions"><div class="animus-document-box-head"><h4>Work File Documents</h4><span>${supplements.length ? `${supplements.length} supplement${supplements.length === 1 ? "" : "s"}` : "Actions"}</span></div><div class="animus-action-row"><button class="animus-record-button" data-animus-open="estimate">Estimate</button><button class="animus-record-button" data-animus-open="invoice">Invoice</button><button class="animus-record-button" data-animus-open="assignment">Work Order</button></div></section></div></section></div>`;
+    return `<div class="animus-tab-panel animus-documents-panel"><section class="animus-info-card"><div class="animus-card-head"><h3>Documents</h3><button class="animus-record-button primary small" data-animus-upload-document>Upload Document</button><input id="animusWorkFileDocumentUpload" type="file" hidden></div><div class="animus-document-grid">${workPhotoPanel(file)}<section class="animus-document-box"><div class="animus-document-box-head"><h4>Receipts</h4><span>${receipts.length}</span></div>${receipts.length ? `<div class="animus-document-list">${receipts.map((entry) => `<button type="button" class="animus-document-row" data-animus-open-receipt="${escape(entry.id || "")}"><span class="animus-document-icon">${receiptSource(entry) ? "IMG" : "REC"}</span><span><strong>${escape(entry.title || entry.vendor || entry.imageTitle || "Receipt")}</strong><small>${escape(date(entry.date))} · ${escape(receiptDetail(entry))}</small></span><b>${money(entry.amount)}</b></button>`).join("")}</div>` : `<div class="animus-document-empty">Receipt images and receipt details for this work file will appear here after expenses are saved.</div>`}</section><section class="animus-document-box"><div class="animus-document-box-head"><h4>Uploaded Documents</h4><span>${docs.length}</span></div>${docs.length ? `<div class="animus-document-list">${docs.map((doc) => `<button type="button" class="animus-document-row" data-animus-open-document="${escape(doc.id || "")}"><span class="animus-document-icon">${escape((doc.type || doc.name || "DOC").split("/").pop().slice(0, 3).toUpperCase())}</span><span><strong>${escape(doc.name || "Uploaded document")}</strong><small>${escape(date((doc.createdAt || "").slice(0, 10)))} · ${escape(doc.notes || doc.type || "Saved to this work file")}</small></span><b>${escape(doc.size ? `${Math.round(Number(doc.size) / 1024)} KB` : "")}</b></button>`).join("")}</div>` : `<div class="animus-document-empty">Upload contracts, drawings, photos, PDFs, or other file notes here.</div>`}</section><section class="animus-document-box animus-document-actions"><div class="animus-document-box-head"><h4>Work File Documents</h4><span>${supplements.length ? `${supplements.length} supplement${supplements.length === 1 ? "" : "s"}` : "Actions"}</span></div><div class="animus-action-row"><button class="animus-record-button" data-animus-open="estimate">Estimate</button><button class="animus-record-button" data-animus-open="invoice">Invoice</button><button class="animus-record-button" data-animus-open="assignment">Work Order</button></div></section></div></section></div>`;
   }
 
   function detailsPanel(file) {
@@ -508,6 +517,12 @@
     openDataDocument(document?.dataUrl || document?.url || "", document?.name || "Document");
   }
 
+  function openWorkFilePhoto(id) {
+    const file = currentFile();
+    const photo = workPhotoDocuments(file).find((entry) => String(entry?.id || "") === String(id || ""));
+    openDataDocument(photo?.dataUrl || photo?.url || "", photo?.title || photo?.fileName || "Work photo");
+  }
+
   function openExisting(action) {
     if (action === "editFile") {
       if (typeof window.openCrmFileIntakeEditor === "function") window.openCrmFileIntakeEditor();
@@ -557,6 +572,11 @@
     const documentButton = event.target.closest("[data-animus-open-document]");
     if (documentButton) {
       openWorkFileDocument(documentButton.dataset.animusOpenDocument);
+      return;
+    }
+    const workPhotoButton = event.target.closest("[data-animus-open-work-photo]");
+    if (workPhotoButton) {
+      openWorkFilePhoto(workPhotoButton.dataset.animusOpenWorkPhoto);
       return;
     }
     const uploadButton = event.target.closest("[data-animus-upload-document]");

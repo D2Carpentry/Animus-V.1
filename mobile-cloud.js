@@ -13,6 +13,7 @@ let receipts = [];
 let receiptAbortController = null;
 let receiptCaptureArmed = false;
 let receiptReadToken = 0;
+let workPhotoDrafts = [];
 
 function escapeHtml(value = "") { return String(value).replace(/[&<>'"]/g, (char) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", "'":"&#039;", '"':"&quot;" }[char])); }
 function uid(prefix) { return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`; }
@@ -239,22 +240,50 @@ async function prepareWorkPhoto(file) {
   canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
   return { dataUrl:canvas.toDataURL("image/jpeg", 0.82), name:file.name || "work-photo.jpg" };
 }
-async function saveWorkPhotos(fileList) {
+async function reviewWorkPhotos(fileList) {
   const file = activeFile();
   const files = [...(fileList || [])];
   if (!file || !files.length) return;
-  showBusy("Saving work photo...", "ANIMUS is attaching the image to this work file.");
+  showBusy("Preparing photo...", "ANIMUS is getting the image ready for this work file.");
   try {
     const prepared = [];
     for (const upload of files) {
       const photo = await prepareWorkPhoto(upload);
-      if (photo) prepared.push({ id:uid("work-photo"), createdAt:new Date().toISOString(), title:photo.name.replace(/\.[^.]+$/, ""), fileName:photo.name, dataUrl:photo.dataUrl });
+      if (photo) prepared.push({ id:uid("work-photo-draft"), createdAt:new Date().toISOString(), title:photo.name.replace(/\.[^.]+$/, ""), fileName:photo.name, dataUrl:photo.dataUrl });
     }
     if (!prepared.length) throw new Error("Choose an image file to upload.");
-    file.workPhotos = [...(Array.isArray(file.workPhotos) ? file.workPhotos : []), ...prepared];
-    file.timeline = [...(Array.isArray(file.timeline) ? file.timeline : []), `${prepared.length} work photo${prepared.length === 1 ? "" : "s"} added ${formatDateTime(new Date().toISOString())}`];
+    workPhotoDrafts = prepared;
+    hideBusy();
+    openWorkPhotoReviewSheet();
+  } catch (error) {
+    hideBusy();
+    notify("Photo could not be prepared", true);
+    window.alert(error.message || "The work photo could not be opened.");
+  }
+}
+function openWorkPhotoReviewSheet() {
+  const file = activeFile();
+  if (!file || !workPhotoDrafts.length) return;
+  const rows = workPhotoDrafts.map((photo, index) => `<article class="work-photo-review-card"><img src="${escapeHtml(photo.dataUrl)}" alt="${escapeHtml(photo.title || "Work photo")}"><label>Photo name<input data-work-photo-title="${index}" value="${escapeHtml(photo.title || "")}" placeholder="Photo name"></label></article>`).join("");
+  openSheet(`<div class="sheet-heading"><div><p class="eyebrow">Work photo</p><h2>Review before saving</h2></div><button class="sheet-close" type="button" data-clear-work-photo-drafts data-close-sheet>×</button></div><p class="subcopy">Captured for ${escapeHtml(file.clientName)}. Rename the photo, then save it to this work file.</p><div class="work-photo-review-list">${rows}</div><div class="sheet-actions"><button type="button" data-clear-work-photo-drafts data-close-sheet>Cancel</button><button type="button" id="saveWorkPhotoDrafts" class="primary-action">Save to Work File</button></div>`);
+  $("saveWorkPhotoDrafts")?.addEventListener("click", saveReviewedWorkPhotos);
+  document.querySelectorAll("[data-clear-work-photo-drafts]").forEach((button) => button.addEventListener("click", () => { workPhotoDrafts = []; }));
+}
+async function saveReviewedWorkPhotos() {
+  const file = activeFile();
+  if (!file || !workPhotoDrafts.length) return;
+  const saved = workPhotoDrafts.map((photo, index) => {
+    const title = document.querySelector(`[data-work-photo-title="${index}"]`)?.value?.trim();
+    return { ...photo, id:uid("work-photo"), title:title || photo.title || "Work photo", createdAt:photo.createdAt || new Date().toISOString() };
+  });
+  showBusy("Saving work photo...", "ANIMUS is attaching the image to this work file.");
+  try {
+    file.workPhotos = [...(Array.isArray(file.workPhotos) ? file.workPhotos : []), ...saved];
+    file.timeline = [...(Array.isArray(file.timeline) ? file.timeline : []), `${saved.length} work photo${saved.length === 1 ? "" : "s"} added ${formatDateTime(new Date().toISOString())}`];
     await saveCloud();
-    notify("Work photo saved");
+    workPhotoDrafts = [];
+    closeSheet();
+    notify("Work photo saved to cloud");
     renderDetail();
   } catch (error) {
     notify("Photo save failed", true);
@@ -348,8 +377,8 @@ document.querySelectorAll("[data-view]").forEach((button) => button.addEventList
 document.querySelectorAll("[data-open-desktop]").forEach((button) => button.addEventListener("click", () => openDesktop(button.dataset.openDesktop)));
 $("fileSearch").addEventListener("input", renderFiles); $("fileFilters").addEventListener("click", (event) => { const button=event.target.closest("[data-filter]"); if (!button) return; activeFilter=button.dataset.filter; document.querySelectorAll("[data-filter]").forEach((node) => node.classList.toggle("selected",node===button)); renderFiles(); });
 $("expenseChooseFile").addEventListener("click", chooseFileSheet); $("sheetBackdrop").addEventListener("click", closeSheet); $("cameraInput").addEventListener("change", (event) => { receiveReceipt(event.target.files?.[0]); event.target.value=""; }); $("uploadInput").addEventListener("change", (event) => { receiveReceipt(event.target.files?.[0]); event.target.value=""; });
-$("workPhotoCameraInput").addEventListener("change", (event) => { saveWorkPhotos(event.target.files); event.target.value=""; });
-$("workPhotoUploadInput").addEventListener("change", (event) => { saveWorkPhotos(event.target.files); event.target.value=""; });
+$("workPhotoCameraInput").addEventListener("change", (event) => { reviewWorkPhotos(event.target.files); event.target.value=""; });
+$("workPhotoUploadInput").addEventListener("change", (event) => { reviewWorkPhotos(event.target.files); event.target.value=""; });
 $("cancelBusy").addEventListener("click", () => { receiptDraft = null; resetReceiptReaderState("Receipt read cancelled"); renderExpenses(); });
 $("saveButton").addEventListener("click", async () => { const button=$("saveButton"); button.disabled=true; button.textContent="Saving"; try { await saveCloud(); notify("Saved to cloud"); } catch (error) { notify("Save failed",true); window.alert(error.message); } finally { button.disabled=false; button.textContent="Save"; } });
 $("newFileButton").addEventListener("click", () => { window.alert("Use the desktop Command Center to create a full work file. The mobile app is optimized for reviewing files and capturing expenses on the go."); });
