@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="styles.css?v=20260821-expense-v5-clean">
     <link rel="stylesheet" href="calendar-upgrade.css?v=20260808-calendar-popups">
     <link rel="stylesheet" href="expenses-v6.css?v=20260826-pdf-preview">
-  <link rel="stylesheet" href="animus-shell.css?v=20260903-animus-logo-splash-v2">
+  <link rel="stylesheet" href="animus-shell.css?v=20260903-animus-logo-splash-fade">
     <link rel="stylesheet" href="animus-dashboard.css?v=20260822-command-center-home">
     <link rel="stylesheet" href="animus-work-file.css?v=20260902-work-photos">
     <link rel="stylesheet" href="animus-operations.css?v=20260822-operations-layout">
@@ -17,9 +17,11 @@
     <style>
       body.crm-booting .crm-shell,
       body.crm-booting .animus-global-sidebar { visibility: hidden; }
-      .animus-boot-screen { position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center; background: #050505; color: #f7f9fc; transition: opacity .32s ease, visibility .32s ease; }
-      .animus-boot-logo { width: min(78vw, 620px); max-height: 82vh; object-fit: contain; filter: drop-shadow(0 24px 52px rgba(0,0,0,.55)); }
+      .animus-boot-screen { position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center; background: #050505; color: #f7f9fc; animation: animus-boot-screen-in .42s ease both; transition: opacity .42s ease, visibility .42s ease; }
+      .animus-boot-logo { width: min(78vw, 620px); max-height: 82vh; object-fit: contain; filter: drop-shadow(0 24px 52px rgba(0,0,0,.55)); animation: animus-boot-logo-in .9s cubic-bezier(.2,.72,.18,1) .12s both; }
       body.animus-ready .animus-boot-screen { opacity: 0; visibility: hidden; pointer-events: none; }
+      @keyframes animus-boot-screen-in { from { opacity: 0; } to { opacity: 1; } }
+      @keyframes animus-boot-logo-in { from { opacity: 0; transform: translateY(10px) scale(.975); } to { opacity: 1; transform: translateY(0) scale(1); } }
     </style>
   </head>
   <body class="crm-body crm-booting">
@@ -1022,7 +1024,7 @@
     </script>
 <script src="crm.js?v=20260901-dashboard-calendar-feed"></script>
     <script src="calendar-upgrade.js?v=20260808-calendar-popups"></script>
-  <script src="animus-shell.js?v=20260903-animus-logo-splash-v2"></script>
+  <script src="animus-shell.js?v=20260903-animus-logo-splash-fade"></script>
     <script src="animus-dashboard.js?v=20260901-dashboard-calendar-feed"></script>
     <link rel="stylesheet" href="animus-business-performance.css?v=20260822-business-performance">
     <script src="animus-business-performance.js?v=20260822-business-performance"></script>
