@@ -1,6 +1,7 @@
 const API = "https://animus-v-1.pages.dev/api/dashboard";
 const RECEIPT_API = "https://animus-v-1.pages.dev/api/receipt";
 const EXPENSE_API = "https://animus-v-1.pages.dev/api/expenses";
+const D2_GOOGLE_CALENDAR_ACCOUNT = "d2carpentryanddesign@gmail.com";
 const $ = (id) => document.getElementById(id);
 const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 
@@ -438,7 +439,25 @@ function resetReceiptReaderState(message = "") {
   if ($("uploadInput")) $("uploadInput").value = "";
   if (message) notify(message);
 }
-function openDesktop(route) { if (route === "googleCalendar") { window.location.href = "https://calendar.google.com/calendar/u/0/r"; return; } const url = new URL("crm.html", window.location.href); if (route === "calendar") url.searchParams.set("view","calendar"); if (route === "prices") url.searchParams.set("view","prices"); if (route === "revenue") url.searchParams.set("view","revenue"); if (route === "invoice") url.searchParams.set("view","invoice"); if (route === "workorder") { url.searchParams.set("view","estimator"); url.hash = "assignment"; } if (route === "estimate") url.searchParams.set("view","estimator"); window.location.href=url.toString(); }
+function openGoogleCalendar() {
+  const webUrl = `https://calendar.google.com/calendar/u/0/r?authuser=${encodeURIComponent(D2_GOOGLE_CALENDAR_ACCOUNT)}`;
+  const isiOS = /iPad|iPhone|iPod/.test(navigator.userAgent || "");
+  const isAndroid = /Android/.test(navigator.userAgent || "");
+  if (isAndroid) {
+    window.location.href = `intent://calendar.google.com/calendar/u/0/r?authuser=${encodeURIComponent(D2_GOOGLE_CALENDAR_ACCOUNT)}#Intent;scheme=https;package=com.google.android.calendar;S.browser_fallback_url=${encodeURIComponent(webUrl)};end`;
+    return;
+  }
+  if (isiOS) {
+    const started = Date.now();
+    window.location.href = "googlecalendar://";
+    window.setTimeout(() => {
+      if (Date.now() - started < 1600 && document.visibilityState === "visible") window.location.href = webUrl;
+    }, 900);
+    return;
+  }
+  window.location.href = webUrl;
+}
+function openDesktop(route) { if (route === "googleCalendar") { openGoogleCalendar(); return; } const url = new URL("crm.html", window.location.href); if (route === "calendar") url.searchParams.set("view","calendar"); if (route === "prices") url.searchParams.set("view","prices"); if (route === "revenue") url.searchParams.set("view","revenue"); if (route === "invoice") url.searchParams.set("view","invoice"); if (route === "workorder") { url.searchParams.set("view","estimator"); url.hash = "assignment"; } if (route === "estimate") url.searchParams.set("view","estimator"); window.location.href=url.toString(); }
 
 async function fetchReceipts() { const file = activeFile(); if (!file) { receipts=[]; return; } const response = await fetch(`${EXPENSE_API}?fileId=${encodeURIComponent(file.id)}&t=${Date.now()}`, { cache:"no-store" }); const result = await response.json().catch(() => ({})); receipts = response.ok && result.ok !== false ? result.expenses || [] : []; }
 async function loadCloud() { notify("Loading cloud..."); const response = await fetch(`${API}?t=${Date.now()}`, { cache:"no-store" }); const result = await response.json().catch(() => ({})); if (!response.ok || result.ok === false) throw new Error(result.error || "Cloud could not be reached."); const cloud = result.dashboard || {}; state = { files:(cloud.dashboardFiles || []).map(normalizeFile).filter((file) => fileKey(file) !== "26-a1006"), revenue:cloud.revenueRows || [], prices:cloud.priceRows || [], payroll:cloud.payrollRows || [], calendarEvents:cloud.calendarEvents || [], externalCalendarEvents:cloud.externalCalendarEvents || [], calendar:cloud.calendar || [], deletedFileKeys:cloud.deletedFileKeys || [], deletedPriceIds:cloud.deletedPriceIds || [] }; activeFileId = state.files.find((file) => file.id === activeFileId)?.id || state.files.find(isOpenFile)?.id || state.files[0]?.id || ""; saveLocal(); await fetchReceipts(); notify("Live cloud data"); renderAll(); }
