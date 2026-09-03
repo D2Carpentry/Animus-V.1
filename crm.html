@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="styles.css?v=20260821-expense-v5-clean">
     <link rel="stylesheet" href="calendar-upgrade.css?v=20260808-calendar-popups">
     <link rel="stylesheet" href="expenses-v6.css?v=20260826-pdf-preview">
-  <link rel="stylesheet" href="animus-shell.css?v=20260902-sidebar-account-estimate-toggle">
+  <link rel="stylesheet" href="animus-shell.css?v=20260903-animus-logo-splash-v2">
     <link rel="stylesheet" href="animus-dashboard.css?v=20260822-command-center-home">
     <link rel="stylesheet" href="animus-work-file.css?v=20260902-work-photos">
     <link rel="stylesheet" href="animus-operations.css?v=20260822-operations-layout">
@@ -17,26 +17,21 @@
     <style>
       body.crm-booting .crm-shell,
       body.crm-booting .animus-global-sidebar { visibility: hidden; }
-      .animus-boot-screen { position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center; gap: 12px; align-content: center; background: #f7f9fc; color: #071a33; transition: opacity .18s ease, visibility .18s ease; }
-      .animus-boot-screen strong { font-size: 24px; letter-spacing: .04em; }
-      .animus-boot-screen small { color: #64748b; font-weight: 700; }
-      .animus-boot-mark { width: 40px; height: 40px; border: 4px solid #dce8f8; border-top-color: #2563eb; border-radius: 50%; animation: animus-boot-spin .7s linear infinite; }
+      .animus-boot-screen { position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center; background: #050505; color: #f7f9fc; transition: opacity .32s ease, visibility .32s ease; }
+      .animus-boot-logo { width: min(78vw, 620px); max-height: 82vh; object-fit: contain; filter: drop-shadow(0 24px 52px rgba(0,0,0,.55)); }
       body.animus-ready .animus-boot-screen { opacity: 0; visibility: hidden; pointer-events: none; }
-      @keyframes animus-boot-spin { to { transform: rotate(360deg); } }
     </style>
   </head>
   <body class="crm-body crm-booting">
     <div class="animus-boot-screen" id="animusBootScreen" role="status" aria-live="polite">
-      <div class="animus-boot-mark" aria-hidden="true"></div>
-      <strong>ANIMUS</strong>
-      <small>Opening Command Center</small>
+      <img class="animus-boot-logo" src="assets/animus-logo-splash.png" alt="ANIMUS Command Center loading">
     </div>
     <main class="crm-shell">
       <header class="crm-topbar">
         <div class="crm-brand">
-          <img src="assets/d2-logo.png" alt="D2 Carpentry and Design logo">
+          <img src="assets/animus-logo.svg" alt="ANIMUS logo">
           <div>
-            <p class="eyebrow">D2 Carpentry and Design</p>
+            <p class="eyebrow">ANIMUS</p>
             <h1>Command Center</h1>
           </div>
         </div>
@@ -1027,7 +1022,7 @@
     </script>
 <script src="crm.js?v=20260901-dashboard-calendar-feed"></script>
     <script src="calendar-upgrade.js?v=20260808-calendar-popups"></script>
-  <script src="animus-shell.js?v=20260902-sidebar-account-estimate-toggle"></script>
+  <script src="animus-shell.js?v=20260903-animus-logo-splash-v2"></script>
     <script src="animus-dashboard.js?v=20260901-dashboard-calendar-feed"></script>
     <link rel="stylesheet" href="animus-business-performance.css?v=20260822-business-performance">
     <script src="animus-business-performance.js?v=20260822-business-performance"></script>

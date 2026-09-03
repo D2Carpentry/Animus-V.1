@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title">
+  <title id="title">ANIMUS logo</title>
+  <defs>
+    <linearGradient id="animusGold" x1="20" y1="16" x2="108" y2="116" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F4C768"/>
+      <stop offset=".52" stop-color="#C99A42"/>
+      <stop offset="1" stop-color="#9F6D22"/>
+    </linearGradient>
+  </defs>
+  <path fill="url(#animusGold)" d="M63.8 13.8 116 114.2H92.5L64.2 55.7 35.4 114.2H12L63.8 13.8Z"/>
+  <path fill="#071A33" d="M64.1 71.9 84.8 114.2H43.3l20.8-42.3Z" opacity=".9"/>
+  <path fill="#F7F9FC" d="M63.9 34.9 29.8 114.2H12L63.8 13.8 116 114.2H97.4L63.9 34.9Z" opacity=".1"/>
+</svg>
