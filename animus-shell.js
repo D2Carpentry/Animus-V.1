@@ -1,10 +1,22 @@
 // Shared navigation and page framing for the existing ANIMUS CRM views.
 (() => {
+  const THEME_KEY = "animus-ui-theme";
   const views = [
     ["dashboard", "⌂", "Dashboard"], ["calendar", "□", "Calendar"], ["estimator", "▤", "Estimates"], ["files", "▱", "Work Files"], ["contacts", "◉", "Contacts"],
     ["revenue", "↗", "Revenue"], ["expenses", "▧", "Expenses"], ["payroll", "♙", "Payroll"], ["prices", "▦", "Price Database"], ["business", "◈", "Business Performance"],
   ];
   const titles = { dashboard:"Command Center", files:"Work Files", contacts:"Contacts", calendar:"Calendar", revenue:"Revenue", expenses:"Expenses", payroll:"Payroll", prices:"Price Database", business:"Business Performance", estimator:"Estimate Studio", legacyEstimator:"Legacy Estimator", testzone:"Legacy Estimator", invoice:"Invoice" };
+  function preferredTheme() {
+    try { return localStorage.getItem(THEME_KEY) === "dark" ? "dark" : "light"; } catch (error) { return "light"; }
+  }
+  function setTheme(theme) {
+    const isDark = theme === "dark";
+    document.body.classList.toggle("animus-dark-theme", isDark);
+    document.querySelector("#animusThemeToggle")?.setAttribute("aria-pressed", String(isDark));
+    const label = document.querySelector("#animusThemeToggle .animus-theme-label");
+    if (label) label.textContent = isDark ? "Light Theme" : "Dark Theme";
+    try { localStorage.setItem(THEME_KEY, isDark ? "dark" : "light"); } catch (error) {}
+  }
   function currentView() {
     if (!document.querySelector("#crmExpensesView")?.hidden) return "expenses";
     if (!document.querySelector("#crmRevenueView")?.hidden) return "revenue";
@@ -30,13 +42,20 @@
   function createShell() {
     if (document.querySelector("#animusGlobalSidebar")) return;
     document.body.classList.add("animus-unified-ui");
+    setTheme(preferredTheme());
     const workspace = views.filter(([view]) => ["dashboard", "calendar", "estimator", "files", "contacts"].includes(view));
     const business = views.filter(([view]) => ["revenue", "expenses", "payroll", "prices", "business"].includes(view));
     const estimatorSubnav = `<div class="animus-estimator-subnav"><button type="button" data-animus-estimator-action="new-file">New File</button><button type="button" data-animus-estimator-action="import">Import Estimate</button><button type="button" data-animus-estimator-action="supplement">Create Supplement</button><button type="button" data-animus-estimator-action="invoice">Invoice</button><button type="button" data-animus-estimator-action="work-order">Work Order</button><button type="button" data-animus-estimator-action="legacy">Legacy Estimator</button></div>`;
     const makeButtons = (items) => items.map(([view, icon, label]) => `<div class="animus-nav-item"><button type="button" data-animus-shell-view="${view}"><span class="animus-global-icon">${icon}</span>${label}</button>${view === "estimator" ? estimatorSubnav : ""}</div>`).join("");
     document.body.insertAdjacentHTML("afterbegin", `<aside class="animus-global-sidebar" id="animusGlobalSidebar"><div class="animus-global-brand"><img src="assets/animus-sidebar-logo.png" alt="ANIMUS logo"><span>ANIMUS<small>Command Center</small></span></div><p class="animus-global-label">Workspace</p><nav class="animus-global-nav">${makeButtons(workspace)}</nav><p class="animus-global-label">Business</p><nav class="animus-global-nav">${makeButtons(business)}</nav><div class="animus-sidebar-footer"><div class="animus-account-wrap"><button class="animus-global-account" id="animusAccountToggle" type="button" aria-expanded="false"><span class="animus-account-avatar">D2</span><span><strong>D2 Carpentry &amp; Design</strong>Owner</span><b aria-hidden="true">⌄</b></button><div class="animus-account-menu" id="animusAccountMenu" hidden><p class="animus-account-menu-title">Backup &amp; restore</p></div></div></div></aside>`);
     const accountMenu = document.querySelector("#animusAccountMenu");
+    accountMenu?.insertAdjacentHTML("afterbegin", `<button class="animus-theme-toggle" id="animusThemeToggle" type="button" aria-pressed="false"><span class="animus-theme-icon" aria-hidden="true">◐</span><span class="animus-theme-label">Dark Theme</span></button>`);
     [document.querySelector("#crmCreateBackup"), document.querySelector("#crmLoadCloud"), document.querySelector("#crmImportBackupFile"), document.querySelector("#crmExportCurrentSnapshot")].filter(Boolean).forEach((element) => accountMenu?.append(element));
+    setTheme(preferredTheme());
+    document.querySelector("#animusThemeToggle")?.addEventListener("click", (event) => {
+      event.stopPropagation();
+      setTheme(document.body.classList.contains("animus-dark-theme") ? "light" : "dark");
+    });
     document.querySelector("#animusAccountToggle")?.addEventListener("click", (event) => {
       event.stopPropagation();
       const menu = document.querySelector("#animusAccountMenu");
