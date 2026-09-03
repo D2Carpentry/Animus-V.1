@@ -21,3 +21,22 @@
 .work-photo-review-card img{width:100%;max-height:310px;object-fit:contain;border-radius:9px;background:#0f172a}
 .work-photo-review-card label{display:grid;gap:6px;color:#64748b;font-size:.74rem;font-weight:850}
 .work-photo-review-card input{width:100%;min-height:44px;padding:0 11px;border:1px solid var(--line);border-radius:9px;background:#fff;color:var(--ink);font-size:16px}
+.calendar-filter-row{display:flex;gap:8px;overflow:auto;margin:-2px 0 14px;padding-bottom:7px}
+.calendar-filter-row button{white-space:nowrap;min-height:38px;padding:0 13px;border:1px solid var(--line);border-radius:999px;background:#fff;color:#475569;font-size:.78rem;font-weight:850}
+.calendar-filter-row button.selected{border-color:var(--blue);background:var(--blue);color:#fff}
+.calendar-agenda{display:grid;gap:10px;margin-top:13px}
+.agenda-row{display:grid;grid-template-columns:72px minmax(0,1fr) auto;align-items:center;gap:10px;padding:12px;border:1px solid var(--line);border-left:4px solid #2563eb;border-radius:12px;background:#fff}
+.agenda-row.inspection{border-left-color:#7c3aed}
+.agenda-row.follow-up{border-left-color:#f59e0b}
+.agenda-row.start{border-left-color:#16a34a}
+.agenda-row.completion{border-left-color:#475569}
+.agenda-row.google{border-left-color:#2563eb}
+.agenda-date{display:grid;gap:3px;align-content:center;min-height:54px;padding:8px 6px;border-radius:10px;background:#f1f5f9;text-align:center}
+.agenda-date strong{color:#10203c;font-size:.72rem;font-weight:900;text-transform:uppercase}
+.agenda-date span{color:#64748b;font-size:.68rem;font-weight:800}
+.agenda-main{min-width:0}
+.agenda-main p{margin:0;color:#10203c;font-size:.94rem;font-weight:900;line-height:1.25}
+.agenda-main small{display:block;margin-top:4px;color:#64748b;font-size:.73rem;font-weight:700;line-height:1.35}
+.agenda-main .badge{margin-top:7px}
+.agenda-row>button{min-height:40px;padding:0 11px;border:1px solid #bfdbfe;border-radius:9px;background:#eff6ff;color:#1d4ed8;font-size:.76rem;font-weight:900}
+@media(max-width:365px){.agenda-row{grid-template-columns:62px minmax(0,1fr)}.agenda-row>button{grid-column:1/-1}.agenda-date{padding:7px 4px}}

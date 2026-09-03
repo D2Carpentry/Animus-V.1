@@ -8,6 +8,7 @@ let state = { files: [], revenue: [], prices: [], payroll: [], deletedFileKeys: 
 let activeFileId = "";
 let activeView = "files";
 let activeFilter = "open";
+let activeCalendarFilter = "upcoming";
 let receiptDraft = null;
 let receipts = [];
 let receiptAbortController = null;
@@ -36,6 +37,7 @@ function openView(view) {
   if (view === "files") renderFiles();
   if (view === "detail") renderDetail();
   if (view === "expenses") renderExpenses();
+  if (view === "calendar") renderCalendar();
   if (view === "revenue") renderRevenue();
   window.scrollTo({ top:0, behavior:"instant" });
 }
@@ -65,6 +67,76 @@ function renderHome() {
   $("summaryGrid").innerHTML = counts.map(([label, value]) => `<article class="stat"><span>${label}</span><strong>${value}</strong><small>Live Cloudflare data</small></article>`).join("");
   const events = state.files.flatMap((file) => [[file.inspectionDate,"Inspection"],[file.startDate,"Start date"],[file.followUpDate,"Follow-up"]].filter(([date]) => date).map(([date,label]) => ({ date,label,file }))).filter((event) => event.date >= dateToday()).sort((a,b) => a.date.localeCompare(b.date)).slice(0,4);
   $("todayList").innerHTML = events.length ? events.map((event) => `<button class="compact-item" type="button" data-file="${escapeHtml(event.file.id)}"><strong>${escapeHtml(event.label)} · ${escapeHtml(event.file.clientName)}</strong><small>${formatDate(event.date)} · ${escapeHtml(event.file.fileNumber)}</small></button>`).join("") : `<p class="subcopy">No upcoming dates are set.</p>`;
+  bindFileLinks();
+}
+
+function eventDateTime(dateValue, timeValue = "") {
+  if (!dateValue) return null;
+  const date = new Date(`${String(dateValue).slice(0, 10)}T${timeValue || "09:00"}`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+function calendarDateKey(date = new Date()) { return date.toISOString().slice(0, 10); }
+function formatAgendaDate(dateValue) { return dateValue ? new Date(`${dateValue}T12:00:00`).toLocaleDateString("en-US", { weekday:"short", month:"short", day:"numeric" }) : "No date"; }
+function formatAgendaTime(timeValue = "") {
+  if (!timeValue) return "All day";
+  const date = eventDateTime(dateToday(), timeValue);
+  return date ? date.toLocaleTimeString("en-US", { hour:"numeric", minute:"2-digit" }) : timeValue;
+}
+function fileCalendarEvents() {
+  const configs = [
+    { type:"inspection", label:"Inspection", dateField:"inspectionDate", timeField:"inspectionTime" },
+    { type:"follow-up", label:"Follow-up", dateField:"followUpDate", timeField:"" },
+    { type:"start", label:"Job Start", dateField:"startDate", timeField:"" },
+    { type:"completion", label:"Completion", dateField:"anticipatedCompletionDate", timeField:"" },
+  ];
+  return state.files.flatMap((file) => configs.map((config) => {
+    const date = String(file[config.dateField] || "").slice(0, 10);
+    if (!date) return null;
+    const time = config.timeField ? file[config.timeField] || "" : "";
+    const start = eventDateTime(date, time);
+    if (!start) return null;
+    return { id:`${file.id || file.fileNumber}-${config.type}`, source:"file", type:config.type, label:config.label, title:`${config.label} - ${file.clientName || "Customer"}`, date, time, sort:start.getTime(), fileId:file.id || "", fileNumber:file.fileNumber || "", clientName:file.clientName || "", address:file.projectAddress || "", status:file.fileStatus || "" };
+  }).filter(Boolean));
+}
+function cloudCalendarEvents() {
+  const raw = [
+    ...(Array.isArray(state.calendarEvents) ? state.calendarEvents : []),
+    ...(Array.isArray(state.externalCalendarEvents) ? state.externalCalendarEvents : []),
+    ...(Array.isArray(state.calendar) ? state.calendar : []),
+  ];
+  return raw.map((event, index) => {
+    const date = String(event.date || event.startDate || event.startIso || "").slice(0, 10);
+    if (!date) return null;
+    const time = event.time || String(event.startIso || "").slice(11, 16) || "";
+    const start = eventDateTime(date, time);
+    return { id:event.eventKey || event.id || `cloud-calendar-${index}`, source:"calendar", type:event.type || "google", label:event.typeLabel || event.calendarName || "Calendar", title:event.title || event.summary || "Calendar Event", date, time, sort:start ? start.getTime() : Date.parse(date), fileId:event.fileId || "", fileNumber:event.fileNumber || "Calendar", clientName:event.clientName || "", address:event.address || "", status:event.status || "" };
+  }).filter(Boolean);
+}
+function allMobileCalendarEvents() {
+  const seen = new Set();
+  return [...fileCalendarEvents(), ...cloudCalendarEvents()].filter((event) => {
+    const key = String(event.id || `${event.title}-${event.date}-${event.time}`).toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).sort((a, b) => a.sort - b.sort);
+}
+function filteredCalendarEvents() {
+  const today = dateToday();
+  const weekEnd = calendarDateKey(new Date(Date.now() + 6 * 24 * 60 * 60 * 1000));
+  return allMobileCalendarEvents().filter((event) => {
+    if (activeCalendarFilter === "today") return event.date === today;
+    if (activeCalendarFilter === "week") return event.date >= today && event.date <= weekEnd;
+    if (activeCalendarFilter === "all") return true;
+    return event.date >= today;
+  });
+}
+function renderCalendar() {
+  const events = filteredCalendarEvents();
+  const labels = { today:"Today", upcoming:"Upcoming", week:"Next 7 days", all:"All scheduled" };
+  $("calendarRangeLabel").textContent = labels[activeCalendarFilter] || "Upcoming";
+  $("calendarCount").textContent = events.length;
+  $("calendarAgenda").innerHTML = events.length ? events.map((event) => `<article class="agenda-row ${escapeHtml(event.type)}"><div class="agenda-date"><strong>${escapeHtml(formatAgendaDate(event.date).split(",")[0] || "")}</strong><span>${escapeHtml(formatAgendaDate(event.date).replace(/^[^,]+,\\s*/, ""))}</span></div><div class="agenda-main"><p>${escapeHtml(event.title)}</p><small>${escapeHtml(formatAgendaTime(event.time))}${event.fileNumber ? ` · ${escapeHtml(event.fileNumber)}` : ""}${event.address ? ` · ${escapeHtml(event.address)}` : ""}</small>${event.status ? `<i class="badge ${statusClass(event.status)}">${escapeHtml(event.status)}</i>` : ""}</div>${event.fileId ? `<button type="button" data-file="${escapeHtml(event.fileId)}">Open</button>` : ""}</article>`).join("") : `<p class="subcopy">No calendar items found for this view.</p>`;
   bindFileLinks();
 }
 
@@ -366,16 +438,17 @@ function resetReceiptReaderState(message = "") {
   if ($("uploadInput")) $("uploadInput").value = "";
   if (message) notify(message);
 }
-function openDesktop(route) { const url = new URL("crm.html", window.location.href); if (route === "calendar") url.searchParams.set("view","calendar"); if (route === "prices") url.searchParams.set("view","prices"); if (route === "revenue") url.searchParams.set("view","revenue"); if (route === "invoice") url.searchParams.set("view","invoice"); if (route === "workorder") { url.searchParams.set("view","estimator"); url.hash = "assignment"; } if (route === "estimate") url.searchParams.set("view","estimator"); window.location.href=url.toString(); }
+function openDesktop(route) { if (route === "googleCalendar") { window.open("https://calendar.google.com/calendar/u/0/r", "_blank", "noopener"); return; } const url = new URL("crm.html", window.location.href); if (route === "calendar") url.searchParams.set("view","calendar"); if (route === "prices") url.searchParams.set("view","prices"); if (route === "revenue") url.searchParams.set("view","revenue"); if (route === "invoice") url.searchParams.set("view","invoice"); if (route === "workorder") { url.searchParams.set("view","estimator"); url.hash = "assignment"; } if (route === "estimate") url.searchParams.set("view","estimator"); window.location.href=url.toString(); }
 
 async function fetchReceipts() { const file = activeFile(); if (!file) { receipts=[]; return; } const response = await fetch(`${EXPENSE_API}?fileId=${encodeURIComponent(file.id)}&t=${Date.now()}`, { cache:"no-store" }); const result = await response.json().catch(() => ({})); receipts = response.ok && result.ok !== false ? result.expenses || [] : []; }
-async function loadCloud() { notify("Loading cloud..."); const response = await fetch(`${API}?t=${Date.now()}`, { cache:"no-store" }); const result = await response.json().catch(() => ({})); if (!response.ok || result.ok === false) throw new Error(result.error || "Cloud could not be reached."); const cloud = result.dashboard || {}; state = { files:(cloud.dashboardFiles || []).map(normalizeFile).filter((file) => fileKey(file) !== "26-a1006"), revenue:cloud.revenueRows || [], prices:cloud.priceRows || [], payroll:cloud.payrollRows || [], deletedFileKeys:cloud.deletedFileKeys || [], deletedPriceIds:cloud.deletedPriceIds || [] }; activeFileId = state.files.find((file) => file.id === activeFileId)?.id || state.files.find(isOpenFile)?.id || state.files[0]?.id || ""; saveLocal(); await fetchReceipts(); notify("Live cloud data"); renderAll(); }
+async function loadCloud() { notify("Loading cloud..."); const response = await fetch(`${API}?t=${Date.now()}`, { cache:"no-store" }); const result = await response.json().catch(() => ({})); if (!response.ok || result.ok === false) throw new Error(result.error || "Cloud could not be reached."); const cloud = result.dashboard || {}; state = { files:(cloud.dashboardFiles || []).map(normalizeFile).filter((file) => fileKey(file) !== "26-a1006"), revenue:cloud.revenueRows || [], prices:cloud.priceRows || [], payroll:cloud.payrollRows || [], calendarEvents:cloud.calendarEvents || [], externalCalendarEvents:cloud.externalCalendarEvents || [], calendar:cloud.calendar || [], deletedFileKeys:cloud.deletedFileKeys || [], deletedPriceIds:cloud.deletedPriceIds || [] }; activeFileId = state.files.find((file) => file.id === activeFileId)?.id || state.files.find(isOpenFile)?.id || state.files[0]?.id || ""; saveLocal(); await fetchReceipts(); notify("Live cloud data"); renderAll(); }
 async function saveCloud() { saveLocal(); const response = await fetch(API, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ action:"dashboardSync", syncedAt:new Date().toISOString(), source:"ANIMUS Mobile Fresh", dashboardFiles:state.files, revenueRows:state.revenue, payrollRows:state.payroll, priceRows:state.prices, deletedFileKeys:Array.from(new Set([...(state.deletedFileKeys || []),"26-a1006"])), deletedPriceIds:state.deletedPriceIds }), cache:"no-store" }); const result = await response.json().catch(() => ({})); if (!response.ok || result.ok === false) throw new Error(result.error || "Cloud save failed."); saveLocal(); return result; }
-function renderAll() { renderHome(); renderFiles(); renderDetail(); renderExpenses(); renderRevenue(); }
+function renderAll() { renderHome(); renderFiles(); renderDetail(); renderExpenses(); renderCalendar(); renderRevenue(); }
 
 document.querySelectorAll("[data-view]").forEach((button) => button.addEventListener("click", () => openView(button.dataset.view)));
 document.querySelectorAll("[data-open-desktop]").forEach((button) => button.addEventListener("click", () => openDesktop(button.dataset.openDesktop)));
 $("fileSearch").addEventListener("input", renderFiles); $("fileFilters").addEventListener("click", (event) => { const button=event.target.closest("[data-filter]"); if (!button) return; activeFilter=button.dataset.filter; document.querySelectorAll("[data-filter]").forEach((node) => node.classList.toggle("selected",node===button)); renderFiles(); });
+$("calendarFilters").addEventListener("click", (event) => { const button=event.target.closest("[data-calendar-filter]"); if (!button) return; activeCalendarFilter=button.dataset.calendarFilter; document.querySelectorAll("[data-calendar-filter]").forEach((node) => node.classList.toggle("selected",node===button)); renderCalendar(); });
 $("expenseChooseFile").addEventListener("click", chooseFileSheet); $("sheetBackdrop").addEventListener("click", closeSheet); $("cameraInput").addEventListener("change", (event) => { receiveReceipt(event.target.files?.[0]); event.target.value=""; }); $("uploadInput").addEventListener("change", (event) => { receiveReceipt(event.target.files?.[0]); event.target.value=""; });
 $("workPhotoCameraInput").addEventListener("change", (event) => { reviewWorkPhotos(event.target.files); event.target.value=""; });
 $("workPhotoUploadInput").addEventListener("change", (event) => { reviewWorkPhotos(event.target.files); event.target.value=""; });
