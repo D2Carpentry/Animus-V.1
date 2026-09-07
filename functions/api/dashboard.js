@@ -1,5 +1,6 @@
 const DASHBOARD_KEY = "dashboard/latest.json";
 const BACKUP_PREFIX = "dashboard/backups/";
+const MAX_READABLE_DASHBOARD_BYTES = 8 * 1024 * 1024;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -279,18 +280,20 @@ function mergeRevenueRows(existing = [], incoming = []) {
 
 async function readExistingDashboard(env) {
   if (!env.ANIMUS_BUCKET) return null;
-  const object = await env.ANIMUS_BUCKET.get(DASHBOARD_KEY);
-  if (!object) return null;
-  try {
-    return await object.json();
-  } catch (error) {
-    return null;
-  }
+  const result = await readDashboardJsonObject(env, DASHBOARD_KEY);
+  return result.dashboard || null;
 }
 
 async function readDashboardJsonObject(env, key) {
   const object = await env.ANIMUS_BUCKET.get(key);
   if (!object) return { found: false, dashboard: null, error: "" };
+  if (Number(object.size || 0) > MAX_READABLE_DASHBOARD_BYTES) {
+    return {
+      found: true,
+      dashboard: null,
+      error: `Saved dashboard is too large to read safely (${object.size} bytes).`,
+    };
+  }
   try {
     return { found: true, dashboard: await object.json(), error: "" };
   } catch (error) {
@@ -311,6 +314,7 @@ async function newestReadableBackup(env) {
   }
   const backups = (listed.objects || [])
     .filter((object) => object.key.endsWith(".json"))
+    .filter((object) => !object.size || Number(object.size) <= MAX_READABLE_DASHBOARD_BYTES)
     .sort((a, b) => String(b.uploaded || "").localeCompare(String(a.uploaded || "")))
     .slice(0, 20);
 
