@@ -288,6 +288,41 @@ async function readExistingDashboard(env) {
   }
 }
 
+async function readDashboardJsonObject(env, key) {
+  const object = await env.ANIMUS_BUCKET.get(key);
+  if (!object) return { found: false, dashboard: null, error: "" };
+  try {
+    return { found: true, dashboard: await object.json(), error: "" };
+  } catch (error) {
+    return {
+      found: true,
+      dashboard: null,
+      error: error?.message || "Saved dashboard JSON could not be read.",
+    };
+  }
+}
+
+async function newestReadableBackup(env) {
+  let listed;
+  try {
+    listed = await env.ANIMUS_BUCKET.list({ prefix: BACKUP_PREFIX, limit: 100 });
+  } catch (error) {
+    return null;
+  }
+  const backups = (listed.objects || [])
+    .filter((object) => object.key.endsWith(".json"))
+    .sort((a, b) => String(b.uploaded || "").localeCompare(String(a.uploaded || "")))
+    .slice(0, 20);
+
+  for (const backup of backups) {
+    const result = await readDashboardJsonObject(env, backup.key);
+    if (result.dashboard) {
+      return { key: backup.key, dashboard: result.dashboard };
+    }
+  }
+  return null;
+}
+
 function mergeDashboard(existing = {}, incoming = {}) {
   const deletedFileKeys = new Set([
     // A confirmed accidental work file. This file number must never return
@@ -370,12 +405,30 @@ async function handleGet(context) {
     return handleBackupGet(context, backup);
   }
 
-  const object = await env.ANIMUS_BUCKET.get(DASHBOARD_KEY);
-  if (!object) {
+  const result = await readDashboardJsonObject(env, DASHBOARD_KEY);
+  if (!result.found) {
     return jsonResponse({ ok: true, dashboard: null });
   }
-  const dashboard = await object.json();
-  return jsonResponse({ ok: true, dashboard });
+  if (result.dashboard) {
+    return jsonResponse({ ok: true, dashboard: result.dashboard });
+  }
+
+  const recoveredBackup = await newestReadableBackup(env);
+  if (recoveredBackup?.dashboard) {
+    return jsonResponse({
+      ok: true,
+      dashboard: recoveredBackup.dashboard,
+      recoveredFromBackup: true,
+      recoveredBackupKey: recoveredBackup.key,
+      warning: "The latest cloud dashboard could not be read, so ANIMUS loaded the newest valid Cloudflare backup instead.",
+    });
+  }
+
+  return jsonResponse({
+    ok: false,
+    error: "The latest cloud dashboard could not be read and no valid Cloudflare backup was found.",
+    detail: result.error,
+  }, 500);
 }
 
 async function handleBackupList(context) {
@@ -408,12 +461,14 @@ async function handleBackupSummary(context, key) {
   if (!key.startsWith(BACKUP_PREFIX) || !key.endsWith(".json")) {
     return jsonResponse({ ok: false, error: "Invalid backup key." }, 400);
   }
-  const object = await env.ANIMUS_BUCKET.get(key);
-  if (!object) {
+  const result = await readDashboardJsonObject(env, key);
+  if (!result.found) {
     return jsonResponse({ ok: false, error: "Backup was not found." }, 404);
   }
-  const dashboard = await object.json();
-  return jsonResponse({ ok: true, summary: dashboardSummary(dashboard, key) });
+  if (!result.dashboard) {
+    return jsonResponse({ ok: false, error: "Backup could not be read.", detail: result.error }, 500);
+  }
+  return jsonResponse({ ok: true, summary: dashboardSummary(result.dashboard, key) });
 }
 
 async function handleBackupGet(context, key) {
@@ -421,12 +476,14 @@ async function handleBackupGet(context, key) {
   if (!key.startsWith(BACKUP_PREFIX) || !key.endsWith(".json")) {
     return jsonResponse({ ok: false, error: "Invalid backup key." }, 400);
   }
-  const object = await env.ANIMUS_BUCKET.get(key);
-  if (!object) {
+  const result = await readDashboardJsonObject(env, key);
+  if (!result.found) {
     return jsonResponse({ ok: false, error: "Backup was not found." }, 404);
   }
-  const dashboard = await object.json();
-  return jsonResponse({ ok: true, dashboard, summary: dashboardSummary(dashboard, key) });
+  if (!result.dashboard) {
+    return jsonResponse({ ok: false, error: "Backup could not be read.", detail: result.error }, 500);
+  }
+  return jsonResponse({ ok: true, dashboard: result.dashboard, summary: dashboardSummary(result.dashboard, key) });
 }
 
 async function handlePost(context) {
@@ -514,7 +571,7 @@ export async function onRequestOptions() {
 }
 
 export async function onRequestHead(context) {
-  const response = await handleGet(context);
+  const response = await onRequestGet(context);
   return new Response(null, {
     status: response.status,
     headers: response.headers,
@@ -522,9 +579,25 @@ export async function onRequestHead(context) {
 }
 
 export async function onRequestGet(context) {
-  return handleGet(context);
+  try {
+    return await handleGet(context);
+  } catch (error) {
+    return jsonResponse({
+      ok: false,
+      error: "Dashboard cloud read failed.",
+      detail: error?.message || String(error),
+    }, 500);
+  }
 }
 
 export async function onRequestPost(context) {
-  return handlePost(context);
+  try {
+    return await handlePost(context);
+  } catch (error) {
+    return jsonResponse({
+      ok: false,
+      error: "Dashboard cloud save failed.",
+      detail: error?.message || String(error),
+    }, 500);
+  }
 }

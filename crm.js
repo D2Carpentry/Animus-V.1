@@ -1116,9 +1116,16 @@ async function fetchDashboardFromCloudflare() {
   });
   const result = await response.json().catch(() => ({}));
   if (!response.ok || result.ok === false) {
-    throw new Error(result.error || `Cloudflare load failed with status ${response.status}.`);
+    throw new Error(result.detail ? `${result.error}: ${result.detail}` : (result.error || `Cloudflare load failed with status ${response.status}.`));
   }
-  return result.dashboard || null;
+  const dashboard = result.dashboard || null;
+  if (dashboard && result.recoveredFromBackup) {
+    Object.defineProperty(dashboard, "__cloudRecovery", {
+      value: { key: result.recoveredBackupKey || "", warning: result.warning || "" },
+      enumerable: false,
+    });
+  }
+  return dashboard;
 }
 
 async function fetchDashboardBackupsFromCloudflare() {
@@ -1778,9 +1785,11 @@ async function autoRestoreDashboardFromCloud() {
     }
     applyDashboardBackup(dashboard, { preserveMissing: false });
     renderCrm();
-    showDashboardSaveStatus(`Loaded the current cloud copy: ${files.length} files. ${dashboardCloudCountSummary(files)}.`);
+    const recovery = dashboard.__cloudRecovery;
+    const loadedFrom = recovery?.key ? "Recovered from cloud backup" : "Loaded the current cloud copy";
+    showDashboardSaveStatus(`${loadedFrom}: ${files.length} files. ${dashboardCloudCountSummary(files)}.`);
   } catch (error) {
-    showDashboardSaveStatus("Cloudflare could not be reached. Browser data was not loaded. Use Restore Backup only if you need a manual snapshot.", true);
+    showDashboardSaveStatus(`${error.message || "Cloudflare could not be reached."} Browser data was not loaded. Use Restore Backup only if you need a manual snapshot.`, true);
   }
 }
 
