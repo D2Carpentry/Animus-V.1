@@ -3625,6 +3625,32 @@ function upsertDashboardFileFromEstimate(data, row, options = {}) {
   return file;
 }
 
+function createWorkFileFromEstimatorData(data = {}, fileName = "") {
+  if (!data || typeof data !== "object") throw new Error("That estimate could not be read.");
+  const estimateData = {
+    ...data,
+    clientPhone: data.clientPhone || data.phone || "",
+    clientEmail: data.clientEmail || data.email || "",
+    projectAddress: data.projectAddress || data.address || data.clientAddress || "",
+    estimateNumber: data.estimateNumber || data.manualEstimateNumber || data.fileNumber || "",
+    projectType: data.projectType || "Other",
+  };
+  const row = revenueRowFromEstimate(estimateData, fileName || data.sourceFileName || "");
+  const file = upsertDashboardFileFromEstimate(estimateData, row);
+  file.editableEstimate = estimateData;
+  file.estimateStatus = estimateData.estimateStatus || file.estimateStatus || "Estimate Completed";
+  file.updatedAt = new Date().toISOString();
+  addSystemNote(file, `Work file created from uploaded estimate${fileName ? ` ${fileName}` : ""}.`);
+  saveCrmFiles({ syncExpenses: false });
+  if (typeof switchCrmView === "function") switchCrmView("files");
+  activeFileId = file.id;
+  renderCrm();
+  queueDashboardCloudSave(buildDashboardSyncPayload({ includeRevenue: true, syncExpenses: false, captureEdits: false, restoreRevenueHistory: false }), { replaceLatest: true })
+    .then(() => showDashboardSaveStatus(`Created work file from estimate and saved to Cloudflare. ${file.fileNumber || ""} ${file.clientName || ""}`.trim()))
+    .catch((error) => showDashboardSaveStatus(error.message || "Work file was created locally, but Cloudflare save did not finish.", true));
+  return file;
+}
+
 function createDashboardFileFromRevenueRow(row) {
   const estimate = row.attachedEstimate || {};
   const importedAt = new Date().toISOString();
@@ -9218,6 +9244,16 @@ window.addEventListener("message", (event) => {
   if (event.origin !== window.location.origin) return;
   if (event.data?.type === "animus-supplement-saved") {
     syncSupplementFromEstimator(event.data.estimate);
+    return;
+  }
+  if (event.data?.type === "animus-create-work-file-from-estimate") {
+    try {
+      const file = createWorkFileFromEstimatorData(event.data.estimate, event.data.fileName || "");
+      event.source?.postMessage({ type: "animus-work-file-created", fileId: file.id, fileNumber: file.fileNumber }, event.origin);
+    } catch (error) {
+      event.source?.postMessage({ type: "animus-work-file-create-failed", error: error.message || "Work file could not be created." }, event.origin);
+      window.alert(error.message || "Work file could not be created from that estimate.");
+    }
     return;
   }
   if (event.data?.type === "animus-supplement-discarded") {
