@@ -3080,7 +3080,7 @@ function openEstimatorInCommandCenter(url, estimateData = null) {
   }
   const estimatorUrl = new URL(url, window.location.href);
   estimatorUrl.searchParams.set("embedded", "1");
-  estimatorUrl.searchParams.set("v", "20260901-estimator-sidebar-submenu");
+      estimatorUrl.searchParams.set("v", "20260907-estimator-dark-invoice");
   estimatorUrl.searchParams.set("open", Date.now().toString());
   if (estimateData) {
     frame.addEventListener("load", () => {
@@ -3320,6 +3320,9 @@ function openActiveInvoice() {
   }
   const invoiceEstimate = {
     ...file.editableEstimate,
+    mode: "invoice",
+    documentMode: "invoice",
+    title: "Invoice",
     estimateTitle: "Invoice",
     invoicePaid: file.invoicePaid === "Yes" || file.paidInFull === "Yes",
   };
@@ -3327,13 +3330,7 @@ function openActiveInvoice() {
     invoiceEstimate.flatTotal = file.invoice.total;
     invoiceEstimate.totals = { ...(invoiceEstimate.totals || {}), total: Number(file.invoice.total) || 0 };
   }
-  try {
-    localStorage.setItem("d2EstimateStudio", JSON.stringify(invoiceEstimate));
-  } catch (error) {
-    window.alert("The invoice could not be loaded into this browser. Try refreshing and opening it again.");
-    return;
-  }
-  window.open("index.html?invoice=1", "_blank", "noopener");
+  sendEstimateToEstimator(invoiceEstimate);
 }
 
 function searchCrmFile() {
@@ -8109,7 +8106,7 @@ document.querySelectorAll("[data-crm-view]").forEach((button) => {
     if (frame && (!currentSrc || currentSrc === "about:blank")) {
       const estimatorUrl = new URL("animus-estimate-demo.html", window.location.href);
       estimatorUrl.searchParams.set("standard", "1");
-      estimatorUrl.searchParams.set("v", "20260901-estimator-sidebar-submenu");
+  estimatorUrl.searchParams.set("v", "20260907-estimator-dark-invoice");
       estimatorUrl.searchParams.set("open", Date.now().toString());
       frame.src = estimatorUrl.toString();
     }

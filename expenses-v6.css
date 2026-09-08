@@ -38,3 +38,130 @@ body.animus-expense-center-active #crmExpensesView { margin: 0; }
 .expense-image-library { overflow:hidden; border:1px solid var(--ec-line); border-radius:11px; background:#fff; box-shadow:0 1px 2px rgba(15,23,42,.04); }.expense-library-head { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; padding:20px; border-bottom:1px solid var(--ec-line); }.expense-library-head h2 { margin:0; color:#1d2d47; font-size:17px; }.expense-library-head p { margin:6px 0 0; color:var(--ec-muted); font-size:12px; }.expense-image-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:14px; padding:18px; }.expense-image-card { display:grid; overflow:hidden; min-width:0; padding:0; border:1px solid #dce4ee; border-radius:9px; color:#29364a; background:#fff; cursor:pointer; text-align:left; font:inherit; transition:border-color .16s ease,box-shadow .16s ease,transform .16s ease; }.expense-image-card:hover { border-color:#7baaf9; box-shadow:0 6px 14px rgba(37,99,235,.10); transform:translateY(-1px); }.expense-image-card img { width:100%; height:160px; object-fit:cover; background:#f8fafc; }.expense-image-card span { display:grid; gap:4px; padding:11px; }.expense-image-card strong { overflow:hidden; color:#263852; font-size:13px; font-weight:850; text-overflow:ellipsis; white-space:nowrap; }.expense-image-card small { overflow:hidden; color:#718198; font-size:11px; font-weight:650; text-overflow:ellipsis; white-space:nowrap; }
 @media (max-width:1120px) { .expense-center { grid-template-columns:210px minmax(0,1fr); }.expense-main { padding:22px; }.expense-workspace { grid-template-columns:minmax(520px,1fr) 315px; }.expense-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); }.expense-select:nth-of-type(n+3) { display:none; } }
 @media (max-width:640px) { .expense-company-launch { align-items:flex-start; flex-direction:column; }.expense-company-launch-actions { width:100%; justify-content:space-between; }.expense-company-launch-actions .expense-button { flex:1; } }
+
+/* Dark theme: keep the expense workflow fully inside the ANIMUS dark shell. */
+body.animus-dark-theme .expense-center {
+  --ec-bg:#111827;
+  --ec-line:#334155;
+  --ec-text:#eef4fb;
+  --ec-muted:#b6c3d4;
+  background:#111827;
+  color:#eef4fb;
+}
+body.animus-dark-theme .expense-main,
+body.animus-dark-theme #crmExpensesView {
+  background:#111827!important;
+  color:#eef4fb!important;
+}
+body.animus-dark-theme .expense-kpi,
+body.animus-dark-theme .expense-table-card,
+body.animus-dark-theme .expense-drawer,
+body.animus-dark-theme .expense-home-card,
+body.animus-dark-theme .expense-company-launch,
+body.animus-dark-theme .expense-image-library,
+body.animus-dark-theme .expense-detail-modal,
+body.animus-dark-theme .expense-import-modal {
+  background:#172234!important;
+  border-color:#334155!important;
+  color:#eef4fb!important;
+  box-shadow:0 1px 2px rgba(0,0,0,.18)!important;
+}
+body.animus-dark-theme .expense-toolbar,
+body.animus-dark-theme .expense-library-head,
+body.animus-dark-theme .expense-home-card-head,
+body.animus-dark-theme .expense-detail-section,
+body.animus-dark-theme .expense-detail-modal .expense-drawer-actions,
+body.animus-dark-theme .expense-import-modal .expense-import-actions {
+  border-color:#334155!important;
+  background:#172234!important;
+}
+body.animus-dark-theme .expense-table thead,
+body.animus-dark-theme .expense-table tr,
+body.animus-dark-theme .expense-file-ledger,
+body.animus-dark-theme .expense-image-card,
+body.animus-dark-theme .expense-image-list-row,
+body.animus-dark-theme .expense-preview,
+body.animus-dark-theme .expense-pdf-preview,
+body.animus-dark-theme .expense-import-row {
+  background:#111a28!important;
+  border-color:#334155!important;
+  color:#eef4fb!important;
+}
+body.animus-dark-theme .expense-table td {
+  border-top-color:#334155!important;
+  color:#eef4fb!important;
+}
+body.animus-dark-theme .expense-table tr.selected {
+  background:#1f3555!important;
+  box-shadow:inset 3px 0 0 #60a5fa!important;
+}
+body.animus-dark-theme .expense-table tr:hover,
+body.animus-dark-theme .expense-file-ledger:hover,
+body.animus-dark-theme .expense-image-card:hover,
+body.animus-dark-theme .expense-image-list-row:hover {
+  background:#1d2d44!important;
+  color:#f8fbff!important;
+}
+body.animus-dark-theme .expense-title,
+body.animus-dark-theme .expense-kpi-value,
+body.animus-dark-theme .expense-home-card-head h2,
+body.animus-dark-theme .expense-company-launch h2,
+body.animus-dark-theme .expense-library-head h2,
+body.animus-dark-theme .expense-name-button strong,
+body.animus-dark-theme .expense-file-ledger-copy strong,
+body.animus-dark-theme .expense-image-card strong,
+body.animus-dark-theme .expense-detail b,
+body.animus-dark-theme .expense-item b,
+body.animus-dark-theme .expense-drawer-vendor,
+body.animus-dark-theme .expense-import-row strong {
+  color:#f8fbff!important;
+}
+body.animus-dark-theme .expense-breadcrumb,
+body.animus-dark-theme .expense-kpi-label,
+body.animus-dark-theme .expense-kpi-note,
+body.animus-dark-theme .expense-count,
+body.animus-dark-theme .expense-table th,
+body.animus-dark-theme .expense-name-button small,
+body.animus-dark-theme .expense-drawer-meta,
+body.animus-dark-theme .expense-detail,
+body.animus-dark-theme .expense-detail-editor label,
+body.animus-dark-theme .expense-file-ledger-copy small,
+body.animus-dark-theme .expense-file-ledger-total small,
+body.animus-dark-theme .expense-image-card small,
+body.animus-dark-theme .expense-library-head p,
+body.animus-dark-theme .expense-home-card-head p,
+body.animus-dark-theme .expense-company-launch p:not(.expense-company-eyebrow),
+body.animus-dark-theme .expense-empty {
+  color:#b6c3d4!important;
+}
+body.animus-dark-theme .expense-search,
+body.animus-dark-theme .expense-select,
+body.animus-dark-theme .expense-detail-editor input,
+body.animus-dark-theme .expense-detail-editor select,
+body.animus-dark-theme .expense-detail-editor textarea,
+body.animus-dark-theme .expense-database-search,
+body.animus-dark-theme .expense-import-row input:not([type=checkbox]),
+body.animus-dark-theme .expense-button:not(.primary) {
+  background:#111827!important;
+  border-color:#3b4b63!important;
+  color:#dbeafe!important;
+}
+body.animus-dark-theme .expense-button.primary,
+body.animus-dark-theme #expenseSave,
+body.animus-dark-theme #expenseEditToggle,
+body.animus-dark-theme #expenseImportAll,
+body.animus-dark-theme #expenseImportModal [data-expense-import-submit] {
+  background:#2563eb!important;
+  border-color:#2563eb!important;
+  color:#fff!important;
+}
+body.animus-dark-theme .expense-button.danger {
+  border-color:#7f1d1d!important;
+  color:#fca5a5!important;
+}
+body.animus-dark-theme .expense-thumb,
+body.animus-dark-theme .expense-preview img,
+body.animus-dark-theme .expense-pdf-preview object {
+  background:#0b1422!important;
+  border-color:#334155!important;
+}
