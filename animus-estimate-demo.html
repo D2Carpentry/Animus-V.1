@@ -8,6 +8,9 @@
     if (new URLSearchParams(window.location.search).has("standard") || new URLSearchParams(window.location.search).has("fromDashboard")) {
       document.documentElement.classList.add("embedded-estimator");
     }
+    try {
+      if (localStorage.getItem("animus-ui-theme") === "dark") document.documentElement.classList.add("animus-estimator-dark");
+    } catch (error) {}
   </script>
   <style>
     :root { --navy:#071a33; --navy-2:#112b4c; --blue:#2563eb; --ink:#10213f; --muted:#64748b; --line:#e2e8f0; --wash:#f7f9fc; --gold:#c99a42; --green:#15803d; --red:#dc2626; --amber:#d97706; }
@@ -25,6 +28,53 @@
     @media print{.side,.top,.header-card .toggle,.actions,.btn,.line-add,.demo-banner{display:none!important}.shell{display:block}.main{padding:0;max-width:none}.layout{display:block}.summary{position:static;margin-top:16px}.card{break-inside:avoid;border-color:#cbd5e1}.section{padding:14px}.line-table{min-width:0;font-size:11px}.line-table input{border:0;padding:0;background:transparent}.form-stack{gap:12px}}
     @media(max-width:1050px){.shell{grid-template-columns:1fr}.side{height:auto;position:static;display:none}.main{padding:20px}.layout{grid-template-columns:1fr}.summary{position:static}.grid.three{grid-template-columns:repeat(2,minmax(0,1fr))}}
     @media(max-width:620px){.main{padding:16px}.top{align-items:flex-start;flex-direction:column}.actions{width:100%;flex-wrap:wrap}.actions .btn{flex:1}.grid,.grid.three{grid-template-columns:1fr}.header-card{align-items:flex-start;flex-direction:column}.save-note{text-align:left}}
+    .animus-estimator-dark { color-scheme: dark; }
+    .animus-estimator-dark body { --wash:#0b111c; --ink:#f3f7fb; --muted:#9ba9ba; --line:#243247; background:#0b111c; color:#e8eef7; }
+    .animus-estimator-dark .main { background:#0b111c; }
+    .animus-estimator-dark .card,
+    .animus-estimator-dark .estimate-menu,
+    .animus-estimator-dark .share-menu { background:#111a28; border-color:#243247; color:#e8eef7; box-shadow:0 1px 2px rgba(0,0,0,.22); }
+    .animus-estimator-dark .section,
+    .animus-estimator-dark .summary .section { background:#111a28; border-radius:11px; }
+    .animus-estimator-dark .header-card,
+    .animus-estimator-dark .workorder-preview-card { background:#0f1724; border-color:#243247; }
+    .animus-estimator-dark .top h1,
+    .animus-estimator-dark .section h2,
+    .animus-estimator-dark .summary-row strong,
+    .animus-estimator-dark .workorder-preview-card h3,
+    .animus-estimator-dark .workorder-preview-card dd { color:#f3f7fb; }
+    .animus-estimator-dark .section p,
+    .animus-estimator-dark .summary-row,
+    .animus-estimator-dark .subtle,
+    .animus-estimator-dark .estimate-id,
+    .animus-estimator-dark .photo-card span,
+    .animus-estimator-dark .workorder-preview-card p { color:#9ba9ba; }
+    .animus-estimator-dark label,
+    .animus-estimator-dark .check { color:#b6c3d4; }
+    .animus-estimator-dark input,
+    .animus-estimator-dark select,
+    .animus-estimator-dark textarea,
+    .animus-estimator-dark .btn,
+    .animus-estimator-dark .collapse-button,
+    .animus-estimator-dark .toggle button,
+    .animus-estimator-dark .icon { background:#0b1422; border-color:#2f4159; color:#e8eef7; }
+    .animus-estimator-dark input::placeholder,
+    .animus-estimator-dark textarea::placeholder { color:#74859c; }
+    .animus-estimator-dark input:focus,
+    .animus-estimator-dark select:focus,
+    .animus-estimator-dark textarea:focus { border-color:#3b82f6; box-shadow:0 0 0 3px rgba(37,99,235,.22); background:#0f1724; }
+    .animus-estimator-dark .btn.primary,
+    .animus-estimator-dark .menu-button { background:#2563eb; border-color:#2563eb; color:#fff; }
+    .animus-estimator-dark .toggle button.active { background:#132a49; color:#bfdbfe; }
+    .animus-estimator-dark .line-table th { border-color:#243247; color:#9ba9ba; background:#0b1422; }
+    .animus-estimator-dark .line-table td { border-color:#1f2a3d; }
+    .animus-estimator-dark .section-row td,
+    .animus-estimator-dark .section-row input { background:#172234; border-color:#2f4159; color:#f3f7fb; }
+    .animus-estimator-dark .summary .mini,
+    .animus-estimator-dark .photo-dropzone,
+    .animus-estimator-dark .footer-note { background:#0b1422; border-color:#243247; color:#dbeafe; }
+    .animus-estimator-dark .photo-dropzone strong { color:#f3f7fb; }
+    .animus-estimator-dark .demo-banner { background:#17130a; border-color:#c99a42; color:#f3d79a; }
   </style>
 </head>
 <body>

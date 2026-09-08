@@ -64,3 +64,57 @@ body.animus-dark-theme .animus-summary-cell.clickable:hover,body.animus-dark-the
 body.animus-dark-theme .animus-progress-dot{background:#0b1422!important}
 body.animus-dark-theme .animus-progress-step.done .animus-progress-dot{background:#16a34a!important}
 body.animus-dark-theme .animus-progress-step.current .animus-progress-dot{background:#2b2314!important}
+body.animus-dark-theme .animus-work-files-layout .crm-file-list-panel,
+body.animus-dark-theme .animus-work-files-layout .crm-file-workspace{background:#111a28!important;border-color:#243247!important}
+body.animus-dark-theme .animus-file-card-copy strong,
+body.animus-dark-theme .crm-file-card strong,
+body.animus-dark-theme .crm-file-card h3,
+body.animus-dark-theme .crm-file-card .crm-file-name{color:#f3f7fb!important}
+body.animus-dark-theme .animus-file-card-copy small,
+body.animus-dark-theme .crm-file-card small,
+body.animus-dark-theme .crm-file-card p{color:#8ab8ff!important}
+body.animus-dark-theme .animus-file-chevron{color:#8fa3bd!important}
+body.animus-dark-theme .animus-work-files-layout .crm-file-card{border-color:#1f2a3d!important;background:transparent!important}
+body.animus-dark-theme .animus-work-files-layout .crm-file-card:first-child{border-top-color:#1f2a3d!important}
+body.animus-dark-theme .animus-work-files-layout .crm-file-card:hover{background:#0f1724!important}
+body.animus-dark-theme #crmEstimatorView,
+body.animus-dark-theme .crm-estimator-toolbar{background:#111a28!important;border-color:#243247!important}
+body.animus-dark-theme #crmEstimatorFrame{background:#0b111c!important;border:0!important}
+body.animus-dark-theme #crmCalendarView .crm-revenue-hero,
+body.animus-dark-theme #crmCalendarView .crm-calendar-card,
+body.animus-dark-theme #crmCalendarView .crm-calendar-popovers .panel{background:#111a28!important;border-color:#243247!important;color:#e8eef7!important}
+body.animus-dark-theme #crmCalendarView .crm-revenue-hero h2,
+body.animus-dark-theme #crmCalendarView .crm-calendar-card h2,
+body.animus-dark-theme #crmCalendarView .crm-calendar-popovers h2,
+body.animus-dark-theme #crmCalendarView .crm-calendar-info h3,
+body.animus-dark-theme #crmCalendarView .crm-calendar-date strong,
+body.animus-dark-theme .crm-calendar-selected-summary strong{color:#f3f7fb!important}
+body.animus-dark-theme #crmCalendarView .crm-revenue-hero p,
+body.animus-dark-theme #crmCalendarView .crm-calendar-card .eyebrow,
+body.animus-dark-theme #crmCalendarView .crm-calendar-info p,
+body.animus-dark-theme #crmCalendarView .crm-calendar-date span,
+body.animus-dark-theme .crm-calendar-selected-summary span,
+body.animus-dark-theme .crm-calendar-selected-summary p{color:#9ba9ba!important}
+body.animus-dark-theme #crmCalendarView .crm-calendar-actions button,
+body.animus-dark-theme #crmCalendarView .crm-panel-actions button,
+body.animus-dark-theme #crmCalendarView .crm-calendar-event-actions button,
+body.animus-dark-theme #crmCalendarView .crm-inline-control,
+body.animus-dark-theme #crmCalendarView .crm-inline-control select,
+body.animus-dark-theme #crmCalendarView .crm-calendar-popovers input,
+body.animus-dark-theme #crmCalendarView .crm-calendar-popovers select,
+body.animus-dark-theme #crmCalendarView .crm-calendar-popovers textarea,
+body.animus-dark-theme #crmCalendarView .crm-calendar-popup-close{background:#0b1422!important;border-color:#2f4159!important;color:#e8eef7!important}
+body.animus-dark-theme #crmCalendarView #crmShowCalendarAdd,
+body.animus-dark-theme #crmCalendarView #crmShowCalendarAgenda{background:#2563eb!important;border-color:#2563eb!important;color:#fff!important}
+body.animus-dark-theme .crm-calendar-weekday,
+body.animus-dark-theme .crm-calendar-day{background:#0f1724!important;border-color:#243247!important;color:#e8eef7!important}
+body.animus-dark-theme .crm-calendar-day:hover,
+body.animus-dark-theme .crm-calendar-day.selected{background:#132a49!important;border-color:#3b82f6!important}
+body.animus-dark-theme .crm-calendar-day.muted{background:#0b1422!important;color:#64748b!important}
+body.animus-dark-theme .crm-calendar-day.today .crm-calendar-day-number{background:#2563eb!important;color:#fff!important}
+body.animus-dark-theme .crm-calendar-day-number{color:#f3f7fb!important}
+body.animus-dark-theme .crm-calendar-day-count{color:#9ba9ba!important}
+body.animus-dark-theme #crmCalendarView .crm-calendar-event,
+body.animus-dark-theme .crm-calendar-selected-summary{background:#0f1724!important;border-color:#243247!important;color:#e8eef7!important}
+body.animus-dark-theme #crmCalendarView .crm-calendar-event:hover,
+body.animus-dark-theme #crmCalendarView .crm-calendar-event.selected{background:#132a49!important;border-color:#3b82f6!important}
