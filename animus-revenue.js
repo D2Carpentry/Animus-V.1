@@ -5,7 +5,7 @@
   const dateText = (value) => { const date = new Date(`${value || ""}T12:00:00`); return Number.isNaN(date.getTime()) ? "Date pending" : date.toLocaleDateString("en-US", { month:"short", day:"numeric", year:"numeric" }); };
   const numeric = (value) => typeof parseMoney === "function" ? parseMoney(value) : Number(String(value || "").replace(/[^0-9.-]/g, "")) || 0;
   const profit = (row) => typeof revenueProfit === "function" ? revenueProfit(row) : numeric(row.gross) - numeric(row.expenses) - numeric(row.labor);
-  const state = { query:"", status:"all", project:"all", columns:{ date:true, margin:true, expenses:false, actions:true }, page:1, perPage:10, action:"", filterOpen:false, columnsOpen:false };
+  const state = { query:"", status:"all", project:"all", columns:{ date:true, margin:true, expenses:true, actions:true }, page:1, perPage:10, action:"", filterOpen:false, columnsOpen:false };
   let originalRender = null;
 
   function rows() {
