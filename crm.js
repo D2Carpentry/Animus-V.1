@@ -3080,7 +3080,7 @@ function openEstimatorInCommandCenter(url, estimateData = null) {
   }
   const estimatorUrl = new URL(url, window.location.href);
   estimatorUrl.searchParams.set("embedded", "1");
-      estimatorUrl.searchParams.set("v", "20260912-estimator-note-popup");
+  estimatorUrl.searchParams.set("v", "20260912-estimator-scroll-fix");
   estimatorUrl.searchParams.set("open", Date.now().toString());
   if (estimateData) {
     frame.addEventListener("load", () => {
@@ -3103,7 +3103,7 @@ function sendEstimateToEstimator(estimateData, target = "") {
   if (target) estimatorUrl.hash = target.replace(/^#/, "");
   estimatorUrl.searchParams.set("fromDashboard", "1");
   estimatorUrl.searchParams.set("standard", "1");
-  estimatorUrl.searchParams.set("v", "20260912-estimator-note-popup");
+  estimatorUrl.searchParams.set("v", "20260912-estimator-scroll-fix");
   estimatorUrl.searchParams.set("open", Date.now().toString());
   // The browser copy opens immediately, and the postMessage on iframe load
   // guarantees the same estimate arrives even when storage timing is slow.
@@ -8106,7 +8106,7 @@ document.querySelectorAll("[data-crm-view]").forEach((button) => {
     if (frame && (!currentSrc || currentSrc === "about:blank")) {
       const estimatorUrl = new URL("animus-estimate-demo.html", window.location.href);
       estimatorUrl.searchParams.set("standard", "1");
-  estimatorUrl.searchParams.set("v", "20260912-estimator-note-popup");
+      estimatorUrl.searchParams.set("v", "20260912-estimator-scroll-fix");
       estimatorUrl.searchParams.set("open", Date.now().toString());
       frame.src = estimatorUrl.toString();
     }
@@ -9243,10 +9243,6 @@ window.addEventListener("message", (event) => {
     const frame = $("crmEstimatorFrame");
     const height = Math.max(720, Math.min(Number(event.data.height) || 0, 12000));
     if (frame && height) frame.style.height = `${height + 24}px`;
-    return;
-  }
-  if (event.data?.type === "animus-estimator-wheel") {
-    window.scrollBy({ top: Number(event.data.deltaY) || 0, left: 0, behavior: "auto" });
     return;
   }
   if (event.data?.type === "animus-supplement-saved") {
