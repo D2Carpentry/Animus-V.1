@@ -100,7 +100,7 @@
       <div class="side-foot"><b>Animus Estimation</b>Test Zone workspace</div>
     </aside>
     <main class="main">
-      <div class="top"><div><a class="crumb" href="crm.html">&larr; Back to Command Center</a><h1>Animus Estimation</h1></div><div class="actions"><span class="save-note" id="saveNote"></span><button class="btn" id="previewBtn" type="button">Preview</button><button class="menu-button" id="estimateMenuToggle" type="button" aria-label="Open estimate actions" aria-expanded="false">☰</button><div class="estimate-menu" id="estimateMenu" hidden><button class="btn" id="newBtn">New Draft</button><button class="btn" id="saveBtn">Save Draft</button><button class="btn primary" id="createWorkFileMenu" type="button">Create Work File</button><button class="btn primary" id="printBtn">Share / PDF</button></div></div></div>
+      <div class="top"><div><a class="crumb" href="crm.html">&larr; Back to Command Center</a><h1>Animus Estimation</h1></div><div class="actions"><span class="save-note" id="saveNote"></span><button class="btn" id="previewBtn" type="button">Preview</button><button class="menu-button" id="estimateMenuToggle" type="button" aria-label="Open estimate actions" aria-expanded="false">☰</button><div class="estimate-menu" id="estimateMenu" hidden><button class="btn" id="newBtn">New Draft</button><button class="btn" id="recoverDraftBtn" type="button">Recover Last Browser Draft</button><button class="btn" id="saveBtn">Save Draft</button><button class="btn primary" id="createWorkFileMenu" type="button">Create Work File</button><button class="btn primary" id="printBtn">Share / PDF</button></div></div></div>
       <div class="demo-banner">This is a separate test estimator. It uses only the demo draft on this browser and never changes your live estimates, work files, prices, or financials.</div>
       <section class="card header-card"><div><div class="estimate-id">Work File # <strong id="workFileNumberDisplay">Pending save</strong> · <span id="documentNumberHeader">Estimate Number</span> <strong id="estimateNumber">Pending save</strong></div><p id="estimateStatus">Draft estimate - not connected to a work file</p></div><div class="toggle" role="group" aria-label="Estimate mode"><button class="active" data-mode="estimate">Estimate</button><button data-mode="supplement">Supplement</button></div></section>
       <div class="layout">
@@ -204,6 +204,20 @@
       function showEstimatePreview(){ dataFromForm(); calculate(); $('customerReview')?.scrollIntoView({behavior:'smooth',block:'start'}); }
       function printCustomerReview(){ save(); renderCustomerReview(estimateDataFromState()); setTimeout(()=>window.print(),60); }
       function createWorkFileFromEstimate(){ const data=currentEstimateData(); if(!String(data.clientName||'').trim()){ $('saveNote').textContent='Add the customer name before creating a work file.'; return; } save(); if(window.parent&&window.parent!==window){ window.parent.postMessage({type:'animus-create-work-file-from-estimate',estimate:data,fileName:state.importedEstimateFileName||''}, window.location.origin); $('saveNote').textContent='Creating work file in ANIMUS...'; } else { $('saveNote').textContent='Open this estimator inside ANIMUS to create the work file.'; } }
+      function recoverSavedDraft(){
+        try {
+          const saved = JSON.parse(localStorage.getItem(KEY) || 'null');
+          if(!saved || typeof saved !== 'object') {
+            $('saveNote').textContent='No saved browser draft was found on this device.';
+            return;
+          }
+          loadEstimateData(saved);
+          $('saveNote').textContent='Recovered the last browser-saved draft.';
+          $('estimateStatus').textContent='Recovered browser draft. Review it, then click Save Draft to download a .d2estimate copy.';
+        } catch(error) {
+          $('saveNote').textContent='The saved browser draft could not be recovered.';
+        }
+      }
       function newDraft(){ if(!confirm('Start a blank demo estimate? The saved demo draft will remain until you save the new one.')) return; state=blankEstimateState(); fillForm(); syncModeUI(); renderLines(); $('estimateStatus').textContent='Draft estimate - work file # will generate on save'; }
       function closeEstimateMenu(){ const menu=$('estimateMenu'), toggle=$('estimateMenuToggle'); if(menu) menu.hidden=true; if(toggle) toggle.setAttribute('aria-expanded','false'); }
       let activeNoteIndex = -1;
@@ -247,6 +261,7 @@
         $('createWorkFileMenu').onclick=()=>{createWorkFileFromEstimate();closeEstimateMenu();};
         $('saveBtn').onclick=()=>{saveDraftToComputer();closeEstimateMenu();};
         $('saveSide').onclick=saveDraftToComputer;
+        $('recoverDraftBtn').onclick=()=>{recoverSavedDraft();closeEstimateMenu();};
         $('newBtn').onclick=()=>{newDraft();closeEstimateMenu();};
         $('previewBtn').onclick=showEstimatePreview;
         $('printBtn').onclick=()=>{closeEstimateMenu();printCustomerReview()};
