@@ -176,6 +176,22 @@
       function calculate(){ dataFromForm(); if(!state.taxValue && state.taxType==='percent') { state.taxValue='6.5'; const taxInput=$('taxValue'); if(taxInput) taxInput.value='6.5'; } syncModeUI(); const materials=state.materials.reduce((sum,line)=>sum+lineTotal(line,'material'),0); const scope=state.scope.reduce((sum,line)=>sum+lineTotal(line,'scope'),0); const labor=(Number(state.laborHours)||0)*(Number(state.laborRate)||0); const linear=(Number(state.linearFeet)||0)*(Number(state.linearRate)||0); const lineSubtotal=materials+scope; const baseBeforeTax=state.priceOverrideEnabled ? Math.max(0,Number(state.priceOverride)||0) : lineSubtotal; const taxable = state.materialTax && !state.priceOverrideEnabled ? materials : baseBeforeTax; const tax=state.taxEnabled ? (state.taxType==='dollar' ? Number(state.taxValue)||0 : taxable*(Number(state.taxValue)||0)/100) : 0; const discountRaw=state.discountEnabled ? (state.discountType==='dollar' ? Number(state.discountValue)||0 : (baseBeforeTax+tax)*(Number(state.discountValue)||0)/100) : 0; const discount=Math.min(discountRaw,baseBeforeTax+tax); const total=Math.max(0,baseBeforeTax+tax-discount); const depositRaw=state.depositType==='percent' ? total*(Number(state.deposit)||0)/100 : Number(state.deposit)||0; $('materialsSubtotal').textContent=money(materials);$('scopeSubtotal').textContent=money(scope);$('sumMaterials').textContent=money(materials);$('sumScope').textContent=state.priceOverrideEnabled?`${money(scope)} ignored`:money(scope);$('sumTax').textContent=money(tax);$('sumDiscount').textContent='-'+money(discount);$('grandTotal').textContent=money(total);$('sumDeposit').textContent=money(Math.min(depositRaw,total)); $('internalCalculation').value=labor?`${money(labor)} internal labor`:''; $('linearCalculation').value=linear?`${money(linear)} linear feet`:''; $('valueFooter').hidden=!state.valueFooterEnabled; $('workFileNumberDisplay').textContent=state.workFileNumber||'Pending save'; $('estimateNumber').textContent=(state.showEstimateNumber ? (state.manualEstimateNumber||state.estimateNumber||'Pending save') : 'Hidden'); renderCustomerReview(estimateDataFromState()); }
       function nextDemoWorkFileNumber(){ return `26-A${Date.now().toString().slice(-4)}`; }
       function save(){ dataFromForm(); if(!state.workFileNumber) state.workFileNumber=nextDemoWorkFileNumber(); if($('workFileNumber')) $('workFileNumber').value=state.workFileNumber; if(!state.estimateNumber) state.estimateNumber=`${state.workFileNumber}-EST`; if(!state.manualEstimateNumber) state.manualEstimateNumber=state.estimateNumber; state.savedAt=new Date().toISOString(); localStorage.setItem(KEY,JSON.stringify(state)); $('saveNote').textContent='Draft saved with work file #'; calculate(); setTimeout(()=>{ if($('saveNote').textContent==='Draft saved with work file #') $('saveNote').textContent=''; },3500); }
+      function safeFileName(value){ return String(value||'animus-estimate').trim().replace(/[\\/:*?"<>|]+/g,'-').replace(/\s+/g,' ').slice(0,90) || 'animus-estimate'; }
+      function downloadEditableEstimate(){
+        const data=currentEstimateData();
+        const baseName=data.estimateNumber||data.fileNumber||data.clientName||'animus-estimate';
+        const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+        const url=URL.createObjectURL(blob);
+        const link=document.createElement('a');
+        link.href=url;
+        link.download=`${safeFileName(baseName)}.d2estimate`;
+        document.body.append(link);
+        link.click();
+        link.remove();
+        setTimeout(()=>URL.revokeObjectURL(url),1000);
+        $('saveNote').textContent='Draft saved. Editable .d2estimate downloaded.';
+      }
+      function saveDraftToComputer(){ save(); downloadEditableEstimate(); }
       function dashboardFiles(){ try { const raw=JSON.parse(localStorage.getItem('d2CrmDemoFiles')||'[]'); return Array.isArray(raw)?raw:[]; } catch(_) { return []; } }
       function populateDashboardFiles(){ const select=$('dashboardFile'); const current=state.dashboardFile||''; dashboardFiles().forEach((file,index)=>{ const opt=document.createElement('option'); opt.value=String(index); opt.textContent=`${file.fileNumber||'No file #'} - ${file.clientName||'Unnamed Client'}`; select.appendChild(opt); }); select.value=current; }
       function loadDashboardFile(){ const index=Number($('dashboardFile').value); const file=dashboardFiles()[index]; if(!file){ $('saveNote').textContent='Choose a dashboard file first'; return; } const map={clientName:'clientName',clientPhone:'phone',clientEmail:'email',projectAddress:'address',fileNumber:'workFileNumber',leadSource:'leadSource',inspectionDate:'inspectionDate',projectType:'projectType',otherProjectType:'description'}; Object.entries(map).forEach(([from,to])=>{ if(file[from]!==undefined && $(to)) $(to).value=to==='phone'?formatPhone(file[from]):file[from]||''; }); state.dashboardFile=String(index); dataFromForm(); calculate(); $('estimateStatus').textContent=`Loaded from ${file.fileNumber||'dashboard work file'} - demo copy only`; }
@@ -229,8 +245,8 @@
         $('invoicePreviewBtn').onclick=()=>{refreshInvoiceImages(); $('invoiceImages').scrollIntoView({behavior:'smooth',block:'center'});};
         $('estimateUploadInput').onchange=event=>{importEstimateFile(event.target.files?.[0]);event.target.value='';};
         $('createWorkFileMenu').onclick=()=>{createWorkFileFromEstimate();closeEstimateMenu();};
-        $('saveBtn').onclick=()=>{save();closeEstimateMenu();};
-        $('saveSide').onclick=save;
+        $('saveBtn').onclick=()=>{saveDraftToComputer();closeEstimateMenu();};
+        $('saveSide').onclick=saveDraftToComputer;
         $('newBtn').onclick=()=>{newDraft();closeEstimateMenu();};
         $('previewBtn').onclick=showEstimatePreview;
         $('printBtn').onclick=()=>{closeEstimateMenu();printCustomerReview()};
@@ -239,7 +255,7 @@
         $('shareSide').onclick=event=>{event.stopPropagation();openShareMenu();};
         $('sharePdf').onclick=()=>{closeShareMenu();printCustomerReview();};
         $('shareEmail').onclick=()=>{closeShareMenu();save();location.href=`mailto:?subject=${encodeURIComponent(state.title||'Estimate')}&body=${encodeURIComponent('Please see the attached estimate. Download or print the PDF from ANIMUS Estimation.')}`;};
-        $('shareDownload').onclick=()=>{closeShareMenu();save();const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download=`${state.manualEstimateNumber||state.estimateNumber||'animus-estimate'}.json`;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);};
+        $('shareDownload').onclick=()=>{closeShareMenu();saveDraftToComputer();};
         $('photoPreviewClose').onclick=()=>$('photoPreview').hidden=true;
         $('estimatePreviewClose').onclick=()=>$('estimatePreview').hidden=true;
         $('noteEditorClose').onclick=closeNoteEditor;
