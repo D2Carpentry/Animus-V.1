@@ -6,7 +6,7 @@
     <title>D2 Command Center</title>
     <meta name="theme-color" content="#0d4a91">
     <link rel="icon" href="icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=20260821-expense-v5-clean">
+    <link rel="stylesheet" href="styles.css?v=20260914-start-date-popup">
     <link rel="stylesheet" href="calendar-upgrade.css?v=20260808-calendar-popups">
     <link rel="stylesheet" href="expenses-v6.css?v=20260907-expense-dark-full">
   <link rel="stylesheet" href="animus-shell.css?v=20260907-dark-theme-fuller-pass">
@@ -92,7 +92,7 @@
             </button>
           </div>
           <section class="crm-estimator-embed" id="crmEstimatorView" hidden>
-            <iframe id="crmEstimatorFrame" title="ANIMUS Estimation" src="animus-estimate-demo.html?standard=1&amp;v=20260913-multi-warranty&amp;open=crm-template"></iframe>
+            <iframe id="crmEstimatorFrame" title="ANIMUS Estimation" src="animus-estimate-demo.html?standard=1&amp;v=20260914-note-popup-start-date&amp;open=crm-template"></iframe>
           </section>
 
           <section class="crm-estimator-embed crm-test-zone-embed" id="crmTestZoneView" hidden>
@@ -277,7 +277,7 @@
                   </label>
                   <label>
                     Start Date
-                    <input id="crmStartDate" type="date">
+                    <input id="crmStartDate" type="date" readonly aria-haspopup="dialog" title="Click to edit start date">
                   </label>
                   <label>
                     Arrival Window
@@ -998,6 +998,21 @@
         </div>
       </section>
     </div>
+    <div class="crm-modal-backdrop" id="crmStartDateModal" hidden>
+      <section class="crm-choice-modal crm-start-date-modal" role="dialog" aria-modal="true" aria-labelledby="crmStartDateModalTitle">
+        <button type="button" class="crm-modal-close" id="crmStartDateModalClose" aria-label="Close">×</button>
+        <p class="eyebrow">Work File</p>
+        <h2 id="crmStartDateModalTitle">Start Date</h2>
+        <p class="crm-choice-status" id="crmStartDateModalFile">Choose the job start date for this file.</p>
+        <label class="crm-start-date-label" for="crmStartDateQuickInput">Start Date
+          <input id="crmStartDateQuickInput" type="date">
+        </label>
+        <div class="crm-choice-actions crm-start-date-actions">
+          <button type="button" class="icon-button" id="crmStartDateModalCancel">Cancel</button>
+          <button type="button" class="icon-button primary-action" id="crmStartDateModalSave">Save Start Date</button>
+        </div>
+      </section>
+    </div>
     <div class="crm-modal-backdrop crm-loading-backdrop" id="crmReceiptLoadingModal" hidden>
       <section class="crm-choice-modal crm-loading-modal" role="status" aria-live="polite" aria-label="Reading receipt photo">
         <div class="crm-loading-spinner" aria-hidden="true"></div>
@@ -1022,7 +1037,7 @@
         caches.keys().then((keys) => keys.forEach((key) => caches.delete(key)));
       }
     </script>
-<script src="crm.js?v=20260906-cloud-latest-recovery"></script>
+<script src="crm.js?v=20260914-note-popup-start-date"></script>
     <script src="calendar-upgrade.js?v=20260808-calendar-popups"></script>
   <script src="animus-shell.js?v=20260903-dark-theme-toggle"></script>
     <script src="animus-dashboard.js?v=20260901-dashboard-calendar-feed"></script>

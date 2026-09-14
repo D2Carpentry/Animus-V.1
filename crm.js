@@ -2268,6 +2268,52 @@ function openDateField(id) {
   }
 }
 
+function closeStartDateModal() {
+  const modal = $("crmStartDateModal");
+  if (modal) modal.hidden = true;
+}
+
+function openStartDateModal() {
+  const file = normalizeCrmFile(activeFile());
+  const modal = $("crmStartDateModal");
+  if (!file || !modal) return;
+  const input = $("crmStartDateQuickInput");
+  const fileLabel = $("crmStartDateModalFile");
+  if (input) input.value = file.startDate || $("crmStartDate")?.value || "";
+  if (fileLabel) {
+    fileLabel.textContent = `${file.fileNumber || "Work file"} · ${file.clientName || "Unnamed Client"}`;
+  }
+  modal.hidden = false;
+  setTimeout(() => {
+    if (!input) return;
+    input.focus();
+    if (typeof input.showPicker === "function") {
+      try { input.showPicker(); } catch (error) { /* Date pickers need direct browser gestures in some engines. */ }
+    }
+  }, 0);
+}
+
+function saveStartDateModal() {
+  const file = normalizeCrmFile(activeFile());
+  const input = $("crmStartDateQuickInput");
+  if (!file || !input) return closeStartDateModal();
+  const oldDate = file.startDate || "";
+  const newDate = input.value || "";
+  file.startDate = newDate;
+  const field = $("crmStartDate");
+  if (field) {
+    field.value = newDate;
+    field.dataset.crmBoundFileId = file.id;
+  }
+  if (oldDate !== newDate) {
+    addSystemNote(file, `Start date changed from ${oldDate || "blank"} to ${newDate || "blank"}.`);
+  }
+  if (file.fileStatus === "In Progress") ensureRevenueRowForFile(file);
+  saveCrmFiles();
+  closeStartDateModal();
+  renderCrm();
+}
+
 function requireCrmReason(message, notePrefix) {
   return;
 }
@@ -3080,7 +3126,7 @@ function openEstimatorInCommandCenter(url, estimateData = null) {
   }
   const estimatorUrl = new URL(url, window.location.href);
   estimatorUrl.searchParams.set("embedded", "1");
-  estimatorUrl.searchParams.set("v", "20260913-multi-warranty");
+  estimatorUrl.searchParams.set("v", "20260914-note-popup-start-date");
   estimatorUrl.searchParams.set("open", Date.now().toString());
   if (estimateData) {
     frame.addEventListener("load", () => {
@@ -3103,7 +3149,7 @@ function sendEstimateToEstimator(estimateData, target = "") {
   if (target) estimatorUrl.hash = target.replace(/^#/, "");
   estimatorUrl.searchParams.set("fromDashboard", "1");
   estimatorUrl.searchParams.set("standard", "1");
-  estimatorUrl.searchParams.set("v", "20260913-multi-warranty");
+  estimatorUrl.searchParams.set("v", "20260914-note-popup-start-date");
   estimatorUrl.searchParams.set("open", Date.now().toString());
   // The browser copy opens immediately, and the postMessage on iframe load
   // guarantees the same estimate arrives even when storage timing is slow.
@@ -8106,7 +8152,7 @@ document.querySelectorAll("[data-crm-view]").forEach((button) => {
     if (frame && (!currentSrc || currentSrc === "about:blank")) {
       const estimatorUrl = new URL("animus-estimate-demo.html", window.location.href);
       estimatorUrl.searchParams.set("standard", "1");
-      estimatorUrl.searchParams.set("v", "20260913-multi-warranty");
+      estimatorUrl.searchParams.set("v", "20260914-note-popup-start-date");
       estimatorUrl.searchParams.set("open", Date.now().toString());
       frame.src = estimatorUrl.toString();
     }
@@ -9085,6 +9131,7 @@ document.addEventListener("keydown", (event) => {
     menu.hidden = true;
     $("animusWorkFileFilterButton")?.setAttribute("aria-expanded", "false");
   }
+  if (!$("crmStartDateModal")?.hidden) closeStartDateModal();
 });
 $("animusWorkFileSearch")?.addEventListener("input", renderCrm);
 $("animusWorkFileSearchButton")?.addEventListener("click", renderCrm);
@@ -9100,6 +9147,28 @@ $("crmEditEstimateTotal").addEventListener("click", toggleEstimateAmountEdit);
 $("crmSaveEstimateAmount").addEventListener("click", saveEstimateAmountEdit);
 $("crmEditMaterialTotal").addEventListener("click", toggleMaterialAmountEdit);
 $("crmSaveMaterialAmount").addEventListener("click", saveMaterialAmountEdit);
+$("crmStartDate")?.addEventListener("click", (event) => {
+  event.preventDefault();
+  openStartDateModal();
+});
+$("crmStartDate")?.addEventListener("keydown", (event) => {
+  if (event.key === "Enter" || event.key === " ") {
+    event.preventDefault();
+    openStartDateModal();
+  }
+});
+$("crmStartDateModalClose")?.addEventListener("click", closeStartDateModal);
+$("crmStartDateModalCancel")?.addEventListener("click", closeStartDateModal);
+$("crmStartDateModalSave")?.addEventListener("click", saveStartDateModal);
+$("crmStartDateModal")?.addEventListener("click", (event) => {
+  if (event.target.id === "crmStartDateModal") closeStartDateModal();
+});
+$("crmStartDateQuickInput")?.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    saveStartDateModal();
+  }
+});
 $("crmAddPriceLine").addEventListener("click", addPriceLine);
 $("crmPriceSearch").addEventListener("input", renderPriceDatabase);
 $("crmPriceSort").addEventListener("change", renderPriceDatabase);
