@@ -3,9 +3,9 @@
   const THEME_KEY = "animus-ui-theme";
   const views = [
     ["dashboard", "⌂", "Dashboard"], ["files", "▱", "Work Files"], ["estimator", "▤", "Estimates"], ["calendar", "□", "Calendar"],
-    ["revenue", "↗", "Revenue"], ["expenses", "▧", "Expenses"], ["payroll", "♙", "Payroll"], ["prices", "▦", "Price Database"], ["business", "◈", "Business Performance"], ["contacts", "◉", "Contacts"],
+    ["revenue", "↗", "Revenue"], ["expenses", "▧", "Expenses"], ["payroll", "♙", "Payroll"], ["prices", "▦", "Price Database"], ["business", "◈", "Business Performance"], ["contacts", "◉", "Contacts"], ["playground", "✦", "Playground Zone"],
   ];
-  const titles = { dashboard:"Command Center", files:"Work Files", contacts:"Contacts", calendar:"Calendar", revenue:"Revenue", expenses:"Expenses", payroll:"Payroll", prices:"Price Database", business:"Business Performance", estimator:"Estimate Studio", legacyEstimator:"Legacy Estimator", testzone:"Legacy Estimator", invoice:"Invoice" };
+  const titles = { dashboard:"Command Center", files:"Work Files", contacts:"Contacts", calendar:"Calendar", revenue:"Revenue", expenses:"Expenses", payroll:"Payroll", prices:"Price Database", business:"Business Performance", playground:"Playground Zone", estimator:"Estimate Studio", legacyEstimator:"Legacy Estimator", testzone:"Legacy Estimator", invoice:"Invoice" };
   function preferredTheme() {
     try { return localStorage.getItem(THEME_KEY) === "dark" ? "dark" : "light"; } catch (error) { return "light"; }
   }
@@ -25,6 +25,7 @@
     if (!document.querySelector("#crmContactsView")?.hidden) return "contacts";
     if (!document.querySelector("#crmPriceView")?.hidden) return "prices";
     if (!document.querySelector("#crmBusinessView")?.hidden) return "business";
+    if (!document.querySelector("#crmPlaygroundView")?.hidden) return "playground";
     if (!document.querySelector("#crmEstimatorView")?.hidden) return "estimator";
     if (!document.querySelector("#crmTestZoneView")?.hidden) return "legacyEstimator";
     return document.body.dataset.animusView === "files" ? "files" : "dashboard";
@@ -44,7 +45,7 @@
     document.body.classList.add("animus-unified-ui");
     setTheme(preferredTheme());
     const workspace = views.filter(([view]) => ["dashboard", "files", "estimator", "calendar"].includes(view));
-    const business = views.filter(([view]) => ["revenue", "expenses", "payroll", "prices", "business", "contacts"].includes(view));
+    const business = views.filter(([view]) => ["revenue", "expenses", "payroll", "prices", "business", "contacts", "playground"].includes(view));
     const estimatorSubnav = `<div class="animus-estimator-subnav"><button type="button" data-animus-estimator-action="new-file">New File</button><button type="button" data-animus-estimator-action="import">Import Estimate</button><button type="button" data-animus-estimator-action="supplement">Create Supplement</button><button type="button" data-animus-estimator-action="invoice">Invoice</button><button type="button" data-animus-estimator-action="work-order">Work Order</button><button type="button" data-animus-estimator-action="legacy">Legacy Estimator</button></div>`;
     const makeButtons = (items) => items.map(([view, icon, label]) => `<div class="animus-nav-item"><button type="button" data-animus-shell-view="${view}"><span class="animus-global-icon">${icon}</span>${label}</button>${view === "estimator" ? estimatorSubnav : ""}</div>`).join("");
     document.body.insertAdjacentHTML("afterbegin", `<aside class="animus-global-sidebar" id="animusGlobalSidebar"><div class="animus-global-brand"><img src="assets/animus-sidebar-logo.png" alt="ANIMUS logo"><span>ANIMUS<small>Command Center</small></span></div><p class="animus-global-label">Workspace</p><nav class="animus-global-nav">${makeButtons(workspace)}</nav><p class="animus-global-label">Business</p><nav class="animus-global-nav">${makeButtons(business)}</nav><div class="animus-sidebar-footer"><div class="animus-account-wrap"><button class="animus-global-account" id="animusAccountToggle" type="button" aria-expanded="false"><span class="animus-account-avatar">D2</span><span><strong>D2 Carpentry &amp; Design</strong>Owner</span><b aria-hidden="true">⌄</b></button><div class="animus-account-menu" id="animusAccountMenu" hidden><p class="animus-account-menu-title">Backup &amp; restore</p></div></div></div></aside>`);
@@ -94,7 +95,7 @@
     }));
     document.addEventListener("click", (event) => { if (event.target.closest?.("[data-crm-view]")) setTimeout(syncShell, 0); });
     const observer = new MutationObserver(syncShell);
-    ["crmExpensesView","crmRevenueView","crmPayrollView","crmCalendarView","crmContactsView","crmPriceView","crmBusinessView","crmEstimatorView","crmTestZoneView"].map((id) => document.getElementById(id)).filter(Boolean).forEach((element) => observer.observe(element, { attributes:true, attributeFilter:["hidden"] }));
+    ["crmExpensesView","crmRevenueView","crmPayrollView","crmCalendarView","crmContactsView","crmPriceView","crmBusinessView","crmPlaygroundView","crmEstimatorView","crmTestZoneView"].map((id) => document.getElementById(id)).filter(Boolean).forEach((element) => observer.observe(element, { attributes:true, attributeFilter:["hidden"] }));
     syncShell();
     // Hold the ANIMUS splash briefly so the shell and cloud-backed UI can settle
     // before the Command Center is revealed.

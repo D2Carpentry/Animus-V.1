@@ -3401,7 +3401,7 @@ function searchCrmFile() {
 function initialDashboardView() {
   const params = new URLSearchParams(window.location.search);
   const view = String(params.get("view") || "").trim().toLowerCase();
-  return ["dashboard", "calendar", "revenue", "expenses", "prices", "business", "invoice", "estimator"].includes(view) ? view : "dashboard";
+  return ["dashboard", "calendar", "revenue", "expenses", "prices", "business", "contacts", "playground", "invoice", "estimator"].includes(view) ? view : "dashboard";
 }
 
 function applyInitialFileRoute() {
@@ -8099,13 +8099,14 @@ function switchCrmView(view) {
   const showExpenses = view === "expenses";
   const showPrices = view === "prices";
   const showBusiness = view === "business";
+  const showPlayground = view === "playground";
   const showEstimator = view === "estimator";
   const showLegacyEstimator = view === "legacyEstimator" || view === "testzone";
   const estimatorShell = $("crmEstimatorView")?.closest(".crm-dashboard-view");
   document.body.classList.toggle("crm-estimator-active", showEstimator || showLegacyEstimator);
   document.querySelectorAll(".crm-dashboard-view").forEach((section) => {
     const keepEstimatorShell = (showEstimator || showLegacyEstimator) && estimatorShell && section === estimatorShell;
-    section.hidden = !keepEstimatorShell && (showRevenue || showPayroll || showCalendar || showContacts || showInvoice || showExpenses || showPrices || showBusiness || showEstimator || showLegacyEstimator);
+    section.hidden = !keepEstimatorShell && (showRevenue || showPayroll || showCalendar || showContacts || showInvoice || showExpenses || showPrices || showBusiness || showPlayground || showEstimator || showLegacyEstimator);
   });
   $("crmRevenueView").hidden = !showRevenue;
   $("crmPayrollView").hidden = !showPayroll;
@@ -8115,6 +8116,7 @@ function switchCrmView(view) {
   $("crmExpensesView").hidden = !showExpenses;
   $("crmPriceView").hidden = !showPrices;
   $("crmBusinessView").hidden = !showBusiness;
+  $("crmPlaygroundView").hidden = !showPlayground;
   $("crmEstimatorView").hidden = !showEstimator;
   $("crmTestZoneView").hidden = !showLegacyEstimator;
 document.querySelectorAll("[data-crm-view]").forEach((button) => {
@@ -9796,6 +9798,43 @@ document.addEventListener("click", (event) => {
   if (button.id === "crmSaveManualExpense") { event.preventDefault(); event.stopImmediatePropagation(); saveExpenseLedgerV4(); }
   if (button.id === "crmClearManualExpense" || button.id === "crmAddManualExpense") { event.preventDefault(); event.stopImmediatePropagation(); clearExpenseLedgerV4Form(); }
 }, true);
+
+let animusPortalDemoOpenCount = 0;
+
+function animusPortalDemoTimestamp() {
+  return new Date().toLocaleString("en-US", {
+    month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit",
+  });
+}
+
+function simulateCustomerPortalOpen() {
+  animusPortalDemoOpenCount += 1;
+  const timestamp = animusPortalDemoTimestamp();
+  const firstOpen = $("animusPortalFirstOpen");
+  const lastOpen = $("animusPortalLastOpen");
+  const openCount = $("animusPortalOpenCount");
+  const feed = $("animusPortalFeed");
+  if (firstOpen && firstOpen.textContent === "Not yet") firstOpen.textContent = timestamp;
+  if (lastOpen) lastOpen.textContent = timestamp;
+  if (openCount) openCount.textContent = String(animusPortalDemoOpenCount);
+  if (feed) {
+    feed.innerHTML = `<article><strong>Estimate opened</strong><span>${escapeHtml(timestamp)} · Demo Customer viewed portal link</span></article>${animusPortalDemoOpenCount > 1 ? feed.innerHTML : ""}`;
+  }
+}
+
+function copyDemoPortalLink() {
+  const link = "https://portal.d2carpentry.com/e/demo-26-a1024";
+  navigator.clipboard?.writeText(link).then(() => {
+    window.alert("Demo portal link copied.");
+  }).catch(() => {
+    window.prompt("Copy this demo portal link:", link);
+  });
+}
+
+["animusPortalCopyLink", "animusPortalCopyLinkInline"].forEach((id) => {
+  $(id)?.addEventListener("click", copyDemoPortalLink);
+});
+$("animusPortalSimulateOpen")?.addEventListener("click", simulateCustomerPortalOpen);
 
 persistRestoredDashboardIfNeeded();
 switchCrmView(initialDashboardView());

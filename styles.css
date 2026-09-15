@@ -4202,6 +4202,255 @@ body[data-copy-mode="team"] .estimate-sheet td:first-child {
   align-items: end;
 }
 
+.animus-playground-view {
+  display: grid;
+  gap: 18px;
+}
+
+.animus-playground-hero {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.animus-playground-hero .crm-command-copy p:last-child {
+  max-width: 680px;
+  margin-top: 5px;
+  color: #64748b;
+}
+
+.animus-playground-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+  gap: 18px;
+}
+
+.animus-portal-card {
+  padding: 22px;
+}
+
+.animus-portal-card .panel-header {
+  align-items: flex-start;
+}
+
+.animus-portal-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.animus-portal-pill.approved {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.animus-portal-link-box {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  margin: 16px 0;
+  padding: 12px;
+  border: 1px solid #dbe7f5;
+  border-radius: 10px;
+  background: #f8fbff;
+}
+
+.animus-portal-link-box span {
+  overflow: hidden;
+  color: #17315d;
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.animus-portal-link-box button,
+.animus-portal-actions button {
+  min-height: 38px;
+  padding: 0 13px;
+  border: 1px solid #d8e2ed;
+  border-radius: 8px;
+  background: #fff;
+  color: #174a9b;
+  font-weight: 850;
+}
+
+.animus-portal-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.animus-portal-note {
+  margin-top: 16px;
+  border-left: 3px solid #c99a42;
+  border-radius: 8px;
+  background: #fffaf0;
+  padding: 12px;
+  color: #6d5323;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.animus-portal-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.animus-portal-stats div {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+  padding: 13px;
+}
+
+.animus-portal-stats span {
+  display: block;
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.animus-portal-stats strong {
+  display: block;
+  margin-top: 8px;
+  color: #10213f;
+  font-size: 1rem;
+}
+
+.animus-portal-feed {
+  display: grid;
+  gap: 9px;
+  margin-top: 14px;
+}
+
+.animus-portal-feed p,
+.animus-portal-feed article {
+  margin: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  padding: 12px;
+}
+
+.animus-portal-feed article strong,
+.animus-portal-feed article span {
+  display: block;
+}
+
+.animus-portal-feed article span {
+  margin-top: 3px;
+  color: #64748b;
+  font-size: 0.82rem;
+}
+
+.animus-customer-preview {
+  grid-row: span 2;
+}
+
+.animus-customer-portal-shell {
+  overflow: hidden;
+  border: 1px solid #dbe7f5;
+  border-radius: 14px;
+  background: #f7f9fc;
+}
+
+.animus-customer-portal-shell header {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 20px;
+  background: #071a33;
+  color: #fff;
+}
+
+.animus-customer-portal-shell header strong,
+.animus-customer-portal-shell header span,
+.animus-customer-portal-shell header b {
+  display: block;
+}
+
+.animus-customer-portal-shell header strong {
+  color: #c99a42;
+  font-size: 1.05rem;
+}
+
+.animus-customer-portal-shell header span {
+  margin-top: 3px;
+  color: #dbeafe;
+}
+
+.animus-customer-portal-shell header b {
+  color: #fff;
+  font-size: 1.35rem;
+  white-space: nowrap;
+}
+
+.animus-customer-portal-shell section {
+  padding: 20px;
+}
+
+.animus-customer-portal-shell h3 {
+  margin: 0 0 8px;
+  color: #10213f;
+  font-size: 1.2rem;
+}
+
+.animus-customer-portal-shell p {
+  margin: 0 0 16px;
+  color: #64748b;
+}
+
+.animus-portal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.animus-portal-roadmap {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.animus-portal-roadmap li {
+  position: relative;
+  padding-left: 24px;
+  color: #334155;
+  font-weight: 750;
+}
+
+.animus-portal-roadmap li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.42em;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #2563eb;
+  box-shadow: 0 0 0 4px #dbeafe;
+}
+
+@media (max-width: 1050px) {
+  .animus-playground-hero,
+  .animus-playground-grid,
+  .animus-portal-fields,
+  .animus-portal-stats {
+    grid-template-columns: 1fr;
+  }
+}
+
 .crm-invoice-controls label {
   min-width: 160px;
 }

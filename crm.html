@@ -6,10 +6,10 @@
     <title>D2 Command Center</title>
     <meta name="theme-color" content="#0d4a91">
     <link rel="icon" href="icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=20260915-price-database-layout">
+    <link rel="stylesheet" href="styles.css?v=20260915-playground-portal">
     <link rel="stylesheet" href="calendar-upgrade.css?v=20260808-calendar-popups">
     <link rel="stylesheet" href="expenses-v6.css?v=20260907-expense-dark-full">
-  <link rel="stylesheet" href="animus-shell.css?v=20260915-price-database-layout">
+  <link rel="stylesheet" href="animus-shell.css?v=20260915-playground-portal">
     <link rel="stylesheet" href="animus-dashboard.css?v=20260822-command-center-home">
     <link rel="stylesheet" href="animus-work-file.css?v=20260902-work-photos">
     <link rel="stylesheet" href="animus-operations.css?v=20260822-operations-layout">
@@ -457,6 +457,118 @@
 
         <section class="crm-revenue-view" id="crmBusinessView" hidden>
           <div id="animusBusinessPerformance"></div>
+        </section>
+
+        <section class="crm-revenue-view animus-playground-view" id="crmPlaygroundView" hidden>
+          <section class="crm-command-panel crm-revenue-hero animus-playground-hero">
+            <div class="crm-command-copy">
+              <p class="eyebrow">Draft Lab</p>
+              <h2>Playground Zone</h2>
+              <p>Prototype customer-facing portal features here without touching live CRM files, estimates, revenue, or cloud save data.</p>
+            </div>
+            <div class="crm-calendar-actions">
+              <button type="button" id="animusPortalCopyLink">Copy Demo Link</button>
+              <button type="button" class="primary-action" id="animusPortalSimulateOpen">Simulate Customer Open</button>
+            </div>
+          </section>
+
+          <section class="animus-playground-grid">
+            <article class="panel crm-detail-card animus-portal-card animus-portal-builder">
+              <div class="panel-header">
+                <div>
+                  <p class="eyebrow">Customer Portal Concept</p>
+                  <h2>Estimate Share Link</h2>
+                </div>
+                <span class="animus-portal-pill">Draft only</span>
+              </div>
+              <div class="animus-portal-link-box">
+                <span>portal.d2carpentry.com/e/demo-26-a1024</span>
+                <button type="button" id="animusPortalCopyLinkInline">Copy</button>
+              </div>
+              <div class="animus-portal-fields">
+                <label>
+                  Customer
+                  <input value="Demo Customer" readonly>
+                </label>
+                <label>
+                  Estimate
+                  <input value="26-A1024" readonly>
+                </label>
+                <label>
+                  Status
+                  <select>
+                    <option>Sent - Awaiting Review</option>
+                    <option>Viewed</option>
+                    <option>Approved</option>
+                  </select>
+                </label>
+              </div>
+              <div class="animus-portal-note">
+                This page is a design/testing sandbox. Later, this button can create a secure token, publish a portal link, and log opens back into ANIMUS.
+              </div>
+            </article>
+
+            <article class="panel crm-detail-card animus-portal-card">
+              <div class="panel-header">
+                <div>
+                  <p class="eyebrow">Tracking Preview</p>
+                  <h2>Customer Opens</h2>
+                </div>
+              </div>
+              <div class="animus-portal-stats">
+                <div><span>First Opened</span><strong id="animusPortalFirstOpen">Not yet</strong></div>
+                <div><span>Total Opens</span><strong id="animusPortalOpenCount">0</strong></div>
+                <div><span>Last Opened</span><strong id="animusPortalLastOpen">Not yet</strong></div>
+              </div>
+              <div class="animus-portal-feed" id="animusPortalFeed">
+                <p>No portal activity yet. Use “Simulate Customer Open” to test the flow.</p>
+              </div>
+            </article>
+
+            <article class="panel crm-detail-card animus-portal-card animus-customer-preview">
+              <div class="panel-header">
+                <div>
+                  <p class="eyebrow">Customer View</p>
+                  <h2>Estimate Portal</h2>
+                </div>
+                <span class="animus-portal-pill approved">Secure link preview</span>
+              </div>
+              <div class="animus-customer-portal-shell">
+                <header>
+                  <div>
+                    <strong>D2 Carpentry &amp; Design</strong>
+                    <span>Custom Cabinet Refacing Estimate</span>
+                  </div>
+                  <b>$12,480.00</b>
+                </header>
+                <section>
+                  <h3>Review Your Estimate</h3>
+                  <p>Your estimate, warranty documents, care guide, photos, and approval options would live here.</p>
+                  <div class="animus-portal-actions">
+                    <button type="button" class="primary-action">Approve Work</button>
+                    <button type="button">Ask a Question</button>
+                    <button type="button">Download PDF</button>
+                  </div>
+                </section>
+              </div>
+            </article>
+
+            <article class="panel crm-detail-card animus-portal-card">
+              <div class="panel-header">
+                <div>
+                  <p class="eyebrow">Future Build</p>
+                  <h2>Safe Connection Plan</h2>
+                </div>
+              </div>
+              <ul class="animus-portal-roadmap">
+                <li>Create secure portal links from estimates.</li>
+                <li>Track first open, last open, and total views.</li>
+                <li>Notify D2 by phone/email when an estimate is opened.</li>
+                <li>Let the customer approve, ask questions, and see updates.</li>
+                <li>Keep customer-facing portal data separate from internal CRM data until approved.</li>
+              </ul>
+            </article>
+          </section>
         </section>
 
         <section class="crm-revenue-view" id="crmCalendarView" hidden>
@@ -1037,9 +1149,9 @@
         caches.keys().then((keys) => keys.forEach((key) => caches.delete(key)));
       }
     </script>
-<script src="crm.js?v=20260914-note-popup-start-date"></script>
+<script src="crm.js?v=20260915-playground-portal"></script>
     <script src="calendar-upgrade.js?v=20260808-calendar-popups"></script>
-  <script src="animus-shell.js?v=20260915-sidebar-order"></script>
+  <script src="animus-shell.js?v=20260915-playground-portal"></script>
     <script src="animus-dashboard.js?v=20260901-dashboard-calendar-feed"></script>
     <link rel="stylesheet" href="animus-business-performance.css?v=20260822-business-performance">
     <script src="animus-business-performance.js?v=20260822-business-performance"></script>

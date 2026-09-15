@@ -280,3 +280,17 @@ body.animus-dark-theme #crmPriceView .crm-price-row button:hover{background:#1d4
 body.animus-dark-theme #crmPriceView .animus-price-entry input,
 body.animus-dark-theme #crmPriceView .crm-price-tools input,
 body.animus-dark-theme #crmPriceView .crm-price-tools select{background:#111827!important;border-color:#3b4b63!important;color:#dbeafe!important}
+body.animus-dark-theme #crmPlaygroundView .animus-portal-card,
+body.animus-dark-theme #crmPlaygroundView .animus-customer-portal-shell,
+body.animus-dark-theme #crmPlaygroundView .animus-portal-feed p,
+body.animus-dark-theme #crmPlaygroundView .animus-portal-feed article{background:#111a28!important;border-color:#334155!important;color:#eef4fb!important}
+body.animus-dark-theme #crmPlaygroundView .animus-portal-link-box,
+body.animus-dark-theme #crmPlaygroundView .animus-portal-stats div,
+body.animus-dark-theme #crmPlaygroundView .animus-customer-portal-shell section{background:#0f1724!important;border-color:#334155!important;color:#eef4fb!important}
+body.animus-dark-theme #crmPlaygroundView .animus-portal-link-box span,
+body.animus-dark-theme #crmPlaygroundView .animus-customer-portal-shell h3,
+body.animus-dark-theme #crmPlaygroundView .animus-portal-stats strong{color:#f8fbff!important}
+body.animus-dark-theme #crmPlaygroundView .animus-portal-note{background:#17130a!important;border-color:#c99a42!important;color:#f3d79a!important}
+body.animus-dark-theme #crmPlaygroundView .animus-portal-roadmap li,
+body.animus-dark-theme #crmPlaygroundView .animus-portal-feed article span,
+body.animus-dark-theme #crmPlaygroundView .animus-customer-portal-shell p{color:#b6c3d4!important}
