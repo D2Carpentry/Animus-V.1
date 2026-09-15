@@ -4000,61 +4000,198 @@ body[data-copy-mode="team"] .estimate-sheet td:first-child {
   min-width: 0;
 }
 
+.animus-price-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+}
+
+.animus-price-entry,
+.animus-price-parts {
+  padding: 26px;
+}
+
+.animus-price-entry .panel-header {
+  align-items: start;
+  gap: 18px;
+}
+
+.animus-price-entry .panel-header h2 {
+  margin-top: 4px;
+  font-size: 1.25rem;
+}
+
+.animus-price-entry .primary-action {
+  min-height: 44px;
+  padding-inline: 22px;
+  border-radius: 9px;
+  font-size: 1rem;
+}
+
+.animus-price-entry .field-grid.three {
+  grid-template-columns: minmax(240px, 1fr) minmax(160px, 1fr) minmax(160px, 1fr);
+  gap: 16px 20px;
+}
+
+.animus-price-entry label,
+.animus-price-parts label {
+  color: #6b7280;
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
+.animus-price-entry input,
+.crm-price-tools input,
+.crm-price-tools select {
+  min-height: 50px;
+  border-color: #d7dce5;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 750;
+}
+
+.animus-price-entry input::placeholder,
+.crm-price-tools input::placeholder {
+  color: #757b86;
+}
+
 .crm-price-list {
   display: grid;
-  gap: 10px;
+  gap: 14px;
 }
 
 .crm-price-tools {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(180px, 240px);
-  gap: 10px;
-  margin-bottom: 12px;
+  grid-template-columns: minmax(0, 1fr) minmax(210px, 285px);
+  gap: 16px;
+  margin-bottom: 18px;
 }
 
 .crm-price-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto auto auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 12px;
+  gap: 18px;
+  min-height: 92px;
   border: 1px solid #d7dce5;
-  border-radius: 8px;
+  border-radius: 9px;
   background: #f8fafc;
-  padding: 12px;
+  padding: 18px 20px;
 }
 
-.crm-price-row div {
+.crm-price-row-main {
   display: grid;
-  gap: 4px;
+  gap: 5px;
   min-width: 0;
 }
 
-.crm-price-row span,
-.crm-price-row small {
-  color: var(--muted);
+.crm-price-row-main strong {
+  color: #202124;
+  font-size: 1.03rem;
+  line-height: 1.25;
 }
 
-.crm-price-row button {
-  min-height: 32px;
-  padding: 0 10px;
-  background: #ffffff;
-  color: var(--blue);
+.crm-price-row-main span,
+.crm-price-row-actions small {
+  color: #6b7280;
 }
 
-.crm-price-row em {
-  color: var(--muted);
+.crm-price-row-main span {
+  font-size: 1rem;
+}
+
+.crm-price-row-main em {
+  margin-top: 5px;
+  color: #6b7280;
   font-size: 0.72rem;
   font-style: normal;
   font-weight: 900;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
+.crm-price-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.crm-price-row-actions small {
+  min-width: 44px;
+  text-align: right;
+  font-size: 0.95rem;
+}
+
+.crm-price-row .crm-price-amount {
+  min-width: 92px;
+  color: #202124;
+  font-size: 1.06rem;
+  text-align: right;
+}
+
+.crm-price-row button {
+  min-height: 40px;
+  padding: 0 16px;
+  border-color: transparent;
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--blue);
+  font-size: 1rem;
+  font-weight: 850;
+}
+
+.crm-price-row button:hover {
+  border-color: #c4d4ee;
+  background: #eef4ff;
+}
+
 .crm-price-row-editing {
-  grid-template-columns: minmax(180px, 1.4fr) 110px 90px minmax(120px, 0.8fr) minmax(120px, 0.9fr) auto auto;
+  grid-template-columns: minmax(220px, 1.4fr) 120px 105px minmax(140px, 0.8fr) minmax(160px, 0.9fr) auto auto;
 }
 
 .crm-price-row-editing input {
   min-width: 0;
+}
+
+@media (max-width: 900px) {
+  .animus-price-entry,
+  .animus-price-parts {
+    padding: 18px;
+  }
+
+  .animus-price-entry .panel-header,
+  .crm-price-row,
+  .crm-price-row-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .animus-price-entry .panel-header {
+    display: grid;
+  }
+
+  .animus-price-entry .primary-action {
+    width: 100%;
+  }
+
+  .animus-price-entry .field-grid.three,
+  .crm-price-tools,
+  .crm-price-row,
+  .crm-price-row-editing {
+    grid-template-columns: 1fr;
+  }
+
+  .crm-price-row-actions {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    gap: 10px;
+  }
+
+  .crm-price-row-actions small,
+  .crm-price-row .crm-price-amount {
+    min-width: 0;
+    text-align: left;
+  }
 }
 
 .crm-invoice-controls {

@@ -257,3 +257,14 @@ body.animus-dark-theme .expense-file-ledger:hover,
 body.animus-dark-theme .expense-image-card:hover,
 body.animus-dark-theme #crmPriceView tr:hover,
 body.animus-dark-theme .animus-revenue-table tr:hover td{background:#1d2d44!important}
+body.animus-dark-theme #crmPriceView .crm-price-row{background:#111a28!important;border-color:#334155!important;color:#eef4fb!important}
+body.animus-dark-theme #crmPriceView .crm-price-row-main strong,
+body.animus-dark-theme #crmPriceView .crm-price-row .crm-price-amount{color:#f8fbff!important}
+body.animus-dark-theme #crmPriceView .crm-price-row-main span,
+body.animus-dark-theme #crmPriceView .crm-price-row-main em,
+body.animus-dark-theme #crmPriceView .crm-price-row-actions small{color:#b6c3d4!important}
+body.animus-dark-theme #crmPriceView .crm-price-row button{background:#172234!important;border-color:#334155!important;color:#93c5fd!important}
+body.animus-dark-theme #crmPriceView .crm-price-row button:hover{background:#1d4ed8!important;border-color:#2563eb!important;color:#fff!important}
+body.animus-dark-theme #crmPriceView .animus-price-entry input,
+body.animus-dark-theme #crmPriceView .crm-price-tools input,
+body.animus-dark-theme #crmPriceView .crm-price-tools select{background:#111827!important;border-color:#3b4b63!important;color:#dbeafe!important}

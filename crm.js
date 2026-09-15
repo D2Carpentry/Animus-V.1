@@ -6708,17 +6708,20 @@ function renderPriceDatabase() {
 
 function renderReadonlyPriceRow(row) {
   const product = row.product || row.name || "Unnamed item";
+  const details = [row.category, row.vendor || row.source].filter(Boolean).join(" - ");
   return `
     <div class="crm-price-row">
-      <div>
+      <div class="crm-price-row-main">
         <strong>${escapeHtml(product)}</strong>
-        <span>${escapeHtml([row.category, row.vendor].filter(Boolean).join(" - "))}</span>
+        <span>${escapeHtml(details)}</span>
+        ${row.readonly ? `<em>Estimator</em>` : ""}
       </div>
-      <small>${escapeHtml(row.unit || "each")}</small>
-      <strong>${crmCurrency.format(Number(row.defaultPrice) || 0)}</strong>
-      <button type="button" data-price-edit="${escapeHtml(row.id)}">Edit</button>
-      <button type="button" data-price-delete="${escapeHtml(row.id)}">Delete</button>
-      ${row.readonly ? `<em>Estimator</em>` : ""}
+      <div class="crm-price-row-actions">
+        <small>${escapeHtml(row.unit || "each")}</small>
+        <strong class="crm-price-amount">${crmCurrency.format(Number(row.defaultPrice) || 0)}</strong>
+        <button type="button" data-price-edit="${escapeHtml(row.id)}">Edit</button>
+        <button type="button" data-price-delete="${escapeHtml(row.id)}">Delete</button>
+      </div>
     </div>
   `;
 }
