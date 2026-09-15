@@ -296,3 +296,9 @@ body.animus-dark-theme #crmPlaygroundView .animus-portal-note{background:#17130a
 body.animus-dark-theme #crmPlaygroundView .animus-portal-roadmap li,
 body.animus-dark-theme #crmPlaygroundView .animus-portal-feed article span,
 body.animus-dark-theme #crmPlaygroundView .animus-customer-portal-shell p{color:#b6c3d4!important}
+body.animus-dark-theme .animus-revenue-table.crm-revenue-resizable{min-width:1460px!important;table-layout:fixed!important}
+body.animus-dark-theme .animus-revenue-table.crm-revenue-resizable th,
+body.animus-dark-theme .animus-revenue-table.crm-revenue-resizable td{width:auto!important;min-width:0!important;max-width:none!important}
+body.animus-dark-theme .crm-revenue-column-resizer::after{background:#60718a!important}
+body.animus-dark-theme .crm-revenue-column-resizer:hover::after,
+body.animus-dark-theme.crm-revenue-column-resizing .crm-revenue-column-resizer::after{background:#c99a42!important}

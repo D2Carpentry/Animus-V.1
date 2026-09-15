@@ -5556,3 +5556,67 @@ body[data-copy-mode="team"] .estimate-sheet td:first-child {
     justify-items: start;
   }
 }
+
+.crm-revenue-table.crm-revenue-resizable {
+  min-width: 1460px;
+  table-layout: fixed;
+}
+
+.crm-revenue-table.crm-revenue-resizable th,
+.crm-revenue-table.crm-revenue-resizable td {
+  width: auto !important;
+  max-width: none !important;
+}
+
+.crm-revenue-table.crm-revenue-resizable th {
+  position: sticky;
+}
+
+.crm-revenue-table.crm-revenue-resizable th > span {
+  display: block;
+  overflow: hidden;
+  padding-right: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.crm-revenue-column-resizer {
+  position: absolute;
+  top: 7px;
+  right: -4px;
+  z-index: 3;
+  width: 10px;
+  height: calc(100% - 14px);
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: none;
+  cursor: col-resize;
+}
+
+.crm-revenue-column-resizer::after {
+  position: absolute;
+  top: 0;
+  right: 4px;
+  width: 2px;
+  height: 100%;
+  content: "";
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.crm-revenue-column-resizer:hover::after,
+.crm-revenue-column-resizing .crm-revenue-column-resizer::after {
+  background: #c99a42;
+}
+
+.crm-revenue-column-resizing {
+  cursor: col-resize !important;
+  user-select: none;
+}
+
+.crm-revenue-table.crm-revenue-resizable .crm-revenue-job,
+.crm-revenue-table.crm-revenue-resizable .crm-revenue-date {
+  min-width: 0;
+}

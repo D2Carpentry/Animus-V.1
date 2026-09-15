@@ -3883,6 +3883,77 @@ function sortedRevenueRows() {
   });
 }
 
+const CRM_REVENUE_COLUMN_STORAGE = "animus-revenue-column-widths-v1";
+const CRM_REVENUE_DEFAULT_COLUMN_WIDTHS = [142, 500, 130, 130, 130, 126, 132, 112, 92];
+
+function revenueColumnWidths() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(CRM_REVENUE_COLUMN_STORAGE) || "[]");
+    return CRM_REVENUE_DEFAULT_COLUMN_WIDTHS.map((width, index) => Math.max(64, Number(saved[index]) || width));
+  } catch (error) {
+    return [...CRM_REVENUE_DEFAULT_COLUMN_WIDTHS];
+  }
+}
+
+function saveRevenueColumnWidths(widths) {
+  try {
+    localStorage.setItem(CRM_REVENUE_COLUMN_STORAGE, JSON.stringify(widths.map((width) => Math.round(width))));
+  } catch (error) {
+    // Column widths are a display preference only.
+  }
+}
+
+function ensureRevenueColumnSizing() {
+  const table = document.querySelector(".crm-revenue-table");
+  if (!table) return;
+  table.classList.add("crm-revenue-resizable");
+  const widths = revenueColumnWidths();
+  let colgroup = table.querySelector("colgroup[data-revenue-columns]");
+  if (!colgroup) {
+    colgroup = document.createElement("colgroup");
+    colgroup.dataset.revenueColumns = "true";
+    table.insertBefore(colgroup, table.firstChild);
+  }
+  colgroup.innerHTML = widths.map((width, index) => `<col data-revenue-col="${index}" style="width:${width}px">`).join("");
+  table.querySelectorAll("thead th").forEach((header, index, headers) => {
+    if (header.dataset.revenueResizeReady === "true") return;
+    header.dataset.revenueResizeReady = "true";
+    const label = header.textContent.trim() || "Actions";
+    header.innerHTML = `<span>${escapeHtml(label)}</span>${index < headers.length - 1 ? `<button type="button" class="crm-revenue-column-resizer" data-revenue-column-resize="${index}" aria-label="Resize ${escapeHtml(label)} column"></button>` : ""}`;
+  });
+}
+
+function bindRevenueColumnResizers() {
+  document.querySelectorAll("[data-revenue-column-resize]").forEach((handle) => {
+    if (handle.dataset.bound === "true") return;
+    handle.dataset.bound = "true";
+    handle.addEventListener("pointerdown", (event) => {
+      const index = Number(handle.dataset.revenueColumnResize);
+      const widths = revenueColumnWidths();
+      const minimums = [112, 240, 104, 104, 104, 104, 110, 96, 76];
+      const startX = event.clientX;
+      const startWidth = widths[index] || CRM_REVENUE_DEFAULT_COLUMN_WIDTHS[index] || 120;
+      document.body.classList.add("crm-revenue-column-resizing");
+      handle.setPointerCapture?.(event.pointerId);
+      const move = (moveEvent) => {
+        widths[index] = Math.max(minimums[index] || 80, startWidth + moveEvent.clientX - startX);
+        const col = document.querySelector(`.crm-revenue-table col[data-revenue-col="${index}"]`);
+        if (col) col.style.width = `${widths[index]}px`;
+      };
+      const up = () => {
+        document.body.classList.remove("crm-revenue-column-resizing");
+        saveRevenueColumnWidths(widths);
+        document.removeEventListener("pointermove", move);
+        document.removeEventListener("pointerup", up);
+        document.removeEventListener("pointercancel", up);
+      };
+      document.addEventListener("pointermove", move);
+      document.addEventListener("pointerup", up);
+      document.addEventListener("pointercancel", up);
+    });
+  });
+}
+
 function revenueRowKey(row) {
   return String(row.id || row.fileNumber || row.attachedEstimate?.fileNumber || row.dashboardFileId || row.clientJob || "")
     .trim()
@@ -4201,6 +4272,7 @@ function repairRevenueRowsFromFiles() {
 function renderRevenue() {
   reconcileSavedExpenseLedgersToRevenue();
   repairRevenueRowsFromFiles();
+  ensureRevenueColumnSizing();
   const totals = revenueTotals();
   $("crmRevenueGross").textContent = crmCurrency.format(totals.gross);
   $("crmRevenueExpenses").textContent = crmCurrency.format(totals.expenses);
@@ -4265,6 +4337,8 @@ function renderRevenue() {
       }
     });
   });
+  ensureRevenueColumnSizing();
+  bindRevenueColumnResizers();
   renderExpenseDetail();
 }
 
@@ -6489,6 +6563,7 @@ function updateRevenueField(field) {
     if (key === "gross") row.grossOverride = true;
   } else if (key === "date") {
     row[key] = normalizeDate(field.value);
+    field.value = row[key];
   } else {
     row[key] = field.value;
   }
