@@ -3126,7 +3126,7 @@ function openEstimatorInCommandCenter(url, estimateData = null) {
   }
   const estimatorUrl = new URL(url, window.location.href);
   estimatorUrl.searchParams.set("embedded", "1");
-  estimatorUrl.searchParams.set("v", "20260915-material-row-align");
+  estimatorUrl.searchParams.set("v", "20260915-estimator-dark-full");
   estimatorUrl.searchParams.set("open", Date.now().toString());
   if (estimateData) {
     frame.addEventListener("load", () => {
@@ -3149,7 +3149,7 @@ function sendEstimateToEstimator(estimateData, target = "") {
   if (target) estimatorUrl.hash = target.replace(/^#/, "");
   estimatorUrl.searchParams.set("fromDashboard", "1");
   estimatorUrl.searchParams.set("standard", "1");
-  estimatorUrl.searchParams.set("v", "20260915-material-row-align");
+  estimatorUrl.searchParams.set("v", "20260915-estimator-dark-full");
   estimatorUrl.searchParams.set("open", Date.now().toString());
   // The browser copy opens immediately, and the postMessage on iframe load
   // guarantees the same estimate arrives even when storage timing is slow.
@@ -8091,6 +8091,7 @@ function switchCrmView(view) {
   // Changing Command Center sections must not discard a partially completed
   // customer file. The full dashboard still goes to cloud only through Save.
   flushActiveFileDraft();
+  document.body.classList.remove("animus-expense-center-active");
   const showRevenue = view === "revenue";
   const showPayroll = view === "payroll";
   const showCalendar = view === "calendar";
@@ -8157,7 +8158,7 @@ document.querySelectorAll("[data-crm-view]").forEach((button) => {
     if (frame && (!currentSrc || currentSrc === "about:blank")) {
       const estimatorUrl = new URL("animus-estimate-demo.html", window.location.href);
       estimatorUrl.searchParams.set("standard", "1");
-      estimatorUrl.searchParams.set("v", "20260915-material-row-align");
+      estimatorUrl.searchParams.set("v", "20260915-estimator-dark-full");
       estimatorUrl.searchParams.set("open", Date.now().toString());
       frame.src = estimatorUrl.toString();
     }
