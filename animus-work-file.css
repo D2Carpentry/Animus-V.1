@@ -931,3 +931,155 @@ body.animus-unified-ui .animus-work-files-layout .crm-file-workspace { gap: 16px
   .animus-document-row { grid-template-columns: 40px minmax(0, 1fr); }
   .animus-document-row b { grid-column: 2; text-align: left; }
 }
+
+/* Work Files dark theme: loaded after the shell, so this wins over light card defaults. */
+body.animus-dark-theme.animus-unified-ui .animus-work-files-layout {
+  background: #111827 !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+body.animus-dark-theme.animus-unified-ui .animus-work-files-layout .crm-file-list-panel,
+body.animus-dark-theme.animus-unified-ui .animus-work-files-layout .crm-file-workspace {
+  background: #172234 !important;
+  border-color: #334155 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .18) !important;
+}
+
+body.animus-dark-theme .animus-work-files-collapse,
+body.animus-dark-theme .animus-work-file-filter-button,
+body.animus-dark-theme .animus-work-file-filter-options,
+body.animus-dark-theme .animus-work-file-filter-option,
+body.animus-dark-theme .animus-work-file-tools input,
+body.animus-dark-theme .animus-work-file-tools select {
+  background: #0f1724 !important;
+  border-color: #3b4b63 !important;
+  color: #dbeafe !important;
+}
+
+body.animus-dark-theme .animus-work-file-filter-button:hover,
+body.animus-dark-theme .animus-work-file-filter-button[aria-expanded="true"],
+body.animus-dark-theme .animus-work-file-filter-option:hover {
+  background: #1d2d44 !important;
+  border-color: #60a5fa !important;
+  color: #fff !important;
+}
+
+body.animus-dark-theme .animus-work-file-filter-option.active {
+  background: #2563eb !important;
+  color: #fff !important;
+}
+
+body.animus-dark-theme .animus-work-files-layout .crm-panel-heading .eyebrow {
+  color: #93c5fd !important;
+}
+
+body.animus-dark-theme .animus-work-files-layout .crm-panel-heading h2 {
+  color: #f8fbff !important;
+}
+
+body.animus-dark-theme .animus-work-files-layout .crm-file-list {
+  background: transparent !important;
+}
+
+body.animus-dark-theme .animus-work-files-layout .crm-file-card {
+  margin: 0 0 8px !important;
+  padding: 10px 11px !important;
+  border: 1px solid #263449 !important;
+  border-radius: 9px !important;
+  background: #0f1724 !important;
+  box-shadow: none !important;
+}
+
+body.animus-dark-theme .animus-work-files-layout .crm-file-card:first-child {
+  border-top-color: #263449 !important;
+}
+
+body.animus-dark-theme .animus-work-files-layout .crm-file-card:hover {
+  background: #1d2d44 !important;
+  border-color: #3b4b63 !important;
+}
+
+body.animus-dark-theme .animus-work-files-layout .crm-file-card.active {
+  background: #1f3555 !important;
+  border-color: #60a5fa !important;
+  box-shadow: inset 3px 0 0 #2563eb !important;
+}
+
+body.animus-dark-theme .animus-file-card-copy strong,
+body.animus-dark-theme .animus-record-title h2,
+body.animus-dark-theme .animus-info-card h3,
+body.animus-dark-theme .animus-section-card h3,
+body.animus-dark-theme .animus-section-card h2 {
+  color: #f8fbff !important;
+}
+
+body.animus-dark-theme .animus-file-card-copy small,
+body.animus-dark-theme .animus-record-subtitle,
+body.animus-dark-theme .animus-detail-pair dt,
+body.animus-dark-theme .animus-info-row dt {
+  color: #b6c3d4 !important;
+}
+
+body.animus-dark-theme .animus-file-chevron {
+  color: #8fa3bd !important;
+}
+
+body.animus-dark-theme .animus-work-file,
+body.animus-dark-theme .animus-record-header,
+body.animus-dark-theme .animus-summary-strip,
+body.animus-dark-theme .animus-tabs,
+body.animus-dark-theme .animus-work-column > section,
+body.animus-dark-theme .animus-section-card,
+body.animus-dark-theme .animus-info-card,
+body.animus-dark-theme .animus-job-progress,
+body.animus-dark-theme .animus-next-action-card,
+body.animus-dark-theme .animus-file-notes-card,
+body.animus-dark-theme .animus-recent-activity-card,
+body.animus-dark-theme .animus-documents-card,
+body.animus-dark-theme .animus-financial-card,
+body.animus-dark-theme .animus-detail-panel,
+body.animus-dark-theme .animus-empty-panel {
+  background: #111a28 !important;
+  border-color: #334155 !important;
+  color: #eef4fb !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .18) !important;
+}
+
+body.animus-dark-theme .animus-summary-cell,
+body.animus-dark-theme .animus-next-inner,
+body.animus-dark-theme .animus-status-details,
+body.animus-dark-theme .animus-file-note-entry,
+body.animus-dark-theme .animus-detail-pair,
+body.animus-dark-theme .animus-info-row,
+body.animus-dark-theme .animus-financial-value,
+body.animus-dark-theme .animus-document-row,
+body.animus-dark-theme .animus-inline-editor {
+  background: #0f1724 !important;
+  border-color: #263449 !important;
+  color: #eef4fb !important;
+}
+
+body.animus-dark-theme .animus-record-button,
+body.animus-dark-theme .animus-customer-info summary,
+body.animus-dark-theme .animus-inline-editor input,
+body.animus-dark-theme .animus-inline-editor select,
+body.animus-dark-theme .animus-file-note-label textarea {
+  background: #0f1724 !important;
+  border-color: #3b4b63 !important;
+  color: #dbeafe !important;
+}
+
+body.animus-dark-theme .animus-record-button:hover,
+body.animus-dark-theme .animus-customer-info summary:hover {
+  background: #2563eb !important;
+  border-color: #2563eb !important;
+  color: #fff !important;
+}
+
+body.animus-dark-theme .animus-customer-info-panel,
+body.animus-dark-theme .animus-document-actions {
+  background: #111a28 !important;
+  border-color: #334155 !important;
+  color: #eef4fb !important;
+}
