@@ -247,12 +247,13 @@ body.animus-dark-theme .expense-muted,
 body.animus-dark-theme .expense-file-ledger-copy small,
 body.animus-dark-theme #crmPriceView small,
 body.animus-dark-theme #crmExpensesView small{color:#b6c3d4!important}
-body.animus-dark-theme .animus-revenue-date{background:#243247!important;border:1px solid #3b4b63!important;color:#dbeafe!important}
-body.animus-dark-theme .animus-revenue-table{min-width:980px!important}
+body.animus-dark-theme .animus-revenue-date,
+body.animus-dark-theme .animus-revenue-date-input{background:#243247!important;border:1px solid #3b4b63!important;color:#dbeafe!important}
+body.animus-dark-theme .animus-revenue-table{min-width:1290px!important;table-layout:fixed!important}
 body.animus-dark-theme .animus-revenue-table th:nth-child(2),
-body.animus-dark-theme .animus-revenue-table td:nth-child(2){min-width:340px!important;width:36%!important}
+body.animus-dark-theme .animus-revenue-table td:nth-child(2){min-width:340px!important;width:auto!important}
 body.animus-dark-theme .animus-revenue-table th.revenue-col-date,
-body.animus-dark-theme .animus-revenue-table td.revenue-col-date{width:88px!important;max-width:88px!important}
+body.animus-dark-theme .animus-revenue-table td.revenue-col-date{width:auto!important;max-width:none!important}
 body.animus-dark-theme .animus-revenue-money button,
 body.animus-dark-theme .animus-revenue-actions>button{background:#243247!important;border-color:#45566f!important;color:#dbeafe!important}
 body.animus-dark-theme .animus-revenue-money button:hover,
@@ -302,3 +303,17 @@ body.animus-dark-theme .animus-revenue-table.crm-revenue-resizable td{width:auto
 body.animus-dark-theme .crm-revenue-column-resizer::after{background:#60718a!important}
 body.animus-dark-theme .crm-revenue-column-resizer:hover::after,
 body.animus-dark-theme.crm-revenue-column-resizing .crm-revenue-column-resizer::after{background:#c99a42!important}
+body.animus-dark-theme .animus-revenue-column-resizer::after{background:#60718a!important}
+body.animus-dark-theme .animus-revenue-column-resizer:hover::after,
+body.animus-dark-theme.animus-revenue-resizing .animus-revenue-column-resizer::after{background:#c99a42!important}
+body.animus-unified-ui.crm-price-active .crm-topbar{position:static!important;top:auto!important}
+body.animus-unified-ui #crmPriceView .crm-price-row{min-height:68px!important;padding:12px 16px!important}
+body.animus-unified-ui #crmPriceView .crm-price-row-main span{margin-top:3px!important}
+body.animus-unified-ui #crmPriceView .crm-price-row-main em{display:none!important}
+body.animus-unified-ui #crmPriceView .crm-price-row-actions{gap:12px!important}
+body.animus-unified-ui #crmPriceView .crm-price-row-actions small{margin:0!important}
+body.animus-unified-ui #crmPriceView .crm-price-row button{min-height:34px!important}
+body.animus-dark-theme .animus-revenue-kpi.is-clickable:hover{border-color:#60a5fa!important;box-shadow:0 8px 18px rgba(37,99,235,.16)!important}
+body.animus-dark-theme .animus-revenue-money.expenses{color:#c084fc!important}
+body.animus-dark-theme .animus-revenue-money.labor,
+body.animus-dark-theme .animus-revenue-labor-link{color:#93c5fd!important}

@@ -14,6 +14,19 @@
     const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})/);
     return match ? `${match[2]}-${match[3]}-${match[1].slice(-2)}` : (value || "—");
   };
+  const EXPENSE_COLUMN_STORAGE = "animus-expense-column-widths-v1";
+  const defaultColumnWidths = [38, 64, 132, 460, 128];
+  function expenseColumnWidths() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(EXPENSE_COLUMN_STORAGE) || "[]");
+      return defaultColumnWidths.map((width, index) => Math.max(34, Number(saved[index]) || width));
+    } catch (_) {
+      return [...defaultColumnWidths];
+    }
+  }
+  function saveExpenseColumnWidths(widths) {
+    try { localStorage.setItem(EXPENSE_COLUMN_STORAGE, JSON.stringify(widths.map((width) => Math.round(width)))); } catch (_) {}
+  }
   const expenseId = () => `expense-v6-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   const receiptImageSrc = (entry = {}) => String(entry.imageDataUrl || entry.receiptImageUrl || "");
   const hasReceiptImage = (entry = {}) => Boolean(receiptImageSrc(entry));
@@ -143,12 +156,14 @@
   function tableMarkup(entries) {
     if (state.loading) return `<div class="expense-empty">Loading saved receipts from Cloudflare...</div>`;
     if (!entries.length) return `<div class="expense-empty">No saved expenses match these filters.</div>`;
-    return `<table class="expense-table expense-file-table"><thead><tr><th></th><th>Receipt</th><th>Date</th><th>Expense Name</th><th>Total</th></tr></thead><tbody>${entries.map((entry) => {
+    const widths = expenseColumnWidths();
+    const headers = ["", "Receipt", "Date", "Expense Name", "Total"];
+    return `<table class="expense-table expense-file-table"><colgroup>${widths.map((width) => `<col style="width:${width}px">`).join("")}</colgroup><thead><tr>${headers.map((label, index) => `<th data-expense-column="${index}"><span>${label}</span>${index < headers.length - 1 ? `<button type="button" class="expense-column-resizer" data-expense-column-resize="${index}" aria-label="Resize ${esc(label || "select")} column"></button>` : ""}</th>`).join("")}</tr></thead><tbody>${entries.map((entry) => {
       const selected = entry.id === state.selectedId;
       const title = entry.title || entry.vendor || "Untitled expense";
       const imageSrc = receiptImageSrc(entry);
       const receipt = imageSrc ? (isPdfReceipt(entry) ? "PDF" : `<img src="${esc(imageSrc)}" alt="Receipt">`) : "▤";
-      return `<tr class="${selected ? "selected" : ""}"><td><input class="expense-check" type="checkbox" data-expense-check="${esc(entry.id)}"${state.selectedIds.has(entry.id) ? " checked" : ""} aria-label="Select ${esc(title)}"></td><td><button type="button" class="expense-thumb expense-thumb-button" data-expense-open="${esc(entry.id)}" aria-label="Open ${esc(title)}">${receipt}</button></td><td>${esc(shortDate(entry.date))}</td><td><button type="button" class="expense-name-button" data-expense-open="${esc(entry.id)}"><strong>${esc(title)}</strong><small>${esc(entry.vendor || "No vendor")}</small></button></td><td class="expense-amount">${money(entry.amount)}</td></tr>`;
+      return `<tr class="${selected ? "selected" : ""}"><td><input class="expense-check" type="checkbox" data-expense-check="${esc(entry.id)}"${state.selectedIds.has(entry.id) ? " checked" : ""} aria-label="Select ${esc(title)}"></td><td><button type="button" class="expense-thumb expense-thumb-button" data-expense-open="${esc(entry.id)}" aria-label="Open ${esc(title)}">${receipt}</button></td><td><input class="expense-date-inline" type="date" value="${esc(String(entry.date || "").slice(0, 10))}" data-expense-date="${esc(entry.id)}" aria-label="Change expense date for ${esc(title)}"><small class="expense-date-readable">${esc(shortDate(entry.date))}</small></td><td><button type="button" class="expense-name-button" data-expense-open="${esc(entry.id)}"><strong>${esc(title)}</strong><small>${esc(entry.vendor || "No vendor")}</small></button></td><td class="expense-amount">${money(entry.amount)}</td></tr>`;
     }).join("")}</tbody></table>`;
   }
 
@@ -306,6 +321,20 @@
 
   async function deleteSelected() { const entry = drawerData(); if (!entry?.id || !window.confirm("Delete this saved expense?")) return; const response = await fetch(`${API}?fileId=${encodeURIComponent(entry.fileId)}&expenseId=${encodeURIComponent(entry.id)}`,{method:"DELETE",cache:"no-store"}); const payload = await response.json().catch(() => ({})); if (!response.ok || payload.ok === false) throw new Error(payload.error || "Expense could not be deleted."); if (state.companyMode) state.companyEntries = state.companyEntries.filter((item) => item.id !== entry.id); else state.entries = state.entries.filter((item) => item.id !== entry.id); updateRevenue(findFile(entry.fileId)); state.selectedId=""; state.draft=null; state.editing=false; render(); }
 
+  async function saveInlineExpenseDate(entryId, date) {
+    const entry = expenseEntries().find((item) => item.id === entryId);
+    if (!entry || !date || entry.date === date) return;
+    const updated = { ...entry, date };
+    const response = await fetch(API, { method:"POST", headers:{"Content-Type":"application/json"}, cache:"no-store", body:JSON.stringify({ fileId:updated.fileId, expense:updated }) });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || payload.ok === false) throw new Error(payload.error || "Expense date could not be saved.");
+    const savedEntry = { ...payload.expense, fileId:updated.fileId, file:entry.file };
+    if (state.companyMode) state.companyEntries = state.companyEntries.map((item) => item.id === entryId ? savedEntry : item);
+    else state.entries = state.entries.map((item) => item.id === entryId ? savedEntry : item);
+    updateRevenue(findFile(savedEntry.fileId));
+    render();
+  }
+
   async function deleteCheckedExpenses() {
     const ids = [...state.selectedIds];
     if (!ids.length) return;
@@ -439,9 +468,41 @@
     document.querySelector("#expenseReceiptImages")?.addEventListener("click",()=>{state.mode="file"; state.scope="all"; state.companyMode=false; state.filters.imagesOnly=true; state.selectedId=""; state.draft=null; state.editing=false; render();});
     document.querySelector("#expenseBackFromImages")?.addEventListener("click", () => { state.mode = "home"; state.scope = "all"; state.selectedId = ""; state.draft = null; state.editing = false; state.filters.imagesOnly = false; render(); });
     document.querySelectorAll("[data-expense-check]").forEach((checkbox)=>checkbox.addEventListener("change",()=>{if(checkbox.checked) state.selectedIds.add(checkbox.dataset.expenseCheck); else state.selectedIds.delete(checkbox.dataset.expenseCheck); render();}));
+    document.querySelectorAll("[data-expense-date]").forEach((input)=>input.addEventListener("change",()=>saveInlineExpenseDate(input.dataset.expenseDate, input.value).catch((error)=>{window.alert(error.message || "Expense date could not be saved."); render();})));
+    bindExpenseColumnResizers();
     document.querySelector("#expenseDeleteChecked")?.addEventListener("click",()=>deleteCheckedExpenses().catch((error)=>window.alert(error.message || "Selected expenses could not be deleted.")));
     document.querySelectorAll("[data-expense-open]").forEach((button)=>button.addEventListener("click",()=>{state.selectedId=button.dataset.expenseOpen;state.draft=null;state.editing=false;render();})); document.querySelectorAll("[data-expense-edit]").forEach((button)=>button.addEventListener("click",()=>{state.selectedId=button.dataset.expenseEdit;state.draft=cleanDraft(selectedEntry());state.editing=true;render();})); document.querySelector("#expenseDrawerClose")?.addEventListener("click",()=>{state.selectedId="";state.draft=null;state.editing=false;render();}); document.querySelector("#expenseDetailModal")?.addEventListener("click",(event)=>{if(event.target.id === "expenseDetailModal"){state.selectedId="";state.draft=null;state.editing=false;render();}}); document.querySelector("#expenseImagePreviewButton")?.addEventListener("click",()=>{const image=drawerData();openReceiptImagePreview(receiptImageSrc(image), image?.imageTitle || image?.title || "Receipt image");});
     document.querySelector("#expenseEditToggle")?.addEventListener("click",()=>{if (!state.editing) state.draft=cleanDraft(selectedEntry()); else captureDrawer();state.editing=!state.editing;render();}); document.querySelector("#expenseSave")?.addEventListener("click",()=>saveDrawer().catch((error)=>window.alert(error.message || "Expense could not be saved."))); document.querySelector("#expenseDelete")?.addEventListener("click",()=>deleteSelected().catch((error)=>window.alert(error.message || "Expense could not be deleted."))); document.querySelector("#expenseImportAll")?.addEventListener("click",()=>showPriceImport(drawerData()?.items || [])); document.querySelectorAll("[data-expense-item-import]").forEach((button)=>button.addEventListener("click",()=>showPriceImport([drawerData()?.items?.[Number(button.dataset.expenseItemImport)]])));
+  }
+
+  function bindExpenseColumnResizers() {
+    document.querySelectorAll("[data-expense-column-resize]").forEach((handle) => {
+      handle.addEventListener("pointerdown", (event) => {
+        const index = Number(handle.dataset.expenseColumnResize);
+        const widths = expenseColumnWidths();
+        const startX = event.clientX;
+        const startWidth = widths[index] || defaultColumnWidths[index] || 100;
+        document.body.classList.add("expense-column-resizing");
+        handle.setPointerCapture?.(event.pointerId);
+        const move = (moveEvent) => {
+          const minimums = [34, 54, 106, 180, 92];
+          widths[index] = Math.max(minimums[index] || 80, startWidth + moveEvent.clientX - startX);
+          document.querySelectorAll(".expense-file-table col").forEach((col, colIndex) => {
+            if (colIndex === index) col.style.width = `${widths[index]}px`;
+          });
+        };
+        const up = () => {
+          document.body.classList.remove("expense-column-resizing");
+          saveExpenseColumnWidths(widths);
+          document.removeEventListener("pointermove", move);
+          document.removeEventListener("pointerup", up);
+          document.removeEventListener("pointercancel", up);
+        };
+        document.addEventListener("pointermove", move);
+        document.addEventListener("pointerup", up);
+        document.addEventListener("pointercancel", up);
+      });
+    });
   }
 
   // Replaces only the Expenses view. The existing scanner and storage functions are left intact.

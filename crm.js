@@ -6789,7 +6789,6 @@ function renderReadonlyPriceRow(row) {
       <div class="crm-price-row-main">
         <strong>${escapeHtml(product)}</strong>
         <span>${escapeHtml(details)}</span>
-        ${row.readonly ? `<em>Estimator</em>` : ""}
       </div>
       <div class="crm-price-row-actions">
         <small>${escapeHtml(row.unit || "each")}</small>
@@ -8180,6 +8179,7 @@ function switchCrmView(view) {
   const showLegacyEstimator = view === "legacyEstimator" || view === "testzone";
   const estimatorShell = $("crmEstimatorView")?.closest(".crm-dashboard-view");
   document.body.classList.toggle("crm-estimator-active", showEstimator || showLegacyEstimator);
+  document.body.classList.toggle("crm-price-active", showPrices);
   document.querySelectorAll(".crm-dashboard-view").forEach((section) => {
     const keepEstimatorShell = (showEstimator || showLegacyEstimator) && estimatorShell && section === estimatorShell;
     section.hidden = !keepEstimatorShell && (showRevenue || showPayroll || showCalendar || showContacts || showInvoice || showExpenses || showPrices || showBusiness || showPlayground || showEstimator || showLegacyEstimator);
