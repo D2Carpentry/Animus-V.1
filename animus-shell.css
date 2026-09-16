@@ -317,3 +317,169 @@ body.animus-dark-theme .animus-revenue-kpi.is-clickable:hover{border-color:#60a5
 body.animus-dark-theme .animus-revenue-money.expenses{color:#c084fc!important}
 body.animus-dark-theme .animus-revenue-money.labor,
 body.animus-dark-theme .animus-revenue-labor-link{color:#93c5fd!important}
+
+/* Dark UI completion pass. Keeps data/business logic untouched; only presentation. */
+body.animus-dark-theme{
+  --animus-dark-page:#111827;
+  --animus-dark-panel:#172234;
+  --animus-dark-card:#111a28;
+  --animus-dark-field:#0f1724;
+  --animus-dark-line:#334155;
+  --animus-dark-muted:#b6c3d4;
+}
+body.animus-dark-theme .crm-dashboard-view,
+body.animus-dark-theme .crm-file-workspace,
+body.animus-dark-theme .crm-file-grid,
+body.animus-dark-theme #crmPriceView,
+body.animus-dark-theme #crmBusinessView,
+body.animus-dark-theme #crmEstimatorView{
+  background:transparent!important;
+}
+body.animus-dark-theme .animus-work-files-layout{
+  background:#111827!important;
+  border-color:#334155!important;
+  box-shadow:none!important;
+}
+body.animus-dark-theme .animus-work-files-layout .crm-file-list-panel,
+body.animus-dark-theme .animus-work-files-layout .crm-file-workspace,
+body.animus-dark-theme .crm-file-header,
+body.animus-dark-theme .crm-file-grid .panel,
+body.animus-dark-theme .crm-file-grid .crm-detail-card,
+body.animus-dark-theme .crm-money-grid>div,
+body.animus-dark-theme .crm-estimate-total-card,
+body.animus-dark-theme .crm-estimate-edit,
+body.animus-dark-theme .crm-expense-summary-box,
+body.animus-dark-theme .crm-note-list,
+body.animus-dark-theme .crm-status-description{
+  background:#172234!important;
+  border-color:#334155!important;
+  color:#eef4fb!important;
+  box-shadow:0 1px 2px rgba(0,0,0,.18)!important;
+}
+body.animus-dark-theme .crm-file-grid .panel,
+body.animus-dark-theme .crm-file-grid .crm-detail-card{
+  background:#111a28!important;
+}
+body.animus-dark-theme .crm-money-grid>div,
+body.animus-dark-theme .crm-estimate-total-card,
+body.animus-dark-theme .crm-estimate-edit{
+  background:#0f1724!important;
+}
+body.animus-dark-theme .animus-work-file-tools input,
+body.animus-dark-theme .animus-work-file-tools select,
+body.animus-dark-theme .animus-file-search-button,
+body.animus-dark-theme .crm-file-grid input,
+body.animus-dark-theme .crm-file-grid select,
+body.animus-dark-theme .crm-file-grid textarea{
+  background:#0f1724!important;
+  border-color:#3b4b63!important;
+  color:#e8eef7!important;
+}
+body.animus-dark-theme .animus-work-file-tools input::placeholder,
+body.animus-dark-theme .crm-file-grid input::placeholder,
+body.animus-dark-theme .crm-file-grid textarea::placeholder{
+  color:#74859c!important;
+}
+body.animus-dark-theme .animus-work-files-layout .crm-file-list button,
+body.animus-dark-theme .animus-work-files-layout .crm-file-card{
+  background:#0f1724!important;
+  border-color:#263449!important;
+  color:#e8eef7!important;
+}
+body.animus-dark-theme .animus-work-files-layout .crm-file-list button.active,
+body.animus-dark-theme .animus-work-files-layout .crm-file-card.active{
+  background:#1f3555!important;
+  border-color:#60a5fa!important;
+  box-shadow:inset 3px 0 0 #2563eb!important;
+}
+body.animus-dark-theme .animus-work-files-layout .crm-file-list button:hover,
+body.animus-dark-theme .animus-work-files-layout .crm-file-card:hover{
+  background:#1d2d44!important;
+}
+body.animus-dark-theme .crm-file-header-actions .icon-button,
+body.animus-dark-theme .crm-estimate-total-card button{
+  background:#0f1724!important;
+  border-color:#3b4b63!important;
+  color:#dbeafe!important;
+}
+body.animus-dark-theme .crm-file-header-actions .icon-button:hover,
+body.animus-dark-theme .crm-estimate-total-card button:hover{
+  background:#2563eb!important;
+  border-color:#2563eb!important;
+  color:#fff!important;
+}
+body.animus-dark-theme .crm-file-header-actions .danger-action{
+  color:#fca5a5!important;
+}
+
+body.animus-unified-ui.crm-price-active .crm-topbar{
+  position:static!important;
+  top:auto!important;
+}
+body.animus-dark-theme #crmPriceView .crm-revenue-hero,
+body.animus-dark-theme #crmPriceView .animus-price-layout{
+  background:transparent!important;
+  border-color:transparent!important;
+  box-shadow:none!important;
+}
+body.animus-dark-theme #crmPriceView .animus-price-entry,
+body.animus-dark-theme #crmPriceView .animus-price-parts{
+  background:#172234!important;
+  border-color:#334155!important;
+  box-shadow:none!important;
+  outline:0!important;
+}
+body.animus-dark-theme #crmPriceView .animus-price-entry .panel-header,
+body.animus-dark-theme #crmPriceView .crm-price-tools{
+  background:transparent!important;
+}
+body.animus-dark-theme #crmPriceView .crm-price-row{
+  background:#111a28!important;
+  border-color:#334155!important;
+}
+body.animus-dark-theme #crmPriceView .crm-price-row:hover{
+  background:#1d2d44!important;
+}
+
+body.animus-dark-theme .animus-performance,
+body.animus-dark-theme #crmBusinessView{
+  color:#eef4fb!important;
+}
+body.animus-dark-theme .animus-performance-card,
+body.animus-dark-theme .animus-performance-panel,
+body.animus-dark-theme .animus-performance-stage{
+  background:#172234!important;
+  border-color:#334155!important;
+  color:#eef4fb!important;
+  box-shadow:0 1px 2px rgba(0,0,0,.18)!important;
+}
+body.animus-dark-theme .animus-performance-stage{
+  border-bottom:1px solid #334155!important;
+}
+body.animus-dark-theme .animus-performance-card strong,
+body.animus-dark-theme .animus-performance-panel h2,
+body.animus-dark-theme .animus-performance-stage strong{
+  color:#f8fbff!important;
+}
+body.animus-dark-theme .animus-performance-head p,
+body.animus-dark-theme .animus-performance-card span,
+body.animus-dark-theme .animus-performance-card small,
+body.animus-dark-theme .animus-performance-stage span{
+  color:#b6c3d4!important;
+}
+body.animus-dark-theme .animus-performance-card.profit strong{
+  color:#4ade80!important;
+}
+body.animus-dark-theme .animus-performance-card.expense strong{
+  color:#fbbf24!important;
+}
+body.animus-dark-theme .animus-performance-chart line{
+  stroke:#334155!important;
+}
+body.animus-dark-theme .animus-performance-chart text{
+  fill:#b6c3d4!important;
+}
+body.animus-dark-theme .animus-performance-link,
+body.animus-dark-theme .animus-performance-stage b{
+  color:#93c5fd!important;
+}
