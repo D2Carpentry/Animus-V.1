@@ -483,3 +483,26 @@ body.animus-dark-theme .animus-performance-link,
 body.animus-dark-theme .animus-performance-stage b{
   color:#93c5fd!important;
 }
+
+/* Header and work-file search polish. */
+body.animus-unified-ui .animus-topbar-search{
+  box-sizing:border-box!important;
+  overflow:hidden!important;
+}
+body.animus-unified-ui .animus-topbar-search input{
+  box-sizing:border-box!important;
+  align-self:stretch!important;
+  height:auto!important;
+  min-height:0!important;
+  max-height:38px!important;
+  line-height:38px!important;
+  margin:0!important;
+  padding:0!important;
+  border:0!important;
+  box-shadow:none!important;
+  appearance:none!important;
+  -webkit-appearance:none!important;
+}
+body.animus-dark-theme .animus-work-file-tools::before{
+  color:#74859c!important;
+}
