@@ -179,7 +179,6 @@
     const root = document.querySelector("#animusBusinessPerformance");
     if (!root) return;
     const data = totals();
-    const pipeline = stages().filter((stage) => stage.filter !== "archive").reduce((sum, stage) => sum + stage.value, 0);
     const margin = data.gross ? (data.profit / data.gross) * 100 : 0;
     const typeStats = workTypeStats();
 
@@ -189,8 +188,8 @@
         <button class="animus-home-primary" data-performance-open="revenue">Open Revenue</button>
       </header>
       <section class="animus-performance-grid">
-        <article class="animus-performance-card"><span>Pipeline Value</span><strong>${money(pipeline)}</strong><small>Open work opportunities</small></article>
-        <article class="animus-performance-card"><span>Revenue</span><strong>${money(data.gross)}</strong><small>All recorded revenue</small></article>
+        <article class="animus-performance-card net-revenue"><span>Net Revenue</span><strong>${money(data.profit)}</strong><small>${data.gross ? `${margin.toFixed(1)}% of gross revenue` : "0.0% of gross revenue"}</small></article>
+        <article class="animus-performance-card"><span>Gross Revenue</span><strong>${money(data.gross)}</strong><small>All recorded revenue</small></article>
         <article class="animus-performance-card expense"><span>Expenses</span><strong>${money(data.expenses)}</strong><small>Saved work-file expenses</small></article>
         <article class="animus-performance-card profit"><span>Profit</span><strong>${money(data.profit)}</strong><small>${data.gross ? `${margin.toFixed(1)}% profit margin` : "Revenue required for margin"}</small></article>
         <article class="animus-performance-card"><span>Labor</span><strong>${money(data.labor)}</strong><small>Payroll linked to work files</small></article>

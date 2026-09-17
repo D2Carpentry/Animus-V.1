@@ -63,6 +63,7 @@
 
 .animus-performance-card.profit strong { color: #15803d; }
 .animus-performance-card.expense strong { color: #d97706; }
+.animus-performance-card.net-revenue small { color: #94a3b8; }
 
 .animus-performance-main {
   display: grid;
