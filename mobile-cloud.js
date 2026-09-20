@@ -382,9 +382,9 @@ async function receiveReceipt(file) {
     const response = await fetch(RECEIPT_API, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ imageDataUrl:received.dataUrl, fileName:received.name }), cache:"no-store", signal:receiptAbortController.signal });
     if (thisRead !== receiptReadToken) return;
     const result = await response.json().catch(() => ({})); const read = result.receipt || {};
-    receiptDraft = { id:"", imageDataUrl:received.dataUrl, fileName:received.name, isPdf:received.isPdf, date:read.date || dateToday(), vendor:read.vendor || "", title:activeFile()?.clientName || activeFile()?.fileNumber || received.name.replace(/\.[^.]+$/, ""), category:read.category || "Supplies", notes:read.notes || "", items:(read.lineItems || []).map((item) => ({ name:item.name || "", total:item.total || item.lineTotal || item.price || "", use:true })), amount:read.total || "", ai:Boolean(result.aiAvailable) };
+    receiptDraft = { id:"", imageDataUrl:received.dataUrl, fileName:received.name, isPdf:received.isPdf, date:read.date || dateToday(), vendor:read.vendor || "", title:received.name, category:read.category || "Supplies", notes:read.notes || "", items:(read.lineItems || []).map((item) => ({ name:item.name || "", total:item.total || item.lineTotal || item.price || "", use:true })), amount:read.total || "", ai:Boolean(result.aiAvailable) };
     if (!receiptDraft.items.length && receiptDraft.amount) receiptDraft.items.push({ name:receiptDraft.vendor || "Receipt expense", total:receiptDraft.amount, use:true });
-  } catch (error) { if (error?.name === "AbortError") return; receiptDraft = { id:"", imageDataUrl:received.dataUrl, fileName:received.name, isPdf:received.isPdf, date:dateToday(), vendor:"", title:activeFile()?.clientName || activeFile()?.fileNumber || received.name.replace(/\.[^.]+$/, ""), category:"Supplies", notes:"", items:[], amount:"", ai:false }; }
+  } catch (error) { if (error?.name === "AbortError") return; receiptDraft = { id:"", imageDataUrl:received.dataUrl, fileName:received.name, isPdf:received.isPdf, date:dateToday(), vendor:"", title:received.name, category:"Supplies", notes:"", items:[], amount:"", ai:false }; }
   finally { receiptAbortController = null; hideBusy(); renderExpenses(); window.scrollTo({ top:0, behavior:"smooth" }); }
 }
 async function saveReceipt() {
