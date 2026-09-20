@@ -34,6 +34,11 @@
   const fileKey = (file) => String(file?.id || file?.fileNumber || "").trim();
   const files = () => typeof crmFiles !== "undefined" && Array.isArray(crmFiles) ? crmFiles : [];
   const findFile = (id) => files().find((file) => fileKey(file) === id || file.id === id) || null;
+  const expenseTitleForFile = (file) => {
+    if (!file) return "";
+    if (file.isCompanyExpense) return "Company Expense";
+    return String(file.clientName || file.fileName || file.fileNumber || "").trim();
+  };
 
   function cleanDraft(source = {}) {
     return {
@@ -264,8 +269,10 @@
       return;
     }
     state.scope = targetFileId;
+    const targetFile = state.companyMode ? COMPANY_EXPENSE_FILE : findFile(targetFileId);
+    const workFileTitle = expenseTitleForFile(targetFile);
     if (file.type !== "application/pdf" && !String(file.type || "").startsWith("image/")) throw new Error("Choose an image or PDF receipt.");
-    state.draft = cleanDraft({ fileId: targetFileId, imageTitle:file.name, receiptContentType:file.type || "" });
+    state.draft = cleanDraft({ fileId: targetFileId, title:workFileTitle, imageTitle:file.name, receiptContentType:file.type || "" });
     state.processStep = "Reading receipt"; render();
     if (typeof showReceiptLoading === "function") showReceiptLoading(file.type === "application/pdf" ? "Reading receipt PDF with AI..." : "Reading receipt photo with AI...");
     try {
@@ -276,7 +283,7 @@
       if (!response.ok || payload.ok === false) throw new Error(payload.error || "Receipt AI could not read that image.");
       const receipt = payload.receipt || {};
       state.processStep = "Preparing expense record"; render();
-      state.draft = cleanDraft({ ...state.draft, date:receipt.date || today(), vendor:receipt.vendor || "", title:receipt.vendor || file.name.replace(/\.[^.]+$/, ""), category:receipt.category || "Supplies", paymentType:receipt.paymentType || "", amount:receipt.total || "", notes:receipt.notes || "", imageDataUrl, imageTitle:file.name, receiptContentType:file.type || "", items:(receipt.lineItems || []).map((item) => ({name:item.name || "",quantity:item.quantity || "",price:item.unitPrice || item.price || "",lineTotal:item.total || "",category:item.category || receipt.category || "Supplies"})) });
+      state.draft = cleanDraft({ ...state.draft, date:receipt.date || today(), vendor:receipt.vendor || "", title:workFileTitle || receipt.vendor || file.name.replace(/\.[^.]+$/, ""), category:receipt.category || "Supplies", paymentType:receipt.paymentType || "", amount:receipt.total || "", notes:receipt.notes || "", imageDataUrl, imageTitle:file.name, receiptContentType:file.type || "", items:(receipt.lineItems || []).map((item) => ({name:item.name || "",quantity:item.quantity || "",price:item.unitPrice || item.price || "",lineTotal:item.total || "",category:item.category || receipt.category || "Supplies"})) });
       state.editing = true;
     } finally {
       state.processStep = "";

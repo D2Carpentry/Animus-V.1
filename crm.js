@@ -8917,11 +8917,13 @@ function deleteManualExpenseItem(itemId) {
 }
 
 function fillManualExpenseFromReceiptDraft(draft = {}, uploadFile = null, imageDataUrl = "") {
+  const workFile = normalizeCrmFile(activeFile());
+  const workFileTitle = String(workFile?.clientName || workFile?.fileName || workFile?.fileNumber || "").trim();
   const category = manualExpenseSelectOptionValue("crmManualExpenseCategory", draft.category) || "Supplies";
   const payment = manualExpensePaymentFromReceipt(draft.paymentType);
   if ($("crmManualExpenseDate")) $("crmManualExpenseDate").value = draft.date || todayIso(0);
   if ($("crmManualExpenseVendor")) $("crmManualExpenseVendor").value = draft.vendor || "";
-  if ($("crmManualExpenseTitle")) $("crmManualExpenseTitle").value = draft.imageTitle || draft.fileName || draft.vendor || "";
+  if ($("crmManualExpenseTitle")) $("crmManualExpenseTitle").value = workFileTitle || draft.imageTitle || draft.fileName || draft.vendor || "";
   if ($("crmManualExpenseCategory")) $("crmManualExpenseCategory").value = category;
   if ($("crmManualExpensePayment")) $("crmManualExpensePayment").value = payment;
   if ($("crmManualExpenseAmount")) $("crmManualExpenseAmount").value = draft.amount ? String(draft.amount) : "";
