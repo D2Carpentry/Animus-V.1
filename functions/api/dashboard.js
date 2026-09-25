@@ -359,7 +359,7 @@ function applyMobileFilePatch(existing = {}, payload = {}) {
   const fileIndex = files.findIndex((file) => fileMergeKeys(file).some((key) => targetKeys.includes(key)));
   if (fileIndex < 0) return { error: "The selected work file no longer exists in the live cloud dashboard." };
 
-  const allowedFileFields = ["notes", "timeline", "workPhotos", "expenseLines"];
+  const allowedFileFields = ["notes", "timeline", "workPhotos", "expenseLines", "estimateTotal", "totalPaidOverride"];
   const requestedChanges = payload.changes && typeof payload.changes === "object" ? payload.changes : {};
   const changes = {};
   allowedFileFields.forEach((field) => {
@@ -372,7 +372,7 @@ function applyMobileFilePatch(existing = {}, payload = {}) {
   if (revenuePatch) {
     const revenueKeys = [revenuePatch.id, revenuePatch.dashboardFileId, revenuePatch.fileNumber].map(normalizeMergeKey).filter(Boolean);
     const revenueIndex = revenueRows.findIndex((row) => [row.id, row.dashboardFileId, row.fileNumber].map(normalizeMergeKey).some((key) => revenueKeys.includes(key)));
-    const allowedRevenueFields = ["expenses", "profit", "expenseLines"];
+    const allowedRevenueFields = ["gross", "expenses", "labor", "profit", "expenseLines"];
     const safeRevenuePatch = {};
     allowedRevenueFields.forEach((field) => {
       if (Object.prototype.hasOwnProperty.call(revenuePatch, field)) safeRevenuePatch[field] = revenuePatch[field];

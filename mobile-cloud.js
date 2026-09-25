@@ -59,6 +59,7 @@ function isClosed(file) { return fileCategory(file) === "closed"; }
 function isActive(file) { return fileCategory(file) === "active"; }
 function isOpenFile(file) { return !isClosed(file); }
 function fileExpenseTotal(file) { return (file.expenseLines || []).reduce((sum, line) => sum + parseMoney(line.amount ?? line.lineTotal ?? line.total), 0); }
+function totalPaidForFile(file = {}) { const value = file.totalPaidOverride; return value !== "" && value !== undefined && value !== null ? Math.max(0, parseMoney(value)) : 0; }
 function financialTotals() { return state.revenue.reduce((sum, row) => { sum.gross += parseMoney(row.gross); sum.expenses += parseMoney(row.expenses); sum.labor += parseMoney(row.labor); return sum; }, { gross:0, expenses:0, labor:0 }); }
 
 function renderHome() {
@@ -162,7 +163,7 @@ function bindFileLinks() { document.querySelectorAll("[data-file]").forEach((but
 function renderDetail() {
   const file = activeFile();
   if (!file) { $("fileDetail").innerHTML = `<section class="panel"><p class="subcopy">Choose a work file first.</p></section>`; return; }
-  const paid = parseMoney(file.totalPaid) || parseMoney(file.initialDeposit) + parseMoney(file.midpointDeposit) + parseMoney(file.finalPaymentAmount);
+  const paid = totalPaidForFile(file);
   const estimate = parseMoney(file.estimateTotal); const balance = Math.max(estimate - paid, 0);
   const notes = manualNotes(file).slice(-4).reverse();
   const photos = (file.workPhotos || []).slice(-6).reverse();
@@ -172,6 +173,11 @@ function renderDetail() {
   $("detailWorkPhoto").addEventListener("click", () => $("workPhotoCameraInput").click());
   $("detailPhotoRoll").addEventListener("click", () => $("workPhotoUploadInput").click());
   $("detailExpense").addEventListener("click", async () => { await fetchReceipts(); openView("expenses"); });
+  const summaryCards = [...document.querySelectorAll("#fileDetail .detail-card")];
+  bindMobileSummaryCard(summaryCards[0], () => openFileDocument("estimate"), "Open current estimate PDF");
+  bindMobileSummaryCard(summaryCards[1], openMobileFinancials, "Edit paid amount");
+  bindMobileSummaryCard(summaryCards[2], openMobileFinancials, "Edit work-file financials");
+  bindMobileSummaryCard(summaryCards[3], openMobileFileExpenses, "Open file expenses and receipt capture");
   $("addMobileNote").addEventListener("click", openMobileNoteSheet);
   $("addPhoneContact").addEventListener("click", addToPhoneContacts);
   document.querySelectorAll("[data-photo]").forEach((button) => button.addEventListener("click", () => openMobilePhotoPreview(button.dataset.photo)));
@@ -270,8 +276,62 @@ function openFileDocument(type) {
     window.open(url, "_blank", "noopener");
     return;
   }
+  if (type === "estimate" && file.editableEstimate) {
+    const viewer = new URL("mobile-document.html", window.location.href);
+    viewer.searchParams.set("fileId", file.id || "");
+    viewer.searchParams.set("type", "estimate");
+    window.open(viewer.toString(), "_blank", "noopener");
+    return;
+  }
   const labels = { estimate:"estimate", supplement:"supplement", invoice:"invoice", workorder:"work order" };
   window.alert(`No saved ${labels[type] || "document"} file is attached to this work file yet.`);
+}
+function bindMobileSummaryCard(card, action, label) {
+  if (!card) return;
+  card.classList.add("is-clickable");
+  card.tabIndex = 0;
+  card.setAttribute("role", "button");
+  card.setAttribute("aria-label", label);
+  card.addEventListener("click", action);
+  card.addEventListener("keydown", (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); action(); } });
+}
+async function openMobileFileExpenses() {
+  notify("Loading file expenses...");
+  try { await fetchReceipts(); notify("Live cloud data"); } catch (_) { notify("Expense history could not be refreshed", true); }
+  openView("expenses");
+}
+function openMobileFinancials() {
+  const file = activeFile();
+  if (!file) return;
+  const estimate = parseMoney(file.estimateTotal);
+  const paid = totalPaidForFile(file);
+  openSheet(`<div class="sheet-heading"><div><p class="eyebrow">Work-file financials</p><h2>${escapeHtml(file.clientName)}</h2></div><button class="sheet-close" type="button" data-close-sheet>×</button></div><div class="mobile-financial-grid"><label>Estimate Total<input id="mobileEstimateTotal" type="number" min="0" step="0.01" inputmode="decimal" value="${estimate || ""}" placeholder="0.00"></label><label>Total Paid<input id="mobileTotalPaid" type="number" min="0" step="0.01" inputmode="decimal" value="${paid || ""}" placeholder="0.00"></label><div><span>Balance Due</span><strong id="mobileBalanceDue">${money.format(Math.max(estimate-paid,0))}</strong></div></div><p class="subcopy">Total Paid is a manual accounting amount. Deposit fields do not change it automatically.</p><div class="sheet-actions"><button type="button" data-close-sheet>Cancel</button><button type="button" class="primary-action" id="saveMobileFinancials">Save Financials</button></div>`);
+  const refreshBalance = () => { const nextEstimate=parseMoney($("mobileEstimateTotal")?.value); const nextPaid=parseMoney($("mobileTotalPaid")?.value); if ($("mobileBalanceDue")) $("mobileBalanceDue").textContent=money.format(Math.max(nextEstimate-nextPaid,0)); };
+  $("mobileEstimateTotal")?.addEventListener("input", refreshBalance);
+  $("mobileTotalPaid")?.addEventListener("input", refreshBalance);
+  $("saveMobileFinancials")?.addEventListener("click", saveMobileFinancials);
+}
+async function saveMobileFinancials() {
+  const file = activeFile();
+  if (!file) return;
+  const button=$("saveMobileFinancials");
+  const estimateTotal=Math.max(0,parseMoney($("mobileEstimateTotal")?.value));
+  const totalPaidOverride=Math.max(0,parseMoney($("mobileTotalPaid")?.value));
+  button.disabled=true; button.textContent="Saving...";
+  try {
+    file.estimateTotal=estimateTotal;
+    file.totalPaidOverride=totalPaidOverride;
+    const revenueRow=state.revenue.find((entry) => entry.dashboardFileId === file.id || entry.fileNumber === file.fileNumber) || null;
+    if (revenueRow) { revenueRow.gross=estimateTotal; revenueRow.profit=estimateTotal-parseMoney(revenueRow.expenses)-parseMoney(revenueRow.labor); }
+    await saveFilePatch(file,{ estimateTotal,totalPaidOverride },revenueRow);
+    closeSheet();
+    renderDetail();
+    notify("Financials saved to cloud");
+  } catch (error) {
+    notify("Financial update failed",true);
+    window.alert(error.message || "Financials could not be saved.");
+    button.disabled=false; button.textContent="Save Financials";
+  }
 }
 function receiptUploadSheet() {
   openSheet(`<div class="sheet-heading"><div><p class="eyebrow">Receipt capture</p><h2>Upload receipt</h2></div><button class="sheet-close" type="button" data-close-sheet>×</button></div><div class="sheet-file-list"><button type="button" data-receipt-source="camera">Take photo with camera<small>Best for job-site receipt capture.</small></button><button type="button" data-receipt-source="file">Upload image or PDF<small>Choose an existing receipt file.</small></button></div>`);
@@ -462,7 +522,7 @@ function openDesktop(route) { if (route === "googleCalendar") { openGoogleCalend
 async function fetchReceipts() { const file = activeFile(); if (!file) { receipts=[]; return; } const response = await fetch(`${EXPENSE_API}?fileId=${encodeURIComponent(file.id)}&t=${Date.now()}`, { cache:"no-store" }); const result = await response.json().catch(() => ({})); receipts = response.ok && result.ok !== false ? result.expenses || [] : []; }
 function applyCloudDashboard(cloud = {}) { state = { files:(cloud.dashboardFiles || []).map(normalizeFile).filter((file) => fileKey(file) !== "26-a1006"), revenue:cloud.revenueRows || [], prices:cloud.priceRows || [], payroll:cloud.payrollRows || [], calendarEvents:cloud.calendarEvents || [], externalCalendarEvents:cloud.externalCalendarEvents || [], calendar:cloud.calendar || [], deletedFileKeys:cloud.deletedFileKeys || [], deletedPriceIds:cloud.deletedPriceIds || [] }; activeFileId = state.files.find((file) => file.id === activeFileId)?.id || state.files.find(isOpenFile)?.id || state.files[0]?.id || ""; }
 async function loadCloud() { notify("Loading cloud..."); const response = await fetch(`${API}?t=${Date.now()}`, { cache:"no-store" }); const result = await response.json().catch(() => ({})); if (!response.ok || result.ok === false) throw new Error(result.error || "Cloud could not be reached."); applyCloudDashboard(result.dashboard || {}); await fetchReceipts(); notify("Live cloud data"); renderAll(); }
-async function saveFilePatch(file, changes = {}, revenueRow = null) { if (!file) throw new Error("Choose a work file first."); const payload = { action:"mobileFilePatch", fileId:file.id || "", fileNumber:file.fileNumber || "", changes }; if (revenueRow) payload.revenueRow = { id:revenueRow.id || "", dashboardFileId:revenueRow.dashboardFileId || file.id || "", fileNumber:revenueRow.fileNumber || file.fileNumber || "", expenses:revenueRow.expenses, profit:revenueRow.profit, expenseLines:revenueRow.expenseLines || [] }; const response = await fetch(API, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload), cache:"no-store" }); const result = await response.json().catch(() => ({})); if (!response.ok || result.ok === false) throw new Error(result.error || "Cloud file update failed."); applyCloudDashboard(result.dashboard || {}); return result; }
+async function saveFilePatch(file, changes = {}, revenueRow = null) { if (!file) throw new Error("Choose a work file first."); const payload = { action:"mobileFilePatch", fileId:file.id || "", fileNumber:file.fileNumber || "", changes }; if (revenueRow) payload.revenueRow = { id:revenueRow.id || "", dashboardFileId:revenueRow.dashboardFileId || file.id || "", fileNumber:revenueRow.fileNumber || file.fileNumber || "", gross:revenueRow.gross, expenses:revenueRow.expenses, labor:revenueRow.labor, profit:revenueRow.profit, expenseLines:revenueRow.expenseLines || [] }; const response = await fetch(API, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload), cache:"no-store" }); const result = await response.json().catch(() => ({})); if (!response.ok || result.ok === false) throw new Error(result.error || "Cloud file update failed."); applyCloudDashboard(result.dashboard || {}); return result; }
 function renderAll() { renderHome(); renderFiles(); renderDetail(); renderExpenses(); renderCalendar(); renderRevenue(); }
 
 document.querySelectorAll("[data-view]").forEach((button) => button.addEventListener("click", () => openView(button.dataset.view)));
