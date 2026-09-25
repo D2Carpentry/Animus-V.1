@@ -3126,7 +3126,7 @@ function openEstimatorInCommandCenter(url, estimateData = null) {
   }
   const estimatorUrl = new URL(url, window.location.href);
   estimatorUrl.searchParams.set("embedded", "1");
-  estimatorUrl.searchParams.set("v", "20260916-dark-ui-polish");
+  estimatorUrl.searchParams.set("v", "20260923-edit-image-name");
   estimatorUrl.searchParams.set("open", Date.now().toString());
   if (estimateData) {
     frame.addEventListener("load", () => {
@@ -8233,7 +8233,7 @@ document.querySelectorAll("[data-crm-view]").forEach((button) => {
     if (frame && (!currentSrc || currentSrc === "about:blank")) {
       const estimatorUrl = new URL("animus-estimate-demo.html", window.location.href);
       estimatorUrl.searchParams.set("standard", "1");
-      estimatorUrl.searchParams.set("v", "20260916-dark-ui-polish");
+      estimatorUrl.searchParams.set("v", "20260923-edit-image-name");
       estimatorUrl.searchParams.set("open", Date.now().toString());
       frame.src = estimatorUrl.toString();
     }
