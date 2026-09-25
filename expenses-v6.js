@@ -32,8 +32,17 @@
   const hasReceiptImage = (entry = {}) => Boolean(receiptImageSrc(entry));
   const isPdfReceipt = (entry = {}) => String(entry.receiptContentType || "").toLowerCase() === "application/pdf" || /\.pdf$/i.test(String(entry.imageTitle || "")) || /^data:application\/pdf/i.test(String(entry.imageDataUrl || ""));
   const fileKey = (file) => String(file?.id || file?.fileNumber || "").trim();
+  const fileKeys = (file) => Array.from(new Set([
+    file?.id,
+    file?.fileNumber,
+    file?.legacyFileNumber,
+  ].map((value) => String(value || "").trim()).filter(Boolean)));
   const files = () => typeof crmFiles !== "undefined" && Array.isArray(crmFiles) ? crmFiles : [];
-  const findFile = (id) => files().find((file) => fileKey(file) === id || file.id === id) || null;
+  const findFile = (id) => {
+    const key = String(id || "").trim();
+    return files().find((file) => fileKeys(file).includes(key)) || null;
+  };
+  const entryBelongsToFile = (entry, file) => fileKeys(file).includes(String(entry?.fileId || "").trim());
 
   function cleanDraft(source = {}) {
     return {
@@ -47,12 +56,17 @@
   function setExpenseCenterMode(active) { document.body.classList.toggle("animus-expense-center-active", active); }
 
   async function apiGet(file) {
-    const key = fileKey(file);
-    if (!key) return [];
-    const response = await fetch(`${API}?fileId=${encodeURIComponent(key)}&t=${Date.now()}`, { cache:"no-store" });
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok || payload.ok === false) throw new Error(payload.error || "Could not load saved expenses.");
-    return (Array.isArray(payload.expenses) ? payload.expenses : []).map((entry) => ({ ...entry, fileId:key, file }));
+    const keys = fileKeys(file);
+    if (!keys.length) return [];
+    const ledgers = await Promise.all(keys.map(async (key) => {
+      const response = await fetch(`${API}?fileId=${encodeURIComponent(key)}&t=${Date.now()}`, { cache:"no-store" });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || payload.ok === false) throw new Error(payload.error || "Could not load saved expenses.");
+      return (Array.isArray(payload.expenses) ? payload.expenses : []).map((entry) => ({ ...entry, fileId:key, file }));
+    }));
+    const byId = new Map();
+    ledgers.flat().forEach((entry) => byId.set(entry.id || `${entry.fileId}:${entry.date}:${entry.title}:${entry.amount}`, entry));
+    return [...byId.values()];
   }
 
   async function loadExpenses() {
@@ -67,6 +81,7 @@
       state.entries = rows.flat().sort((a,b) => String(b.updatedAt || b.createdAt || "").localeCompare(String(a.updatedAt || a.createdAt || "")));
       state.companyEntries = companyRows.sort((a,b) => String(b.updatedAt || b.createdAt || "").localeCompare(String(a.updatedAt || a.createdAt || "")));
       state.loaded = true;
+      syncLoadedExpensesToRevenue();
     } finally {
       if (requestId === state.requestId) { state.loading = false; render(); }
     }
@@ -77,8 +92,9 @@
   function visibleEntries() {
     const query = String(state.filters.query || "").trim().toLowerCase();
     const tab = state.tab;
+    const scopedFile = state.scope !== "all" ? findFile(state.scope) : null;
     return expenseEntries().filter((entry) => {
-      if (state.scope !== "all" && entry.fileId !== state.scope) return false;
+      if (state.scope !== "all" && !(scopedFile ? entryBelongsToFile(entry, scopedFile) : entry.fileId === state.scope)) return false;
       if (tab === "categories" && state.filters.category && entry.category !== state.filters.category) return false;
       if (tab === "vendors" && state.filters.vendor && entry.vendor !== state.filters.vendor) return false;
       if (state.filters.category && entry.category !== state.filters.category) return false;
@@ -100,9 +116,10 @@
   function fileExpenseGroups() {
     const groups = new Map();
     state.entries.forEach((entry) => {
-      const key = String(entry.fileId || "");
+      const matchedFile = findFile(entry.fileId) || entry.file;
+      const key = fileKey(matchedFile) || String(entry.fileId || "");
       if (!key) return;
-      const current = groups.get(key) || { file: findFile(key) || entry.file, entries: [], total: 0, latest: "" };
+      const current = groups.get(key) || { file: matchedFile, entries: [], total: 0, latest: "" };
       current.entries.push(entry);
       current.total += amount(entry.amount);
       const stamp = String(entry.updatedAt || entry.createdAt || entry.date || "");
@@ -205,7 +222,8 @@
   function render() {
     const root = document.querySelector("#crmExpensesView");
     if (!root) return;
-    setExpenseCenterMode(true);
+    setExpenseCenterMode(!root.hidden);
+    if (root.hidden) return;
     const rows = visibleEntries();
     const currentEntries = expenseEntries();
     const groups = fileExpenseGroups();
@@ -285,9 +303,9 @@
     }
   }
 
-  function updateRevenue(file) {
+  function updateRevenue(file, options = {}) {
     if (!file || file.isCompanyExpense || typeof ensureExpenseRevenueRowForFile !== "function") return;
-    const relevant = state.entries.filter((entry) => entry.fileId === fileKey(file));
+    const relevant = state.entries.filter((entry) => entryBelongsToFile(entry, file));
     // The cloud receipt list is mirrored to the original work-file ledger so
     // Work Files, Revenue, and the Expense Center all read the same records.
     file.animusExpenseLedgerV4 = relevant.map((entry) => ({
@@ -296,13 +314,54 @@
       items: Array.isArray(entry.items) ? entry.items.map((item) => ({ ...item, price: amount(item.price) })) : [],
     }));
     if (typeof syncExpenseLedgerV4 === "function") syncExpenseLedgerV4(file);
-    if (typeof saveCrmFiles === "function") saveCrmFiles();
+    if (options.persist !== false && typeof saveCrmFiles === "function") saveCrmFiles();
     const row = ensureExpenseRevenueRowForFile(file); if (!row) return;
     row.expenses = relevant.reduce((sum,entry) => sum + amount(entry.amount),0);
     row.expenseLines = relevant.map((entry) => ({id:entry.id,date:entry.date,vendor:entry.vendor,note:entry.title || entry.notes,category:entry.category,amount:amount(entry.amount),baseAmount:amount(entry.amount),receiptSource:"ANIMUS Expense Center"}));
     if (typeof syncRevenueExpenseTotal === "function") syncRevenueExpenseTotal(row);
+    if (options.persist !== false && typeof saveRevenueRows === "function") saveRevenueRows();
+    if (options.persist !== false) patchExpenseRevenueToCloud([file]);
+  }
+
+  async function patchExpenseRevenueToCloud(changedFiles) {
+    for (const file of changedFiles) {
+      const row = typeof ensureExpenseRevenueRowForFile === "function" ? ensureExpenseRevenueRowForFile(file) : null;
+      if (!row) continue;
+      try {
+        const response = await fetch("/api/dashboard", {
+          method:"POST",
+          headers:{ "Content-Type":"application/json" },
+          cache:"no-store",
+          body:JSON.stringify({
+            action:"mobileFilePatch",
+            source:"ANIMUS Expense Revenue Sync",
+            fileId:file.id || "",
+            fileNumber:file.fileNumber || "",
+            changes:{ expenseLines:Array.isArray(file.expenseLines) ? file.expenseLines : [] },
+            revenueRow:{
+              id:row.id || "",
+              dashboardFileId:row.dashboardFileId || file.id || "",
+              fileNumber:row.fileNumber || file.fileNumber || "",
+              expenses:Number(row.expenses) || 0,
+              profit:Number(row.profit) || 0,
+              expenseLines:Array.isArray(row.expenseLines) ? row.expenseLines : [],
+            },
+          }),
+        });
+        if (!response.ok) throw new Error(`Expense cloud patch failed (${response.status}).`);
+      } catch (error) {
+        console.warn("ANIMUS could not patch this file's expense total to the cloud.", error);
+      }
+    }
+  }
+
+  function syncLoadedExpensesToRevenue() {
+    const affectedFiles = files().filter((file) => state.entries.some((entry) => entryBelongsToFile(entry, file)));
+    if (!affectedFiles.length) return;
+    affectedFiles.forEach((file) => updateRevenue(file, { persist:false }));
+    if (typeof saveCrmFiles === "function") saveCrmFiles();
     if (typeof saveRevenueRows === "function") saveRevenueRows();
-    if (typeof queueDashboardCloudSave === "function" && typeof buildDashboardSyncPayload === "function") queueDashboardCloudSave(buildDashboardSyncPayload()).catch(() => {});
+    patchExpenseRevenueToCloud(affectedFiles);
   }
 
   async function saveDrawer() {
@@ -521,7 +580,9 @@
         state.draft = null;
         state.editing = false;
       }
-      return legacySwitchCrmView(view);
+      const result = legacySwitchCrmView(view);
+      if (view === "revenue" && !state.loading) loadExpenses();
+      return result;
     };
     window.switchCrmView = switchCrmView;
   }
@@ -558,5 +619,10 @@
   document.addEventListener("DOMContentLoaded", () => { if (!document.querySelector("#crmExpensesView")?.hidden) { render(); loadExpenses(); } });
   if (document.readyState !== "loading" && !document.querySelector("#crmExpensesView")?.hidden) { render(); loadExpenses(); }
   window.animusExpenseCenterLoad = loadExpenses;
-  window.getAnimusExpensesForFile = (id) => state.entries.filter((entry) => entry.fileId === String(id || ""));
+  window.getAnimusExpensesForFile = (id) => {
+    const file = findFile(id);
+    return file
+      ? state.entries.filter((entry) => entryBelongsToFile(entry, file))
+      : state.entries.filter((entry) => entry.fileId === String(id || ""));
+  };
 })();
