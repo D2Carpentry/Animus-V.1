@@ -353,6 +353,46 @@ function mergeDashboard(existing = {}, incoming = {}) {
   };
 }
 
+function applyMobileFilePatch(existing = {}, payload = {}) {
+  const files = Array.isArray(existing.dashboardFiles) ? existing.dashboardFiles.map((file) => ({ ...file })) : [];
+  const targetKeys = [payload.fileId, payload.fileNumber].map(normalizeMergeKey).filter(Boolean);
+  const fileIndex = files.findIndex((file) => fileMergeKeys(file).some((key) => targetKeys.includes(key)));
+  if (fileIndex < 0) return { error: "The selected work file no longer exists in the live cloud dashboard." };
+
+  const allowedFileFields = ["notes", "timeline", "workPhotos", "expenseLines"];
+  const requestedChanges = payload.changes && typeof payload.changes === "object" ? payload.changes : {};
+  const changes = {};
+  allowedFileFields.forEach((field) => {
+    if (Object.prototype.hasOwnProperty.call(requestedChanges, field)) changes[field] = requestedChanges[field];
+  });
+  files[fileIndex] = { ...files[fileIndex], ...changes, updatedAt:new Date().toISOString() };
+
+  const revenueRows = Array.isArray(existing.revenueRows) ? existing.revenueRows.map((row) => ({ ...row })) : [];
+  const revenuePatch = payload.revenueRow && typeof payload.revenueRow === "object" ? payload.revenueRow : null;
+  if (revenuePatch) {
+    const revenueKeys = [revenuePatch.id, revenuePatch.dashboardFileId, revenuePatch.fileNumber].map(normalizeMergeKey).filter(Boolean);
+    const revenueIndex = revenueRows.findIndex((row) => [row.id, row.dashboardFileId, row.fileNumber].map(normalizeMergeKey).some((key) => revenueKeys.includes(key)));
+    const allowedRevenueFields = ["expenses", "profit", "expenseLines"];
+    const safeRevenuePatch = {};
+    allowedRevenueFields.forEach((field) => {
+      if (Object.prototype.hasOwnProperty.call(revenuePatch, field)) safeRevenuePatch[field] = revenuePatch[field];
+    });
+    if (revenueIndex >= 0) revenueRows[revenueIndex] = { ...revenueRows[revenueIndex], ...safeRevenuePatch, updatedAt:new Date().toISOString() };
+  }
+
+  return {
+    dashboard: {
+      ...existing,
+      dashboardFiles: files,
+      revenueRows,
+      action: "dashboardSync",
+      source: "ANIMUS Mobile File Patch",
+      syncedAt: new Date().toISOString(),
+      savedTo: "Cloudflare R2",
+    },
+  };
+}
+
 async function readDashboardPayload(request) {
   const contentType = request.headers.get("content-type") || "";
 
@@ -512,7 +552,10 @@ async function handlePost(context) {
   const isBackupOnly = url.searchParams.get("backupOnly") === "1";
   const replaceLatest = url.searchParams.get("replaceLatest") === "1";
   const existing = (isBackupOnly || isTestSnapshot || replaceLatest) ? null : await readExistingDashboard(env);
-  const dashboard = (isBackupOnly || isTestSnapshot || replaceLatest) ? {
+  const isMobileFilePatch = payload.action === "mobileFilePatch";
+  const mobilePatch = isMobileFilePatch ? applyMobileFilePatch(existing || {}, payload) : null;
+  if (mobilePatch?.error) return jsonResponse({ ok:false, error:mobilePatch.error }, 409);
+  const dashboard = isMobileFilePatch ? mobilePatch.dashboard : (isBackupOnly || isTestSnapshot || replaceLatest) ? {
     ...payload,
     action: "dashboardSync",
     syncedAt: new Date().toISOString(),
