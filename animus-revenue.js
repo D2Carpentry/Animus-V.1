@@ -6,8 +6,8 @@
   const numeric = (value) => typeof parseMoney === "function" ? parseMoney(value) : Number(String(value || "").replace(/[^0-9.-]/g, "")) || 0;
   const profit = (row) => typeof revenueProfit === "function" ? revenueProfit(row) : numeric(row.gross) - numeric(row.expenses) - numeric(row.labor);
   const state = { query:"", status:"all", project:"all", columns:{ date:true, margin:true, expenses:true, actions:true }, page:1, perPage:10, action:"", filterOpen:false, columnsOpen:false };
-  const COLUMN_STORAGE = "animus-profitability-column-widths-v2";
-  const DEFAULT_COLUMN_WIDTHS = [126, 410, 142, 128, 128, 136, 124, 96];
+  const COLUMN_STORAGE = "animus-profitability-column-widths-v3-compact";
+  const DEFAULT_COLUMN_WIDTHS = [102, 250, 122, 112, 112, 122, 108, 64];
   let originalRender = null;
 
   function rows() {
@@ -70,12 +70,12 @@
   }
   function tableRow(row) {
     const file = typeof findFileForRevenue === "function" ? findFileForRevenue(row) : null;
-    const customer = file?.clientName || row.clientName || row.fileNumber || "Unlinked file";
+    const customer = file?.clientName || row.clientName || String(row.clientJob || "").replace(/\s*[-·]\s*(?:26-)?A-?\d+.*$/i, "").trim() || "Unlinked file";
     const margin = numeric(row.gross) ? (profit(row) / numeric(row.gross)) * 100 : 0;
     const visible = (name) => state.columns[name] ? "" : " hidden";
     return `<tr data-revenue-row="${safe(row.id)}">
       <td class="revenue-col-date${visible("date")}"><input class="animus-revenue-date-input" type="date" value="${safe(dateInputValue(row.date))}" data-revenue-date-edit="${safe(row.id)}" aria-label="Edit revenue date" title="${safe(dateText(row.date))}"></td>
-      <td><button class="animus-revenue-job" data-revenue-open-file="${safe(row.id)}">${safe(row.clientJob || customer)}<small>${safe(customer)}${file?.fileNumber ? ` · ${safe(file.fileNumber)}` : ""}</small></button></td>
+      <td><button class="animus-revenue-job" data-revenue-open-file="${safe(row.id)}" title="${safe(customer)}">${safe(customer)}</button></td>
       <td>${moneyCell(row,"gross",money(row.gross),"")}</td>
       <td class="revenue-col-expenses${visible("expenses")}">${moneyCell(row,"expenses",money(row.expenses),"expenses")}</td>
       <td>${moneyCell(row,"labor",money(row.labor),"labor")}</td>
@@ -156,7 +156,8 @@
         const startWidth = Number.parseFloat(col.style.width) || widths[index] || DEFAULT_COLUMN_WIDTHS[index];
         document.body.classList.add("animus-revenue-resizing");
         const move = (moveEvent) => {
-          const nextWidth = Math.max(74, Math.round(startWidth + moveEvent.clientX - startX));
+          const minimums = [88, 180, 102, 94, 94, 102, 94, 54];
+          const nextWidth = Math.max(minimums[index] || 74, Math.round(startWidth + moveEvent.clientX - startX));
           widths[index] = nextWidth;
           col.style.width = `${nextWidth}px`;
         };
