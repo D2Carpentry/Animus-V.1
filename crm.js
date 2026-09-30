@@ -2297,6 +2297,8 @@ function saveStartDateModal() {
   const file = normalizeCrmFile(activeFile());
   const input = $("crmStartDateQuickInput");
   if (!file || !input) return closeStartDateModal();
+  const savedFileId = file.id;
+  const savedFileKey = fileRecordKey(file);
   const oldDate = file.startDate || "";
   const newDate = input.value || "";
   file.startDate = newDate;
@@ -2309,10 +2311,29 @@ function saveStartDateModal() {
     addSystemNote(file, `Start date changed from ${oldDate || "blank"} to ${newDate || "blank"}.`);
   }
   if (file.fileStatus === "In Progress") ensureRevenueRowForFile(file);
-  saveCrmFiles();
+  crmLocalChangeVersion += 1;
+  saveCrmFiles({ syncExpenses: false });
   closeStartDateModal();
+  preserveActiveWorkFile(savedFileId, savedFileKey);
   renderCrm();
+  if (oldDate === newDate) return;
+  const payload = buildDashboardSyncPayload({ includeRevenue: false, syncExpenses: false, captureEdits: false, restoreRevenueHistory: false });
+  queueDashboardCloudSave(payload).then((result) => {
+    const cloudFiles = Array.isArray(result?.dashboard?.dashboardFiles) ? result.dashboard.dashboardFiles : [];
+    if (cloudFiles.length) {
+      crmFiles = mergeDashboardFiles(crmFiles, cloudFiles).map((entry) => normalizeCrmFile(entry));
+      saveCrmFiles({ syncExpenses: false });
+      preserveActiveWorkFile(savedFileId, savedFileKey);
+      renderCrm();
+    }
+    showDashboardSaveStatus(newDate ? "Start date saved to this work file, calendar, and Cloudflare." : "Start date removed from this work file, calendar, and Cloudflare.");
+  }).catch(() => {
+    showDashboardSaveStatus("Start date saved in this browser. Cloud sync will retry with Save All.", true);
+  });
 }
+
+window.openCrmStartDateModal = openStartDateModal;
+window.closeCrmStartDateModal = closeStartDateModal;
 
 function requireCrmReason(message, notePrefix) {
   return;
