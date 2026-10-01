@@ -1083,7 +1083,7 @@ async function postPayloadToCloudflare(payload, options = {}) {
   if (options.backupName) url.searchParams.set("backupName", options.backupName);
   const response = await fetch(url.toString(), {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "X-Animus-Compact-Response": "1" },
     cache: "no-store",
     body: JSON.stringify(payload),
   });
@@ -1118,7 +1118,7 @@ async function fetchDashboardFromCloudflare() {
   if (!response.ok || result.ok === false) {
     throw new Error(result.detail ? `${result.error}: ${result.detail}` : (result.error || `Cloudflare load failed with status ${response.status}.`));
   }
-  const dashboard = result.dashboard || null;
+  const dashboard = result.dashboard || (Array.isArray(result.dashboardFiles) ? result : null);
   if (dashboard && result.recoveredFromBackup) {
     Object.defineProperty(dashboard, "__cloudRecovery", {
       value: { key: result.recoveredBackupKey || "", warning: result.warning || "" },
@@ -1446,7 +1446,7 @@ async function saveDashboardToGoogle() {
     // First, exercise the exact full snapshot against a separate test object.
     // Nothing live is changed until Cloudflare returns a matching result.
     const tested = await queueDashboardCloudSave(payload, { testSnapshot: true, replaceLatest: true });
-    const testVerification = verifyDashboardTestSnapshot(payload, tested.dashboard);
+    const testVerification = verifyDashboardTestSnapshot(payload, tested.dashboard || tested.verification);
     if (!testVerification.ok) {
       throw new Error(`Save All stopped before changing the live cloud copy. ${testVerification.missingFiles.length} file(s) or ${testVerification.mismatchedRevenue.length} revenue line(s) did not match.`);
     }
@@ -1454,7 +1454,7 @@ async function saveDashboardToGoogle() {
     saveButton.textContent = "Saving...";
     showDashboardSaveStatus("Save check passed. Saving the verified full Command Center to Cloudflare...");
     const saved = await queueDashboardCloudSave(payload, { replaceLatest: true });
-    const liveVerification = verifyDashboardTestSnapshot(payload, saved.dashboard);
+    const liveVerification = verifyDashboardTestSnapshot(payload, saved.dashboard || saved.verification);
     if (!liveVerification.ok) {
       throw new Error(`Cloudflare protected existing data and did not accept ${liveVerification.missingFiles.length} file(s) or ${liveVerification.mismatchedRevenue.length} revenue line(s) exactly. Restore was not run.`);
     }
@@ -1586,7 +1586,7 @@ async function createCurrentDashboardBackup() {
     const payload = buildDashboardSyncPayload({ includeRevenue: true, syncExpenses: false, captureEdits: false, restoreRevenueHistory: false });
     payload.backupLabel = currentBackupLabel();
     const result = await queueDashboardCloudSave(payload, { backupOnly: true, backupName: payload.backupLabel });
-    const verification = dashboardBackupVerification(payload, result?.dashboard);
+    const verification = dashboardBackupVerification(payload, result?.dashboard || result?.verification);
     if (!verification.ok) throw new Error("Backup was not marked complete because Cloudflare did not return an exact copy of the current Command Center.");
     const totals = dashboardTestTotals(payload.revenueRows || []);
     showDashboardSaveStatus(`Current backup created and verified. ${payload.dashboardFiles.length} files, ${payload.revenueRows.length} revenue lines, ${payload.payrollRows.length} payroll rows, and ${payload.priceRows.length} price lines are safely stored as a separate Cloudflare snapshot. Gross ${crmCurrency.format(totals.gross)}.`);
@@ -1612,7 +1612,7 @@ async function saveDashboardTest() {
   try {
     const payload = buildDashboardSyncPayload({ includeRevenue: true, syncExpenses: false });
     const result = await queueDashboardCloudSave(payload, { testSnapshot: true });
-    const verification = verifyDashboardTestSnapshot(payload, result.dashboard);
+    const verification = verifyDashboardTestSnapshot(payload, result.dashboard || result.verification);
     if (!verification.ok) {
       throw new Error(`Save Test protected the live copy. ${verification.missingFiles.length} file(s) or ${verification.mismatchedRevenue.length} revenue line(s) did not match the test snapshot.`);
     }

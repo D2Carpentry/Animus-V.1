@@ -19,6 +19,40 @@ function jsonResponse(body, status = 200) {
   });
 }
 
+function rawDashboardResponse(body) {
+  return new Response(body, {
+    status: 200,
+    headers: {
+      ...corsHeaders,
+      "Content-Type": "application/json; charset=utf-8",
+      "Cache-Control": "no-store",
+      "X-Animus-Raw-Dashboard": "1",
+    },
+  });
+}
+
+function streamedDashboardSaveResponse(body, metadata = {}) {
+  const encoder = new TextEncoder();
+  const prefix = JSON.stringify({ ...metadata, dashboard: null }).replace(/null}$/, "");
+  const suffix = "}";
+  const stream = new ReadableStream({
+    start(controller) {
+      controller.enqueue(encoder.encode(prefix));
+      controller.enqueue(encoder.encode(body));
+      controller.enqueue(encoder.encode(suffix));
+      controller.close();
+    },
+  });
+  return new Response(stream, {
+    status: 200,
+    headers: {
+      ...corsHeaders,
+      "Content-Type": "application/json; charset=utf-8",
+      "Cache-Control": "no-store",
+    },
+  });
+}
+
 function backupKey(label = "") {
   const suffix = label ? `-${String(label).replace(/[^a-z0-9-]/gi, "").slice(0, 32)}` : "";
   return `${BACKUP_PREFIX}${new Date().toISOString().replace(/[:.]/g, "-")}${suffix}.json`;
@@ -109,6 +143,26 @@ function dashboardSummary(dashboard = {}, key = "") {
     counts: fileCounts(files),
     receiptCount: receiptIds.size,
     expenseLineCount,
+  };
+}
+
+function dashboardVerification(dashboard = {}) {
+  return {
+    dashboardFiles: (Array.isArray(dashboard.dashboardFiles) ? dashboard.dashboardFiles : []).map((file) => ({
+      id: file?.id || "",
+      fileNumber: file?.fileNumber || "",
+    })),
+    revenueRows: (Array.isArray(dashboard.revenueRows) ? dashboard.revenueRows : []).map((row) => ({
+      id: row?.id || "",
+      dashboardFileId: row?.dashboardFileId || "",
+      fileNumber: row?.fileNumber || "",
+      clientJob: row?.clientJob || "",
+      gross: row?.gross,
+      expenses: row?.expenses,
+      labor: row?.labor,
+    })),
+    payrollRows: (Array.isArray(dashboard.payrollRows) ? dashboard.payrollRows : []).map((row) => ({ id: row?.id || "", employee: row?.employee || "" })),
+    priceRows: (Array.isArray(dashboard.priceRows) ? dashboard.priceRows : []).map((row) => ({ id: row?.id || "", name: row?.name || row?.product || "" })),
   };
 }
 
@@ -449,12 +503,13 @@ async function handleGet(context) {
     return handleBackupGet(context, backup);
   }
 
-  const result = await readDashboardJsonObject(env, DASHBOARD_KEY);
-  if (!result.found) {
+  const liveObject = await env.ANIMUS_BUCKET.get(DASHBOARD_KEY);
+  if (!liveObject) {
     return jsonResponse({ ok: true, dashboard: null });
   }
-  if (result.dashboard) {
-    return jsonResponse({ ok: true, dashboard: result.dashboard });
+  if (!liveObject.size || Number(liveObject.size) <= MAX_READABLE_DASHBOARD_BYTES) {
+    // Avoid parsing and re-serializing the entire receipt-heavy dashboard.
+    return rawDashboardResponse(liveObject.body);
   }
 
   const recoveredBackup = await newestReadableBackup(env);
@@ -471,7 +526,7 @@ async function handleGet(context) {
   return jsonResponse({
     ok: false,
     error: "The latest cloud dashboard could not be read and no valid Cloudflare backup was found.",
-    detail: result.error,
+    detail: `Saved dashboard is too large to read safely (${liveObject.size} bytes).`,
   }, 500);
 }
 
@@ -574,9 +629,9 @@ async function handlePost(context) {
     // Preserve the previous live version before replacing it. A broken browser
     // can never overwrite the only recoverable cloud copy.
     if (!isTestSnapshot && !isBackupOnly && replaceLatest) {
-      const prior = await readExistingDashboard(env);
-      if (prior) {
-        await env.ANIMUS_BUCKET.put(backupKey("before-save"), JSON.stringify(prior), {
+      const priorObject = await env.ANIMUS_BUCKET.get(DASHBOARD_KEY);
+      if (priorObject?.body) {
+        await env.ANIMUS_BUCKET.put(backupKey("before-save"), priorObject.body, {
           httpMetadata: { contentType: "application/json; charset=utf-8" },
         });
       }
@@ -596,21 +651,33 @@ async function handlePost(context) {
   const payrollRows = Array.isArray(dashboard.payrollRows) ? dashboard.payrollRows : [];
   const priceRows = Array.isArray(dashboard.priceRows) ? dashboard.priceRows : [];
 
-  return jsonResponse({
+  const responseMetadata = {
     ok: true,
     dryRun,
     testSnapshot: isTestSnapshot,
     backupOnly: isBackupOnly,
     replaceLatest,
     backupKey: isBackupOnly ? writeKey : "",
-    dashboard,
-    summary: dashboardSummary(dashboard, DASHBOARD_KEY),
+    verification: dashboardVerification(dashboard),
+    summary: {
+      totalFiles: files.length,
+      revenueCount: revenueRows.length,
+      payrollCount: payrollRows.length,
+      priceCount: priceRows.length,
+    },
     syncedAt: dashboard.syncedAt,
     fileCount: files.length,
     revenueCount: revenueRows.length,
     payrollCount: payrollRows.length,
     priceCount: priceRows.length,
-  });
+  };
+  if (request.headers.get("X-Animus-Compact-Response") === "1") {
+    return jsonResponse(responseMetadata);
+  }
+  // Older already-open CRM tabs expect the complete dashboard in the save
+  // response. Stream the JSON string we already wrote instead of serializing
+  // the large object a second time and exhausting the Worker CPU limit.
+  return streamedDashboardSaveResponse(body, responseMetadata);
 }
 
 export async function onRequestOptions() {
