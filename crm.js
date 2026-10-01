@@ -2278,8 +2278,10 @@ function openStartDateModal() {
   const modal = $("crmStartDateModal");
   if (!file || !modal) return;
   const input = $("crmStartDateQuickInput");
+  const reason = $("crmStartDateReason");
   const fileLabel = $("crmStartDateModalFile");
   if (input) input.value = file.startDate || $("crmStartDate")?.value || "";
+  if (reason) reason.value = file.startDateReason || "";
   if (fileLabel) {
     fileLabel.textContent = `${file.fileNumber || "Work file"} · ${file.clientName || "Unnamed Client"}`;
   }
@@ -2296,12 +2298,21 @@ function openStartDateModal() {
 function saveStartDateModal() {
   const file = normalizeCrmFile(activeFile());
   const input = $("crmStartDateQuickInput");
+  const reasonInput = $("crmStartDateReason");
   if (!file || !input) return closeStartDateModal();
   const savedFileId = file.id;
   const savedFileKey = fileRecordKey(file);
   const oldDate = file.startDate || "";
+  const oldReason = file.startDateReason || "";
   const newDate = input.value || "";
+  const newReason = String(reasonInput?.value || "").trim();
+  if (!newDate && !newReason) {
+    window.alert("Add a start date or enter the reason this project has not started.");
+    reasonInput?.focus();
+    return;
+  }
   file.startDate = newDate;
+  file.startDateReason = newReason;
   const field = $("crmStartDate");
   if (field) {
     field.value = newDate;
@@ -2310,13 +2321,16 @@ function saveStartDateModal() {
   if (oldDate !== newDate) {
     addSystemNote(file, `Start date changed from ${oldDate || "blank"} to ${newDate || "blank"}.`);
   }
+  if (oldReason !== newReason) {
+    addSystemNote(file, newReason ? `Start status reason updated: ${newReason}` : "Start status reason cleared.");
+  }
   if (file.fileStatus === "In Progress") ensureRevenueRowForFile(file);
   crmLocalChangeVersion += 1;
   saveCrmFiles({ syncExpenses: false });
   closeStartDateModal();
   preserveActiveWorkFile(savedFileId, savedFileKey);
   renderCrm();
-  if (oldDate === newDate) return;
+  if (oldDate === newDate && oldReason === newReason) return;
   const payload = buildDashboardSyncPayload({ includeRevenue: false, syncExpenses: false, captureEdits: false, restoreRevenueHistory: false });
   queueDashboardCloudSave(payload).then((result) => {
     const cloudFiles = Array.isArray(result?.dashboard?.dashboardFiles) ? result.dashboard.dashboardFiles : [];
@@ -2326,7 +2340,7 @@ function saveStartDateModal() {
       preserveActiveWorkFile(savedFileId, savedFileKey);
       renderCrm();
     }
-    showDashboardSaveStatus(newDate ? "Start date saved to this work file, calendar, and Cloudflare." : "Start date removed from this work file, calendar, and Cloudflare.");
+    showDashboardSaveStatus(newDate ? "Start date saved to this work file, calendar, and Cloudflare." : "Start status reason saved to this work file and Cloudflare.");
   }).catch(() => {
     showDashboardSaveStatus("Start date saved in this browser. Cloud sync will retry with Save All.", true);
   });
@@ -9255,6 +9269,18 @@ $("crmStartDate")?.addEventListener("click", (event) => {
 });
 $("crmStartDate")?.addEventListener("keydown", (event) => {
   if (event.key === "Enter" || event.key === " ") {
+    event.preventDefault();
+    openStartDateModal();
+  }
+});
+// The visible Start Date control is rendered by the work-file shell. Keep this
+// fallback in the core CRM so the header tile remains usable if that shell is
+// temporarily served from an older browser or CDN cache.
+document.addEventListener("click", (event) => {
+  const tile = event.target.closest?.(".animus-summary-cell");
+  if (!tile) return;
+  const label = tile.querySelector(".animus-summary-copy > span")?.textContent?.trim();
+  if (tile.dataset.animusSummary === "startDate" || label === "Start Date") {
     event.preventDefault();
     openStartDateModal();
   }

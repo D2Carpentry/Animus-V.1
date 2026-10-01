@@ -153,7 +153,7 @@
     const paid = paidTotal(file);
     const balance = Math.max(estimate - paid, 0);
     const cells = [
-      ["&#36;", "Estimate", money(estimate), "", "", "estimate"], ["&#9638;", "Paid", money(paid), "", "", "financials"], ["&#128179;", "Balance", money(balance), "", "balance", "financials"], ["&#128197;", "Start Date", field(file, "startDate") ? date(file.startDate) : "Not set", "", "startDate"],
+      ["&#36;", "Estimate", money(estimate), "", "", "estimate"], ["&#9638;", "Paid", money(paid), "", "", "financials"], ["&#128179;", "Balance", money(balance), "", "balance", "financials"], ["&#128197;", "Start Date", field(file, "startDate") ? date(file.startDate) : "Not set", field(file, "startDateReason"), "", "startDate"],
     ];
     return `<div class="animus-summary-strip">${cells.map(([icon, label, value, sub, extra, action]) => `<button class="animus-summary-cell ${extra || ""} ${action ? "clickable" : ""}"${action ? ` data-animus-summary="${action}"` : ""}><span class="animus-summary-icon">${icon}</span><span class="animus-summary-copy"><span>${escape(label)}</span><strong>${escape(value)}</strong>${sub ? `<small>${escape(sub)}</small>` : ""}</span></button>`).join("")}</div>`;
   }

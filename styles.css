@@ -2584,6 +2584,19 @@ body[data-copy-mode="team"] .estimate-sheet td:first-child {
   min-height: 44px;
 }
 
+.crm-start-date-label textarea {
+  width: 100%;
+  min-height: 96px;
+  resize: vertical;
+}
+
+.crm-start-date-help {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
 #crmStartDate[readonly] {
   cursor: pointer;
   background: #f8fbff;

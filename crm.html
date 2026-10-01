@@ -6,7 +6,7 @@
     <title>D2 Command Center</title>
     <meta name="theme-color" content="#0d4a91">
     <link rel="icon" href="icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=20260915-revenue-editable-date-columns">
+    <link rel="stylesheet" href="styles.css?v=20260930-start-date-reason-popup">
     <link rel="stylesheet" href="calendar-upgrade.css?v=20260808-calendar-popups">
     <link rel="stylesheet" href="expenses-v6.css?v=20260916-expense-revenue-price-polish">
   <link rel="stylesheet" href="animus-shell.css?v=20260916-account-settings">
@@ -1119,6 +1119,10 @@
         <label class="crm-start-date-label" for="crmStartDateQuickInput">Start Date
           <input id="crmStartDateQuickInput" type="date">
         </label>
+        <label class="crm-start-date-label" for="crmStartDateReason">Reason Not Started
+          <textarea id="crmStartDateReason" rows="4" placeholder="For example: waiting for materials, customer approval, or scheduling"></textarea>
+        </label>
+        <p class="crm-start-date-help">Add a start date, a reason the project has not started, or both. A saved date will appear on the CRM calendar.</p>
         <div class="crm-choice-actions crm-start-date-actions">
           <button type="button" class="icon-button" id="crmStartDateModalCancel">Cancel</button>
           <button type="button" class="icon-button primary-action" id="crmStartDateModalSave">Save Start Date</button>
@@ -1149,7 +1153,7 @@
         caches.keys().then((keys) => keys.forEach((key) => caches.delete(key)));
       }
     </script>
-    <script src="crm.js?v=20260929-start-date-calendar-popup"></script>
+    <script src="crm.js?v=20260930-start-date-reason-popup"></script>
     <script src="calendar-upgrade.js?v=20260808-calendar-popups"></script>
   <script src="animus-shell.js?v=20260916-account-settings"></script>
     <script src="animus-dashboard.js?v=20260901-dashboard-calendar-feed"></script>
@@ -1187,7 +1191,7 @@
       @media (max-width: 700px) { .expense-image-list-row { grid-template-columns: 76px minmax(0, 1fr) 16px; gap: 8px; } .expense-image-list-row b { display: none; } }
     </style>
     <script src="animus-revenue.js?v=20260924-compact-no-file-number"></script>
-    <script src="animus-work-file.js?v=20260929-start-date-calendar-popup-v2"></script>
+    <script src="animus-work-file.js?v=20260930-start-date-reason-popup"></script>
     <script src="animus-contacts.js?v=20260823-new-file-intake"></script>
     <link rel="stylesheet" href="animus-payroll.css?v=20260822-payroll-center">
     <script src="animus-payroll.js?v=20260822-payroll-center"></script>
