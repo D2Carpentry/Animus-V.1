@@ -507,27 +507,11 @@ async function handleGet(context) {
   if (!liveObject) {
     return jsonResponse({ ok: true, dashboard: null });
   }
-  if (!liveObject.size || Number(liveObject.size) <= MAX_READABLE_DASHBOARD_BYTES) {
-    // Avoid parsing and re-serializing the entire receipt-heavy dashboard.
-    return rawDashboardResponse(liveObject.body);
-  }
-
-  const recoveredBackup = await newestReadableBackup(env);
-  if (recoveredBackup?.dashboard) {
-    return jsonResponse({
-      ok: true,
-      dashboard: recoveredBackup.dashboard,
-      recoveredFromBackup: true,
-      recoveredBackupKey: recoveredBackup.key,
-      warning: "The latest cloud dashboard could not be read, so ANIMUS loaded the newest valid Cloudflare backup instead.",
-    });
-  }
-
-  return jsonResponse({
-    ok: false,
-    error: "The latest cloud dashboard could not be read and no valid Cloudflare backup was found.",
-    detail: `Saved dashboard is too large to read safely (${liveObject.size} bytes).`,
-  }, 500);
+  // Stream the current cloud object regardless of size. The former 8 MB
+  // parsing ceiling caused a valid current dashboard to be replaced at load
+  // time by an old readable backup. Streaming does not consume Worker CPU to
+  // parse or re-serialize the receipt-heavy snapshot.
+  return rawDashboardResponse(liveObject.body);
 }
 
 async function handleBackupList(context) {
