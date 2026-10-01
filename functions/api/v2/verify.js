@@ -1,4 +1,4 @@
-import { json, options, requireDatabase } from "./_shared.js";
+import { json, options, requireAdmin, requireDatabase } from "./_shared.js";
 
 export async function onRequestOptions() {
   return options();
@@ -8,9 +8,11 @@ function number(value) {
   return Math.round((Number(value) || 0) * 100) / 100;
 }
 
-export async function onRequestGet({ env }) {
+export async function onRequestGet({ request, env }) {
   const missing = requireDatabase(env);
   if (missing) return missing;
+  const unauthorized = requireAdmin(request, env);
+  if (unauthorized) return unauthorized;
   try {
     const results = await env.ANIMUS_DB.batch([
       env.ANIMUS_DB.prepare("SELECT COUNT(*) AS count FROM workfiles WHERE deleted_at IS NULL"),

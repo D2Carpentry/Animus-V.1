@@ -1,4 +1,4 @@
-import { actor, cleanId, json, now, options, parseRecord, parseVersion, requestId, requireDatabase, sha256 } from "./_shared.js";
+import { actor, cleanId, json, now, options, parseRecord, parseVersion, requestId, requireAdmin, requireDatabase, sha256 } from "./_shared.js";
 
 export async function onRequestOptions() {
   return options();
@@ -7,6 +7,8 @@ export async function onRequestOptions() {
 export async function onRequestGet({ request, env }) {
   const missing = requireDatabase(env);
   if (missing) return missing;
+  const unauthorized = requireAdmin(request, env);
+  if (unauthorized) return unauthorized;
   const url = new URL(request.url);
   const id = cleanId(url.searchParams.get("id"));
   if (id) {
@@ -32,6 +34,8 @@ export async function onRequestPut(context) {
 async function saveWorkfile({ request, env }) {
   const missing = requireDatabase(env);
   if (missing) return missing;
+  const unauthorized = requireAdmin(request, env);
+  if (unauthorized) return unauthorized;
   const record = await request.json();
   const idempotencyKey = cleanId(request.headers.get("Idempotency-Key"));
   const requestHash = idempotencyKey ? await sha256(record) : "";
@@ -80,6 +84,8 @@ async function saveWorkfile({ request, env }) {
 export async function onRequestDelete({ request, env }) {
   const missing = requireDatabase(env);
   if (missing) return missing;
+  const unauthorized = requireAdmin(request, env);
+  if (unauthorized) return unauthorized;
   const url = new URL(request.url);
   const id = cleanId(url.searchParams.get("id"));
   if (!id) return json({ ok: false, error: "id is required." }, 400);

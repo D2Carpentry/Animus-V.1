@@ -16,9 +16,7 @@ export async function onRequestGet({ env }) {
     return json({
       ok: true,
       storage: "record-based-d1",
-      workfiles: Number(counts[0]?.results?.[0]?.count || 0),
-      revenueRows: Number(counts[1]?.results?.[0]?.count || 0),
-      migration: counts[2]?.results?.[0] || null,
+      databaseReady: true,
     });
   } catch (error) {
     return json({ ok: false, error: "Record storage health check failed.", detail: error?.message || String(error) }, 503);

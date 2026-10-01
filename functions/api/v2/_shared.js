@@ -65,3 +65,8 @@ export function migrationAuthorized(request, env) {
   if (!env.ANIMUS_MIGRATION_KEY) return false;
   return request.headers.get("X-Animus-Migration-Key") === env.ANIMUS_MIGRATION_KEY;
 }
+
+export function requireAdmin(request, env) {
+  if (migrationAuthorized(request, env)) return null;
+  return json({ ok: false, error: "Authorized ANIMUS access is required." }, 401);
+}
