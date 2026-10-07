@@ -2548,10 +2548,30 @@ function openFileNoteModal() {
   window.setTimeout(() => $("animusFileNoteText")?.focus(), 0);
 }
 
-function preserveActiveWorkFile(fileId, recordKey) {
-  const sameId = crmFiles.find((entry) => entry.id === fileId);
-  const sameRecord = sameId || crmFiles.find((entry) => fileRecordKey(entry) === recordKey);
+function workFileSelectionKeys(file = {}) {
+  return [file.id, file.fileNumber, file.legacyFileNumber, file.clientName]
+    .map((value) => String(value || "").trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function preserveActiveWorkFile(fileId, recordKey, selectionKeys = []) {
+  const wanted = new Set([
+    String(fileId || "").trim().toLowerCase(),
+    String(recordKey || "").trim().toLowerCase(),
+    ...selectionKeys,
+  ].filter(Boolean));
+  const sameRecord = crmFiles.find((entry) => workFileSelectionKeys(entry).some((key) => wanted.has(key)));
   if (sameRecord) activeFileId = sameRecord.id;
+  return sameRecord || null;
+}
+
+function renderPreservingActiveWorkFile(fileId, recordKey, selectionKeys = []) {
+  preserveActiveWorkFile(fileId, recordKey, selectionKeys);
+  renderCrm();
+  // The redesigned workfile renderer runs after renderCrm. Reasserting the
+  // selected record prevents an async cloud response from returning the user
+  // to "Select a work file" when the server normalized an internal file id.
+  preserveActiveWorkFile(fileId, recordKey, selectionKeys);
 }
 
 function openFileNoteModalForEdit(index) {
@@ -2588,6 +2608,7 @@ function saveFileNoteModal() {
   normalizeCrmFile(file);
   const savedFileId = file.id;
   const savedFileKey = fileRecordKey(file);
+  const savedSelectionKeys = workFileSelectionKeys(file);
   const timestamp = new Date().toISOString();
   const noteIndex = Number.parseInt(modal?.dataset.noteIndex || "", 10);
   const note = Number.isInteger(noteIndex) ? file.notes[noteIndex] : null;
@@ -2605,24 +2626,22 @@ function saveFileNoteModal() {
   crmLocalChangeVersion += 1;
   saveCrmFiles({ syncExpenses: false });
   closeFileNoteModal();
-  preserveActiveWorkFile(savedFileId, savedFileKey);
-  renderCrm();
-  persistFileNoteChangeToCloud(note ? "File note updated in this work file and Cloudflare." : "File note saved to this work file and Cloudflare.", savedFileId, savedFileKey).then(() => {
+  renderPreservingActiveWorkFile(savedFileId, savedFileKey, savedSelectionKeys);
+  persistFileNoteChangeToCloud(note ? "File note updated in this work file and Cloudflare." : "File note saved to this work file and Cloudflare.", savedFileId, savedFileKey, savedSelectionKeys).then(() => {
     showDashboardSaveStatus(note ? "File note updated in this work file and Cloudflare." : "File note saved to this work file and Cloudflare.");
   }).catch(() => {
     showDashboardSaveStatus(note ? "File note updated in this browser. Cloud sync will retry with Save All." : "File note saved in this browser. Cloud sync will retry with Save All.", true);
   });
 }
 
-function persistFileNoteChangeToCloud(message, selectedFileId = activeFileId, selectedFileKey = "") {
+function persistFileNoteChangeToCloud(message, selectedFileId = activeFileId, selectedFileKey = "", selectionKeys = []) {
   const payload = buildDashboardSyncPayload({ includeRevenue: false, syncExpenses: false, captureEdits: false, restoreRevenueHistory: false });
   return queueDashboardCloudSave(payload).then((result) => {
     const cloudFiles = Array.isArray(result?.dashboard?.dashboardFiles) ? result.dashboard.dashboardFiles : [];
     if (cloudFiles.length) {
       crmFiles = mergeDashboardFiles(crmFiles, cloudFiles).map((file) => normalizeCrmFile(file));
       saveCrmFiles({ syncExpenses: false });
-      preserveActiveWorkFile(selectedFileId, selectedFileKey);
-      renderCrm();
+      renderPreservingActiveWorkFile(selectedFileId, selectedFileKey, selectionKeys);
     }
     return result;
   });

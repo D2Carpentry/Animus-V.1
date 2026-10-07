@@ -1,6 +1,8 @@
 const DASHBOARD_KEY = "dashboard/latest.json";
 const BACKUP_PREFIX = "dashboard/backups/";
-const MAX_READABLE_DASHBOARD_BYTES = 8 * 1024 * 1024;
+// Current receipt-rich snapshots exceed the former 8 MB guard. Keep a bounded
+// ceiling while allowing complete CRM backups to be verified and restored.
+const MAX_READABLE_DASHBOARD_BYTES = 32 * 1024 * 1024;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -369,7 +371,9 @@ async function newestReadableBackup(env) {
   const backups = (listed.objects || [])
     .filter((object) => object.key.endsWith(".json"))
     .filter((object) => !object.size || Number(object.size) <= MAX_READABLE_DASHBOARD_BYTES)
-    .sort((a, b) => String(b.uploaded || "").localeCompare(String(a.uploaded || "")))
+    // Backup keys begin with an ISO timestamp, so key ordering remains stable
+    // even when the R2 `uploaded` value is absent or serialized differently.
+    .sort((a, b) => String(b.key || "").localeCompare(String(a.key || "")))
     .slice(0, 20);
 
   for (const backup of backups) {
@@ -409,7 +413,9 @@ function mergeDashboard(existing = {}, incoming = {}) {
 
 function applyMobileFilePatch(existing = {}, payload = {}) {
   const files = Array.isArray(existing.dashboardFiles) ? existing.dashboardFiles.map((file) => ({ ...file })) : [];
-  const targetKeys = [payload.fileId, payload.fileNumber].map(normalizeMergeKey).filter(Boolean);
+  const targetKeys = [payload.fileId, payload.fileNumber, payload.legacyFileNumber, payload.clientName]
+    .map(normalizeMergeKey)
+    .filter(Boolean);
   const fileIndex = files.findIndex((file) => fileMergeKeys(file).some((key) => targetKeys.includes(key)));
   if (fileIndex < 0) return { error: "The selected work file no longer exists in the live cloud dashboard." };
 
