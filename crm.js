@@ -9423,7 +9423,7 @@ $("crmArchiveFile").addEventListener("click", () => {
   renderCrm();
 });
 $("crmDeleteFile").addEventListener("click", deleteActiveFile);
-$("crmOpenEstimate").addEventListener("click", () => openActiveEstimate(""));
+$("crmOpenEstimate").addEventListener("click", () => showEstimateChoiceDialog(""));
 $("crmCreateSupplement").addEventListener("click", () => createSupplementForFile());
 $("crmOpenAssignment").addEventListener("click", () => openActiveEstimate("#assignment"));
 $("crmOpenInvoice").addEventListener("click", openActiveInvoice);
