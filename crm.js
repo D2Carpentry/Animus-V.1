@@ -1906,9 +1906,11 @@ function visibleFiles() {
   const filter = $("crmFileFilter").value;
   const search = String($("animusWorkFileSearch")?.value || "").trim().toLowerCase();
   const sort = $("animusWorkFileSort")?.value || "updated";
-  let files = filter === "all" ? [...crmFiles] : CRM_FILE_CATEGORY_RULES[filter] ? filesInCategory(filter) : crmFiles.filter(isOpenCrmFile);
+  let files = search
+    ? [...crmFiles]
+    : filter === "all" ? [...crmFiles] : CRM_FILE_CATEGORY_RULES[filter] ? filesInCategory(filter) : crmFiles.filter(isOpenCrmFile);
   if (search) {
-    files = files.filter((file) => [file.clientName, file.fileNumber, file.projectAddress, file.clientPhone, file.clientEmail]
+    files = files.filter((file) => [file.clientName, file.fileNumber, file.projectAddress, file.clientPhone, file.clientEmail, file.fileStatus, file.projectType, file.leadSource]
       .some((value) => String(value || "").toLowerCase().includes(search)));
   }
   const timestamp = (file) => {
@@ -1937,7 +1939,8 @@ function renderCounts() {
 
 function renderFileList() {
   const files = visibleFiles();
-  $("crmListTitle").textContent = $("crmFileFilter").selectedOptions[0].textContent;
+  const search = String($("animusWorkFileSearch")?.value || "").trim();
+  $("crmListTitle").textContent = search ? "Search Results" : $("crmFileFilter").selectedOptions[0].textContent;
   const filters = [
     ["all", "All Work Files", crmFiles.length],
     ["open", "Open Files", crmFiles.filter(isOpenCrmFile).length],
@@ -3181,7 +3184,7 @@ function openEstimatorInCommandCenter(url, estimateData = null) {
   }
   const estimatorUrl = new URL(url, window.location.href);
   estimatorUrl.searchParams.set("embedded", "1");
-  estimatorUrl.searchParams.set("v", "20261011-estimator-scroll-dialog-fix");
+  estimatorUrl.searchParams.set("v", "20261011-estimator-price-db-modal");
   estimatorUrl.searchParams.set("open", Date.now().toString());
   if (estimateData) {
     frame.addEventListener("load", () => {
@@ -3204,7 +3207,7 @@ function sendEstimateToEstimator(estimateData, target = "") {
   if (target) estimatorUrl.hash = target.replace(/^#/, "");
   estimatorUrl.searchParams.set("fromDashboard", "1");
   estimatorUrl.searchParams.set("standard", "1");
-  estimatorUrl.searchParams.set("v", "20261011-estimator-scroll-dialog-fix");
+  estimatorUrl.searchParams.set("v", "20261011-estimator-price-db-modal");
   estimatorUrl.searchParams.set("open", Date.now().toString());
   // The browser copy opens immediately, and the postMessage on iframe load
   // guarantees the same estimate arrives even when storage timing is slow.
@@ -8283,7 +8286,7 @@ document.querySelectorAll("[data-crm-view]").forEach((button) => {
     if (frame && (!currentSrc || currentSrc === "about:blank")) {
       const estimatorUrl = new URL("animus-estimate-demo.html", window.location.href);
       estimatorUrl.searchParams.set("standard", "1");
-      estimatorUrl.searchParams.set("v", "20261011-estimator-scroll-dialog-fix");
+      estimatorUrl.searchParams.set("v", "20261011-estimator-price-db-modal");
       estimatorUrl.searchParams.set("open", Date.now().toString());
       frame.src = estimatorUrl.toString();
     }
@@ -9469,6 +9472,10 @@ window.addEventListener("message", (event) => {
       event.source?.postMessage({ type: "animus-work-file-create-failed", error: error.message || "Work file could not be created." }, event.origin);
       window.alert(error.message || "Work file could not be created from that estimate.");
     }
+    return;
+  }
+  if (event.data?.type === "animus-open-crm-view" && event.data.view) {
+    switchCrmView(event.data.view);
     return;
   }
   if (event.data?.type === "animus-supplement-discarded") {
