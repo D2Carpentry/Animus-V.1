@@ -22,6 +22,7 @@ const CRM_PRICE_BACKUP_KEY = "d2PriceDatabaseBackup";
 const CRM_RECEIPT_DRAFT_KEY = "d2ReceiptScannerDraft";
 const CRM_NEW_FILE_DRAFT_KEY = "animusNewWorkFileDraft";
 const CRM_ACTIVE_FILE_DRAFT_KEY = "animusActiveWorkFileDraft";
+const CRM_PLAYGROUND_TEST_CUSTOMER_KEY = "animusPlaygroundTestCustomer";
 const CRM_RESTORE_VERSION_KEY = "d2CrmRestoreVersion";
 const CRM_CLOUD_SYNC_AT_KEY = "d2CrmCloudSyncAt";
 const DEFAULT_GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzZkie1W4LplkKwFoMq19suIHWsamKYNUwCt9xjnihTdy_dN271ou3lscTgq09bAGIG2w/exec";
@@ -3188,7 +3189,7 @@ function openEstimatorInCommandCenter(url, estimateData = null) {
     }, { once: true });
   }
   frame.src = estimatorUrl.toString();
-  switchCrmView("estimator");
+  switchCrmView("estimator", { skipEstimatorAutoLoad: true });
   $("crmEstimatorView")?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
@@ -8215,7 +8216,7 @@ async function importGoogleCalendarEvents(silent = false) {
   }
 }
 
-function switchCrmView(view) {
+function switchCrmView(view, options = {}) {
   // Changing Command Center sections must not discard a partially completed
   // customer file. The full dashboard still goes to cloud only through Save.
   flushActiveFileDraft();
@@ -8275,16 +8276,23 @@ document.querySelectorAll("[data-crm-view]").forEach((button) => {
   if (showExpenses) renderFileExpenses();
   if (showPrices) renderPriceDatabase();
   if (showBusiness && typeof window.renderBusinessPerformance === "function") window.renderBusinessPerformance();
+  if (showPlayground) renderPlaygroundPortal();
   if (showEstimator) {
     const frame = $("crmEstimatorFrame");
     const currentSrc = frame?.getAttribute("src") || "";
     const file = activeFile();
-    const needsFileEstimate = Boolean(file?.editableEstimate) && (!currentSrc || currentSrc.includes("new=1"));
-    if (needsFileEstimate) {
+    if (!options.skipEstimatorAutoLoad && file?.editableEstimate) {
       sendEstimateToEstimator(file.editableEstimate);
       return;
     }
-    if (frame && (!currentSrc || currentSrc === "about:blank")) {
+    if (frame && !options.skipEstimatorAutoLoad && !file?.editableEstimate) {
+      const estimatorUrl = new URL("animus-estimate-demo.html", window.location.href);
+      estimatorUrl.searchParams.set("standard", "1");
+      estimatorUrl.searchParams.set("new", "1");
+      estimatorUrl.searchParams.set("v", "20260923-edit-image-name");
+      estimatorUrl.searchParams.set("open", Date.now().toString());
+      frame.src = estimatorUrl.toString();
+    } else if (frame && (!currentSrc || currentSrc === "about:blank")) {
       const estimatorUrl = new URL("animus-estimate-demo.html", window.location.href);
       estimatorUrl.searchParams.set("standard", "1");
       estimatorUrl.searchParams.set("v", "20260923-edit-image-name");
@@ -9427,7 +9435,7 @@ $("crmArchiveFile").addEventListener("click", () => {
   renderCrm();
 });
 $("crmDeleteFile").addEventListener("click", deleteActiveFile);
-$("crmOpenEstimate").addEventListener("click", () => showEstimateChoiceDialog(""));
+$("crmOpenEstimate").addEventListener("click", () => openActiveEstimate(""));
 $("crmCreateSupplement").addEventListener("click", () => createSupplementForFile());
 $("crmOpenAssignment").addEventListener("click", () => openActiveEstimate("#assignment"));
 $("crmOpenInvoice").addEventListener("click", openActiveInvoice);
@@ -9942,11 +9950,124 @@ document.addEventListener("click", (event) => {
 }, true);
 
 let animusPortalDemoOpenCount = 0;
+let animusPortalTestCustomer = loadPlaygroundTestCustomer();
 
 function animusPortalDemoTimestamp() {
   return new Date().toLocaleString("en-US", {
     month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit",
   });
+}
+
+function loadPlaygroundTestCustomer() {
+  try {
+    const saved = localStorage.getItem(CRM_PLAYGROUND_TEST_CUSTOMER_KEY);
+    return saved ? JSON.parse(saved) : null;
+  } catch (error) {
+    return null;
+  }
+}
+
+function savePlaygroundTestCustomer(customer) {
+  animusPortalTestCustomer = customer || null;
+  try {
+    if (animusPortalTestCustomer) localStorage.setItem(CRM_PLAYGROUND_TEST_CUSTOMER_KEY, JSON.stringify(animusPortalTestCustomer));
+    else localStorage.removeItem(CRM_PLAYGROUND_TEST_CUSTOMER_KEY);
+  } catch (error) {
+    // Playzone state is intentionally local-only and disposable.
+  }
+}
+
+function portalTestSourceFile() {
+  return activeFile() || crmFiles.find((file) => crmFileCategory(file) !== CRM_FILE_CATEGORY_RULES.archive) || crmFiles[0] || null;
+}
+
+function estimateTotalForFile(file = {}) {
+  return Number(file.estimateTotal)
+    || Number(file.editableEstimate?.totals?.total)
+    || Number(file.editableEstimate?.total)
+    || Number(file.invoice?.total)
+    || 0;
+}
+
+function playgroundPortalLink(customer = animusPortalTestCustomer) {
+  const token = encodeURIComponent(customer?.portalToken || "demo-26-a1024");
+  return `https://animus-v-1.pages.dev/customer-portal-demo?token=${token}`;
+}
+
+function portalSmsMessage(customer = animusPortalTestCustomer) {
+  const name = customer?.clientName || "Demo Customer";
+  const fileNumber = customer?.fileNumber || "Demo";
+  return `Hi ${name}, this is D2 Carpentry & Design. Here is your test estimate portal for ${fileNumber}: ${playgroundPortalLink(customer)}`;
+}
+
+function duplicateCurrentFileForPlayground() {
+  const source = portalTestSourceFile();
+  if (!source) {
+    window.alert("Select or create a workfile first, then use it as a Playzone test customer.");
+    return;
+  }
+  const copiedAt = new Date().toISOString();
+  const customer = {
+    id: makeCrmId("play-customer"),
+    sourceFileId: source.id || "",
+    sourceFileNumber: source.fileNumber || "",
+    fileNumber: `TEST-${source.fileNumber || makeCrmFileNumber()}`,
+    clientName: source.clientName || "Demo Customer",
+    clientPhone: source.clientPhone || "",
+    clientEmail: source.clientEmail || "",
+    projectAddress: source.projectAddress || "",
+    projectType: source.projectType || "Other",
+    fileStatus: source.fileStatus || "New Lead",
+    estimateTotal: estimateTotalForFile(source),
+    portalStatus: "Sent - Awaiting Review",
+    portalToken: `test-${Date.now().toString(36)}`,
+    createdAt: copiedAt,
+    copiedAt,
+    sandboxOnly: true,
+  };
+  savePlaygroundTestCustomer(customer);
+  renderPlaygroundPortal();
+  showDashboardSaveStatus(`Playzone test customer created from ${source.clientName || source.fileNumber || "current workfile"}. This did not change live CRM data.`);
+}
+
+function clearPlaygroundTestCustomer() {
+  savePlaygroundTestCustomer(null);
+  renderPlaygroundPortal();
+  showDashboardSaveStatus("Playzone test customer cleared. Live CRM data was not changed.");
+}
+
+function renderPlaygroundPortal() {
+  const customer = animusPortalTestCustomer || {
+    clientName: "Demo Customer",
+    fileNumber: "26-A1024",
+    projectType: "Custom Cabinet Refacing",
+    fileStatus: "Sent - Awaiting Review",
+    estimateTotal: 12480,
+  };
+  const portalLink = playgroundPortalLink(customer);
+  const smsPreview = portalSmsMessage(customer);
+  const link = $("animusPortalTestLink");
+  const name = $("animusPortalCustomerName");
+  const file = $("animusPortalCustomerFile");
+  const status = $("animusPortalCustomerStatus");
+  const sms = $("animusPortalSmsPreview");
+  const subtitle = $("animusPortalPreviewSubtitle");
+  const total = $("animusPortalPreviewTotal");
+  const title = $("animusPortalPreviewTitle");
+  const copy = $("animusPortalPreviewCopy");
+  if (link) link.textContent = portalLink;
+  if (name) name.value = customer.clientName || "Demo Customer";
+  if (file) file.value = customer.fileNumber || "Demo";
+  if (status) status.value = customer.portalStatus || customer.fileStatus || "Sent - Awaiting Review";
+  if (sms) sms.value = smsPreview;
+  if (subtitle) subtitle.textContent = `${customer.projectType || "Project"} Estimate`;
+  if (total) total.textContent = crmCurrency.format(Number(customer.estimateTotal) || 0);
+  if (title) title.textContent = `Review ${customer.clientName || "Your"} Estimate`;
+  if (copy) {
+    copy.textContent = animusPortalTestCustomer
+      ? `This is a temporary Playzone duplicate of ${customer.sourceFileNumber || "the selected workfile"}. It can be used to test the customer portal without changing live files.`
+      : "Your estimate, warranty documents, care guide, photos, and approval options would live here.";
+  }
 }
 
 function simulateCustomerPortalOpen() {
@@ -9960,12 +10081,13 @@ function simulateCustomerPortalOpen() {
   if (lastOpen) lastOpen.textContent = timestamp;
   if (openCount) openCount.textContent = String(animusPortalDemoOpenCount);
   if (feed) {
-    feed.innerHTML = `<article><strong>Estimate opened</strong><span>${escapeHtml(timestamp)} · Demo Customer viewed portal link</span></article>${animusPortalDemoOpenCount > 1 ? feed.innerHTML : ""}`;
+    const customerName = animusPortalTestCustomer?.clientName || "Demo Customer";
+    feed.innerHTML = `<article><strong>Estimate opened</strong><span>${escapeHtml(timestamp)} · ${escapeHtml(customerName)} viewed portal link</span></article>${animusPortalDemoOpenCount > 1 ? feed.innerHTML : ""}`;
   }
 }
 
 function copyDemoPortalLink() {
-  const link = "https://portal.d2carpentry.com/e/demo-26-a1024";
+  const link = playgroundPortalLink();
   navigator.clipboard?.writeText(link).then(() => {
     window.alert("Demo portal link copied.");
   }).catch(() => {
@@ -9973,10 +10095,47 @@ function copyDemoPortalLink() {
   });
 }
 
+function portalSmsHref(phone, body) {
+  const cleaned = String(phone || "").replace(/[^\d+]/g, "");
+  const separator = /iPad|iPhone|iPod/.test(navigator.userAgent) ? "&" : "?";
+  return `sms:${cleaned}${separator}body=${encodeURIComponent(body)}`;
+}
+
+function openPortalSmsDraft() {
+  const phoneInput = $("animusPortalPhoneNumber");
+  const phone = phoneInput?.value || "";
+  const body = portalSmsMessage();
+  if (!String(phone).replace(/\D/g, "")) {
+    window.alert("Add your phone number first so ANIMUS can open a test text draft.");
+    phoneInput?.focus();
+    return;
+  }
+  if (!window.confirm(`Open a text draft to ${phone}? Nothing is sent until you press Send in your text app.`)) return;
+  window.location.href = portalSmsHref(phone, body);
+}
+
+function copyPortalSmsDraft() {
+  const body = portalSmsMessage();
+  navigator.clipboard?.writeText(body).then(() => {
+    window.alert("Test text copied.");
+  }).catch(() => {
+    window.prompt("Copy this test text:", body);
+  });
+}
+
 ["animusPortalCopyLink", "animusPortalCopyLinkInline"].forEach((id) => {
   $(id)?.addEventListener("click", copyDemoPortalLink);
 });
 $("animusPortalSimulateOpen")?.addEventListener("click", simulateCustomerPortalOpen);
+$("animusPortalDuplicateCurrent")?.addEventListener("click", duplicateCurrentFileForPlayground);
+$("animusPortalClearTest")?.addEventListener("click", clearPlaygroundTestCustomer);
+$("animusPortalOpenSmsDraft")?.addEventListener("click", openPortalSmsDraft);
+$("animusPortalCopySmsDraft")?.addEventListener("click", copyPortalSmsDraft);
+$("animusPortalCustomerStatus")?.addEventListener("change", (event) => {
+  if (!animusPortalTestCustomer) return;
+  animusPortalTestCustomer.portalStatus = event.target.value;
+  savePlaygroundTestCustomer(animusPortalTestCustomer);
+});
 
 persistRestoredDashboardIfNeeded();
 switchCrmView(initialDashboardView());
