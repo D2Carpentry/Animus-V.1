@@ -3189,7 +3189,7 @@ function openEstimatorInCommandCenter(url, estimateData = null) {
     }, { once: true });
   }
   frame.src = estimatorUrl.toString();
-  switchCrmView("estimator", { skipEstimatorAutoLoad: true });
+  switchCrmView("estimator");
   $("crmEstimatorView")?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
@@ -8216,7 +8216,7 @@ async function importGoogleCalendarEvents(silent = false) {
   }
 }
 
-function switchCrmView(view, options = {}) {
+function switchCrmView(view) {
   // Changing Command Center sections must not discard a partially completed
   // customer file. The full dashboard still goes to cloud only through Save.
   flushActiveFileDraft();
@@ -8280,19 +8280,7 @@ document.querySelectorAll("[data-crm-view]").forEach((button) => {
   if (showEstimator) {
     const frame = $("crmEstimatorFrame");
     const currentSrc = frame?.getAttribute("src") || "";
-    const file = activeFile();
-    if (!options.skipEstimatorAutoLoad && file?.editableEstimate) {
-      sendEstimateToEstimator(file.editableEstimate);
-      return;
-    }
-    if (frame && !options.skipEstimatorAutoLoad && !file?.editableEstimate) {
-      const estimatorUrl = new URL("animus-estimate-demo.html", window.location.href);
-      estimatorUrl.searchParams.set("standard", "1");
-      estimatorUrl.searchParams.set("new", "1");
-      estimatorUrl.searchParams.set("v", "20260923-edit-image-name");
-      estimatorUrl.searchParams.set("open", Date.now().toString());
-      frame.src = estimatorUrl.toString();
-    } else if (frame && (!currentSrc || currentSrc === "about:blank")) {
+    if (frame && (!currentSrc || currentSrc === "about:blank")) {
       const estimatorUrl = new URL("animus-estimate-demo.html", window.location.href);
       estimatorUrl.searchParams.set("standard", "1");
       estimatorUrl.searchParams.set("v", "20260923-edit-image-name");
