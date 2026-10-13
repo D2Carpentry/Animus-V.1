@@ -23,7 +23,7 @@ function parseMoney(value) { const result = Number.parseFloat(String(value ?? ""
 function dateToday() { return new Date().toISOString().slice(0, 10); }
 function formatDate(value) { return value ? new Date(`${value}T12:00:00`).toLocaleDateString("en-US", { month:"short", day:"numeric", year:"numeric" }) : "No date"; }
 function fileKey(file = {}) { return String(file.fileNumber || file.id || "").trim().toLowerCase(); }
-function fileIdentityKeys(file = {}) { return [file.id, file.fileNumber, file.legacyFileNumber, file.clientName].map((value) => String(value || "").trim().toLowerCase()).filter(Boolean); }
+function fileIdentityKeys(file = {}) { const keys = [file.id, file.fileNumber, file.legacyFileNumber].map((value) => String(value || "").trim().toLowerCase()).filter(Boolean); return keys.length ? keys : [String(file.clientName || "").trim().toLowerCase()].filter(Boolean); }
 function sameWorkFile(left = {}, right = {}) { const rightKeys = new Set(fileIdentityKeys(right)); return fileIdentityKeys(left).some((key) => rightKeys.has(key)); }
 function activeFile() { return state.files.find((file) => file.id === activeFileId) || state.files[0] || null; }
 function statusClass(status = "") { return `status-${String(status).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`; }

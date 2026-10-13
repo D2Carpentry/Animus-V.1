@@ -81,12 +81,12 @@ function normalizeMergeKey(value = "") {
 }
 
 function fileMergeKeys(file = {}) {
-  return [
+  const keys = [
     file.fileNumber,
     file.legacyFileNumber,
     file.id,
-    file.clientName,
   ].map(normalizeMergeKey).filter(Boolean);
+  return keys.length ? keys : [normalizeMergeKey(file.clientName)].filter(Boolean);
 }
 
 function fileMergeKey(file = {}) {
@@ -416,9 +416,7 @@ function mergeDashboard(existing = {}, incoming = {}) {
 
 function applyMobileFilePatch(existing = {}, payload = {}) {
   const files = Array.isArray(existing.dashboardFiles) ? existing.dashboardFiles.map((file) => ({ ...file })) : [];
-  const targetKeys = [payload.fileId, payload.fileNumber, payload.legacyFileNumber, payload.clientName]
-    .map(normalizeMergeKey)
-    .filter(Boolean);
+  const targetKeys = fileMergeKeys({ id: payload.fileId, fileNumber: payload.fileNumber, legacyFileNumber: payload.legacyFileNumber, clientName: payload.clientName });
   const fileIndex = files.findIndex((file) => fileMergeKeys(file).some((key) => targetKeys.includes(key)));
   if (fileIndex < 0) return { error: "The selected work file no longer exists in the live cloud dashboard." };
 
