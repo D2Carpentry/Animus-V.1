@@ -453,13 +453,14 @@ async function saveReceipt() {
   let file = activeFile(); if (!file) return; captureReceiptDraft(); const button = $("saveReceipt"); button.disabled = true; button.textContent = "Saving...";
   const items = receiptDraft.items.filter((item) => item.use && (item.name || parseMoney(item.total))).map((item) => ({ name:item.name || "Receipt item", price:parseMoney(item.total), lineTotal:parseMoney(item.total), category:receiptDraft.category }));
   const amount = items.reduce((sum,item) => sum + parseMoney(item.lineTotal), 0) || parseMoney(receiptDraft.amount);
-  const record = { id:receiptDraft.id || uid("mobile-receipt"), fileId:file.id, date:receiptDraft.date, vendor:receiptDraft.vendor, title:receiptDraft.title || receiptDraft.vendor || "Receipt", category:receiptDraft.category, amount, notes:receiptDraft.notes, imageDataUrl:receiptDraft.imageDataUrl, items };
+  receiptDraft.id ||= uid("mobile-receipt");
+  const record = { id:receiptDraft.id, fileId:file.id, date:receiptDraft.date, vendor:receiptDraft.vendor, title:receiptDraft.title || receiptDraft.vendor || "Receipt", category:receiptDraft.category, amount, notes:receiptDraft.notes, imageDataUrl:receiptDraft.imageDataUrl, items };
   try {
     file = await refreshSelectedWorkFile(file);
     const storageFileId = file.fileNumber || file.id;
     record.fileId = storageFileId;
     const response = await fetch(EXPENSE_API, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ fileId:storageFileId, expense:record }), cache:"no-store" }); const result = await response.json().catch(() => ({})); if (!response.ok || result.ok === false) throw new Error(result.error || "Receipt could not be saved.");
-    const saved = result.expense; receipts = [saved, ...receipts.filter((entry) => entry.id !== saved.id)]; file.expenseLines = (file.expenseLines || []).filter((line) => line.receiptGroupId !== saved.id); file.expenseLines.push(...items.map((item,index) => ({ id:`${saved.id}-${index}`, receiptGroupId:saved.id, amount:parseMoney(item.lineTotal), note:item.name, vendor:saved.vendor, date:saved.date, category:item.category }))); const revenueRow = updateRevenueExpense(file); receiptDraft = null; await saveFilePatch(file, { expenseLines:file.expenseLines }, revenueRow); renderExpenses(); notify("Saved to cloud");
+    const saved = result.expense; receipts = [saved, ...receipts.filter((entry) => entry.id !== saved.id)]; file.expenseLines = (file.expenseLines || []).filter((line) => line.receiptGroupId !== saved.id); file.expenseLines.push(...items.map((item,index) => ({ id:`${saved.id}-${index}`, receiptGroupId:saved.id, amount:parseMoney(item.lineTotal), note:item.name, vendor:saved.vendor, date:saved.date, category:item.category }))); const revenueRow = updateRevenueExpense(file); await saveFilePatch(file, { expenseLines:file.expenseLines }, revenueRow); receiptDraft = null; renderExpenses(); notify("Saved to cloud");
   } catch (error) { notify("Receipt save failed", true); window.alert(error.message || "Receipt could not be saved."); } finally { if ($("saveReceipt")) { $("saveReceipt").disabled=false; $("saveReceipt").textContent="Save expense"; } }
 }
 

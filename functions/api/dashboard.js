@@ -336,14 +336,17 @@ function mergeRevenueRows(existing = [], incoming = []) {
 
 async function readExistingDashboard(env) {
   if (!env.ANIMUS_BUCKET) return null;
-  const result = await readDashboardJsonObject(env, DASHBOARD_KEY);
+  const result = await readDashboardJsonObject(env, DASHBOARD_KEY, { live: true });
+  if (result.found && !result.dashboard) {
+    throw new Error(`The current cloud dashboard could not be read. No changes were saved. ${result.error}`);
+  }
   return result.dashboard || null;
 }
 
-async function readDashboardJsonObject(env, key) {
+async function readDashboardJsonObject(env, key, { live = false } = {}) {
   const object = await env.ANIMUS_BUCKET.get(key);
   if (!object) return { found: false, dashboard: null, error: "" };
-  if (Number(object.size || 0) > MAX_READABLE_DASHBOARD_BYTES) {
+  if (!live && Number(object.size || 0) > MAX_READABLE_DASHBOARD_BYTES) {
     return {
       found: true,
       dashboard: null,
