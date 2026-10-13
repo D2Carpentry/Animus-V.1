@@ -1091,7 +1091,7 @@ async function postPayloadToCloudflare(payload, options = {}) {
   });
   const result = await response.json().catch(() => ({}));
   if (!response.ok || result.ok === false) {
-    throw new Error(result.error || `Cloudflare save failed with status ${response.status}.`);
+    throw new Error(result.detail ? `${result.error || "Cloudflare save failed"}: ${result.detail}` : (result.error || `Cloudflare save failed with status ${response.status}.`));
   }
   return result;
 }
@@ -1191,17 +1191,38 @@ function saveExpenseChangeToCloud(message = "Expense saved to Cloudflare.") {
 // Revenue is saved on its own after a confirmed Revenue edit. Keeping it out
 // of the general Command Center Save prevents unrelated file saves from ever
 // replacing the job-profitability ledger.
-function saveRevenueChangeToCloud(message = "Revenue saved to Cloudflare.") {
+function buildRevenueCloudPayload(linkedFile = null) {
+  const fields = ["id", "dashboardFileId", "fileNumber", "clientJob", "date", "gross", "expenses", "labor", "profit", "receiptNotes", "laborAssigns", "grossOverride", "revenueAudit"];
+  return {
+    action: "dashboardSync",
+    source: "ANIMUS Revenue Update",
+    revenueRows: crmRevenueRows.map((row) => Object.fromEntries(fields.filter((key) => Object.prototype.hasOwnProperty.call(row, key)).map((key) => [key, row[key]]))),
+    deletedRevenueKeys: Array.from(loadDeletedRevenueKeys()),
+    ...(linkedFile ? { dashboardFiles: [{
+      id: linkedFile.id,
+      fileNumber: linkedFile.fileNumber,
+      laborTotal: linkedFile.laborTotal,
+      revenueExcluded: linkedFile.revenueExcluded,
+      notes: linkedFile.notes,
+      timeline: linkedFile.timeline,
+    }] } : {}),
+  };
+}
+
+function saveRevenueChangeToCloud(message = "Revenue saved to Cloudflare.", linkedFile = null) {
   saveRevenueRows();
-  const payload = buildDashboardSyncPayload({ includeRevenue: true });
+  const payload = JSON.parse(JSON.stringify(buildRevenueCloudPayload(linkedFile)));
   return queueDashboardCloudSave(payload)
     .then((result) => {
-      const cloudRows = Array.isArray(result?.dashboard?.revenueRows) ? result.dashboard.revenueRows : [];
-      crmRevenueRows = filterDeletedRevenueRows(dedupeRevenueRows(mergeRevenueRowsForSave(cloudRows, payload.revenueRows)));
+      const verification = verifyDashboardTestSnapshot(payload, result.dashboard || result.verification);
+      if (!verification.ok) throw new Error("Cloudflare did not confirm all submitted revenue amounts.");
       saveRevenueRows();
       showDashboardSaveStatus(message);
     })
-    .catch(() => showDashboardSaveStatus("Revenue is saved in this browser, but cloud save did not finish. Try again when the connection is steady.", true));
+    .catch((error) => {
+      showDashboardSaveStatus(`Revenue cloud save failed: ${error.message || "Unknown error"}. Your edits remain on this page.`, true);
+      return false;
+    });
 }
 
 window.animusSaveRevenueChangeToCloud = saveRevenueChangeToCloud;
@@ -6688,7 +6709,7 @@ function deleteRevenueRow(rowId) {
   saveCrmFiles();
   saveRevenueRows();
   renderRevenue();
-  saveRevenueChangeToCloud("Revenue row deleted from Cloudflare.");
+  saveRevenueChangeToCloud("Revenue row deleted from Cloudflare.", file);
 }
 
 function parseRevenueImport(text) {
