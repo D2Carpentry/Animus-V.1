@@ -358,7 +358,8 @@
     affectedFiles.forEach((file) => updateRevenue(file, { persist:false }));
     if (typeof saveCrmFiles === "function") saveCrmFiles();
     if (typeof saveRevenueRows === "function") saveRevenueRows();
-    patchExpenseRevenueToCloud(affectedFiles);
+    // Reading receipt history refreshes the display. Only an explicit expense
+    // change or Save All writes those refreshed totals back to the cloud.
   }
 
   async function saveDrawer() {
