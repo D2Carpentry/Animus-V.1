@@ -288,11 +288,13 @@ body.animus-dark-theme #crmPlaygroundView .animus-customer-portal-shell,
 body.animus-dark-theme #crmPlaygroundView .animus-portal-feed p,
 body.animus-dark-theme #crmPlaygroundView .animus-portal-feed article{background:#111a28!important;border-color:#334155!important;color:#eef4fb!important}
 body.animus-dark-theme #crmPlaygroundView .animus-portal-link-box,
+body.animus-dark-theme #crmPlaygroundView .animus-portal-send-box,
 body.animus-dark-theme #crmPlaygroundView .animus-portal-stats div,
 body.animus-dark-theme #crmPlaygroundView .animus-customer-portal-shell section{background:#0f1724!important;border-color:#334155!important;color:#eef4fb!important}
 body.animus-dark-theme #crmPlaygroundView .animus-portal-link-box span,
 body.animus-dark-theme #crmPlaygroundView .animus-customer-portal-shell h3,
 body.animus-dark-theme #crmPlaygroundView .animus-portal-stats strong{color:#f8fbff!important}
+body.animus-dark-theme #crmPlaygroundView .animus-portal-send-box textarea{background:#111a28!important;border-color:#334155!important;color:#eef4fb!important}
 body.animus-dark-theme #crmPlaygroundView .animus-portal-note{background:#17130a!important;border-color:#c99a42!important;color:#f3d79a!important}
 body.animus-dark-theme #crmPlaygroundView .animus-portal-roadmap li,
 body.animus-dark-theme #crmPlaygroundView .animus-portal-feed article span,
@@ -786,4 +788,15 @@ body.animus-dark-theme .animus-settings-primary{
 @media (max-width:760px){
   .animus-settings-grid{grid-template-columns:1fr}
   .animus-settings-section-head{display:grid}
+}
+body.crm-estimator-active #crmEstimatorView {
+  margin-top:0;
+}
+body.animus-unified-ui.crm-estimator-active .crm-topbar {
+  margin-bottom:12px;
+}
+body.crm-estimator-active #crmEstimatorFrame {
+  display:block;
+  border-radius:0;
+  box-shadow:none;
 }
