@@ -570,18 +570,7 @@ async function handleBackupList(context) {
   const { env } = context;
   const url = new URL(context.request.url);
   const limit = Math.min(Math.max(Number(url.searchParams.get("limit")) || 30, 1), 100);
-  let cursor = url.searchParams.get("cursor") || undefined;
-  let truncated = false;
-  const objects = [];
-  do {
-    const listed = await env.ANIMUS_BUCKET.list({ prefix: BACKUP_PREFIX, limit: 100, cursor });
-    objects.push(...(listed.objects || []));
-    truncated = Boolean(listed.truncated);
-    cursor = listed.cursor;
-  } while (truncated && cursor && objects.length < 1000);
-  const backups = objects
-    .filter((object) => object.key.endsWith(".json"))
-    .sort((a, b) => String(b.uploaded || "").localeCompare(String(a.uploaded || "")))
+  const backups = (await listBackupObjects(env.ANIMUS_BUCKET))
     .slice(0, limit)
     .map((objectInfo) => ({
       key: objectInfo.key,
