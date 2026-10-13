@@ -205,6 +205,7 @@ let editingExpenseNoteLineId = "";
 let pendingPartsImportLines = [];
 let pendingEstimateUploadFileId = "";
 let openEstimateAfterUpload = false;
+let pendingEstimatorOpen = null;
 let estimateChoiceTarget = "";
 
 function getGoogleScriptUrl() {
@@ -3184,38 +3185,44 @@ function openEstimatorInCommandCenter(url, estimateData = null) {
   }
   const estimatorUrl = new URL(url, window.location.href);
   estimatorUrl.searchParams.set("embedded", "1");
-  estimatorUrl.searchParams.set("v", "20261011-estimator-price-db-modal");
-  estimatorUrl.searchParams.set("open", Date.now().toString());
-  if (estimateData) {
-    frame.addEventListener("load", () => {
-      frame.contentWindow?.postMessage({ type: "animus-open-estimate", estimate: estimateData }, window.location.origin);
-    }, { once: true });
-  }
+  estimatorUrl.searchParams.set("v", "20261012-workfile-estimate-handoff");
+  const requestId = makeCrmId("estimate-open");
+  estimatorUrl.searchParams.set("open", requestId);
+  pendingEstimatorOpen = estimateData ? { requestId, estimate: estimateData } : null;
+  frame.onload = () => deliverPendingEstimatorEstimate(frame);
   frame.src = estimatorUrl.toString();
   switchCrmView("estimator");
   $("crmEstimatorView")?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-function sendEstimateToEstimator(estimateData, target = "") {
-  try {
-    localStorage.setItem("d2EstimateStudio", JSON.stringify(estimateData));
-  } catch (error) {
-    window.alert("The estimate could not be loaded into this browser. Try refreshing and opening it again.");
-    return false;
-  }
+function deliverPendingEstimatorEstimate(frame = $("crmEstimatorFrame")) {
+  if (!frame || !pendingEstimatorOpen) return;
+  frame.contentWindow?.postMessage({ type: "animus-open-estimate", ...pendingEstimatorOpen }, window.location.origin);
+}
+
+function sendEstimateToEstimator(estimateData, target = "", file = activeFile()) {
+  if (!estimateData || typeof estimateData !== "object") return false;
+  const associatedEstimate = file ? {
+    ...estimateData,
+    dashboardFileId: file.id,
+    fileNumber: file.fileNumber,
+    workFileNumber: file.fileNumber,
+  } : estimateData;
+  // Standalone legacy pages can still read this optional copy. Embedded opens
+  // use the ready-message handoff even when browser storage is full.
+  try { localStorage.setItem("d2EstimateStudio", JSON.stringify(associatedEstimate)); } catch (_) {}
   const estimatorUrl = new URL("animus-estimate-demo.html", window.location.href);
   if (target) estimatorUrl.hash = target.replace(/^#/, "");
   estimatorUrl.searchParams.set("fromDashboard", "1");
   estimatorUrl.searchParams.set("standard", "1");
-  estimatorUrl.searchParams.set("v", "20261011-estimator-price-db-modal");
+  estimatorUrl.searchParams.set("v", "20261012-workfile-estimate-handoff");
   estimatorUrl.searchParams.set("open", Date.now().toString());
-  // The browser copy opens immediately, and the postMessage on iframe load
-  // guarantees the same estimate arrives even when storage timing is slow.
-  openEstimatorInCommandCenter(estimatorUrl.toString(), estimateData);
+  openEstimatorInCommandCenter(estimatorUrl.toString(), associatedEstimate);
   return true;
 }
 
 function attachEditableEstimateToFile(file, data, fileName = "") {
+  data = { ...data, dashboardFileId: file.id, fileNumber: file.fileNumber, workFileNumber: file.fileNumber };
   const totals = data.totals || {};
   file.editableEstimate = data;
   file.estimateTotal = Number(totals.total) || parseMoney(data.total) || Number(file.estimateTotal) || 0;
@@ -8286,7 +8293,7 @@ document.querySelectorAll("[data-crm-view]").forEach((button) => {
     if (frame && (!currentSrc || currentSrc === "about:blank")) {
       const estimatorUrl = new URL("animus-estimate-demo.html", window.location.href);
       estimatorUrl.searchParams.set("standard", "1");
-      estimatorUrl.searchParams.set("v", "20261011-estimator-price-db-modal");
+      estimatorUrl.searchParams.set("v", "20261012-workfile-estimate-handoff");
       estimatorUrl.searchParams.set("open", Date.now().toString());
       frame.src = estimatorUrl.toString();
     }
@@ -9454,6 +9461,19 @@ window.addEventListener("storage", (event) => {
 });
 window.addEventListener("message", (event) => {
   if (event.origin !== window.location.origin) return;
+  const estimatorFrame = $("crmEstimatorFrame");
+  if (event.data?.type === "animus-estimator-ready" && event.source === estimatorFrame?.contentWindow) {
+    if (event.data.requestId === pendingEstimatorOpen?.requestId) deliverPendingEstimatorEstimate(estimatorFrame);
+    return;
+  }
+  if (event.data?.type === "animus-return-to-work-file" && event.source === estimatorFrame?.contentWindow) {
+    const file = crmFiles.find((entry) => entry.id === event.data.fileId);
+    if (!file) return;
+    switchCrmView("files");
+    activeFileId = file.id;
+    renderCrm();
+    return;
+  }
   if (event.data?.type === "animus-estimator-height") {
     const frame = $("crmEstimatorFrame");
     const height = Math.max(720, Math.min(Number(event.data.height) || 0, 12000));
