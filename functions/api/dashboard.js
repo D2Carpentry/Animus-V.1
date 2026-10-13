@@ -69,6 +69,41 @@ function testSnapshotKey() {
   return `dashboard/tests/${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
 }
 
+async function listBackupObjects(bucket) {
+  const objects = [];
+  let cursor;
+  do {
+    const page = await bucket.list({ prefix: BACKUP_PREFIX, limit: 1000, cursor });
+    objects.push(...(page.objects || []).filter(object => object.key.startsWith(BACKUP_PREFIX) && object.key.endsWith(".json")));
+    cursor = page.truncated ? page.cursor : undefined;
+    if (page.truncated && !cursor) throw new Error("Incomplete backup listing; cleanup stopped.");
+  } while (cursor);
+  return objects.sort((a, b) => new Date(b.uploaded).getTime() - new Date(a.uploaded).getTime() || b.key.localeCompare(a.key));
+}
+
+async function createVerifiedCloudBackup(env, label = "weekly") {
+  const bucket = env.ANIMUS_BUCKET;
+  const source = await bucket.get(DASHBOARD_KEY);
+  if (!source || !source.size) throw new Error("No current cloud dashboard exists. No backups were deleted.");
+  const key = backupKey(label);
+  const bytes = await source.arrayBuffer();
+  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
+  await bucket.put(key, bytes, { httpMetadata: { contentType: "application/json; charset=utf-8" } });
+  const copy = await bucket.get(key);
+  if (!copy || copy.size !== bytes.byteLength) throw new Error("Backup size verification failed. No backups were deleted.");
+  const copyDigest = new Uint8Array(await crypto.subtle.digest("SHA-256", await copy.arrayBuffer()));
+  if (!digest.every((byte, index) => byte === copyDigest[index])) throw new Error("Backup content verification failed. No backups were deleted.");
+  const backups = await listBackupObjects(bucket);
+  // Always protect the newly verified snapshot, even if clocks or concurrent
+  // saves make its position in the listing unexpected.
+  const keep = [key, ...backups.filter(object => object.key !== key).slice(0, 2).map(object => object.key)];
+  const remove = backups.filter(object => !keep.includes(object.key)).map(object => object.key);
+  for (let index = 0; index < remove.length; index += 100) {
+    await bucket.delete(remove.slice(index, index + 100));
+  }
+  return { ok: true, backupKey: key, verified: true, size: bytes.byteLength, sha256: Array.from(digest, byte => byte.toString(16).padStart(2, "0")).join(""), kept: keep, deletedCount: remove.length };
+}
+
 function missingBucketResponse() {
   return jsonResponse({
     ok: false,
@@ -604,6 +639,9 @@ async function handlePost(context) {
   }
 
   const url = new URL(request.url);
+  if (payload.action === "createCurrentCloudBackup") {
+    return jsonResponse(await createVerifiedCloudBackup(env, "current-weekly"));
+  }
   const isTestSnapshot = url.searchParams.get("testSnapshot") === "1";
   const isBackupOnly = url.searchParams.get("backupOnly") === "1";
   const replaceLatest = url.searchParams.get("replaceLatest") === "1";
@@ -627,8 +665,8 @@ async function handlePost(context) {
   const writeKey = isBackupOnly ? namedBackupKey(url.searchParams.get("backupName")) : (isTestSnapshot ? testSnapshotKey() : DASHBOARD_KEY);
 
   if (!dryRun) {
-    // Preserve the previous live version before replacing it. A broken browser
-    // can never overwrite the only recoverable cloud copy.
+    // A deliberate restore still preserves its previous live copy. Ordinary
+    // saves no longer produce duplicate after-save snapshots.
     if (!isTestSnapshot && !isBackupOnly && replaceLatest) {
       const priorObject = await env.ANIMUS_BUCKET.get(DASHBOARD_KEY);
       if (priorObject?.body) {
@@ -640,11 +678,6 @@ async function handlePost(context) {
     await env.ANIMUS_BUCKET.put(writeKey, body, {
       httpMetadata: { contentType: "application/json; charset=utf-8" },
     });
-    if (!isTestSnapshot && !isBackupOnly) {
-      await env.ANIMUS_BUCKET.put(backupKey("after-save"), body, {
-        httpMetadata: { contentType: "application/json; charset=utf-8" },
-      });
-    }
   }
 
   const files = Array.isArray(dashboard.dashboardFiles) ? dashboard.dashboardFiles : [];

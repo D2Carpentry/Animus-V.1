@@ -1645,14 +1645,9 @@ async function createCurrentDashboardBackup() {
   if (button) { button.disabled = true; button.textContent = "Backing up..."; }
   showDashboardSaveStatus("Checking the current Command Center and creating a separate Cloudflare backup...");
   try {
-    persistActiveFileDraftNow();
-    const payload = buildDashboardSyncPayload({ includeRevenue: true, syncExpenses: false, captureEdits: false, restoreRevenueHistory: false });
-    payload.backupLabel = currentBackupLabel();
-    const result = await queueDashboardCloudSave(payload, { backupOnly: true, backupName: payload.backupLabel });
-    const verification = dashboardBackupVerification(payload, result?.dashboard || result?.verification);
-    if (!verification.ok) throw new Error("Backup was not marked complete because Cloudflare did not return an exact copy of the current Command Center.");
-    const totals = dashboardTestTotals(payload.revenueRows || []);
-    showDashboardSaveStatus(`Current backup created and verified. ${payload.dashboardFiles.length} files, ${payload.revenueRows.length} revenue lines, ${payload.payrollRows.length} payroll rows, and ${payload.priceRows.length} price lines are safely stored as a separate Cloudflare snapshot. Gross ${crmCurrency.format(totals.gross)}.`);
+    const result = await queueDashboardCloudSave({ action: "createCurrentCloudBackup" });
+    if (!result?.verified) throw new Error("Cloud backup could not be verified. No cleanup was requested.");
+    showDashboardSaveStatus("Current cloud backup verified. The newest three backups are retained. Unsaved page edits are not included; save them first.");
     if (button) button.textContent = "Backup Created";
   } catch (error) {
     showDashboardSaveStatus(error.message || "Current backup could not be verified. Nothing was restored or changed.", true);
