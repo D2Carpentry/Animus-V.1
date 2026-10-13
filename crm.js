@@ -1112,11 +1112,24 @@ function queueDashboardCloudSave(payload, options = {}) {
 }
 
 async function fetchDashboardFromCloudflare() {
-  const response = await fetch(`${CLOUDFLARE_DASHBOARD_API}?t=${Date.now()}`, {
-    method: "GET",
-    cache: "no-store",
-  });
-  const result = await response.json().catch(() => ({}));
+  let response;
+  let result;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => controller.abort(), 45000);
+    try {
+      response = await fetch(`${CLOUDFLARE_DASHBOARD_API}?t=${Date.now()}`, {
+        method: "GET", cache: "no-store", signal: controller.signal,
+      });
+      result = await response.json();
+      if (attempt === 0 && (response.status >= 500 || response.status === 429)) continue;
+      break;
+    } catch (error) {
+      if (attempt === 1) throw new Error(error.name === "AbortError" ? "The cloud connection timed out. Your cloud records were not changed." : `Cloud data could not be loaded: ${error.message}`);
+    } finally {
+      window.clearTimeout(timer);
+    }
+  }
   if (!response.ok || result.ok === false) {
     throw new Error(result.detail ? `${result.error}: ${result.detail}` : (result.error || `Cloudflare load failed with status ${response.status}.`));
   }
@@ -1793,6 +1806,7 @@ function shouldAutoRestoreFromCloud() {
 
 async function autoRestoreDashboardFromCloud() {
   if (!shouldAutoRestoreFromCloud()) return;
+  if ($("crmCloudLoadNotice")) $("crmCloudLoadNotice").hidden = true;
   const openingChangeVersion = crmLocalChangeVersion;
   showDashboardSaveStatus("Loading the current Command Center from Cloudflare...");
   try {
@@ -1803,8 +1817,7 @@ async function autoRestoreDashboardFromCloud() {
     }
     const files = Array.isArray(dashboard?.dashboardFiles) ? dashboard.dashboardFiles : [];
     if (!dashboard || !files.length) {
-      showDashboardSaveStatus("Cloudflare does not have a saved Command Center yet. Browser data was not loaded.", true);
-      return;
+      throw new Error("Cloudflare did not return any workfiles. No browser copy was loaded.");
     }
     applyDashboardBackup(dashboard, { preserveMissing: false });
     renderCrm();
@@ -1813,6 +1826,10 @@ async function autoRestoreDashboardFromCloud() {
     showDashboardSaveStatus(`${loadedFrom}: ${files.length} files. ${dashboardCloudCountSummary(files)}.`);
   } catch (error) {
     showDashboardSaveStatus(`${error.message || "Cloudflare could not be reached."} Browser data was not loaded. Use Restore Backup only if you need a manual snapshot.`, true);
+    if ($("crmCloudLoadNotice")) {
+      $("crmCloudLoadError").textContent = `${error.message || "The cloud could not be reached."} Your cloud data has not been changed.`;
+      $("crmCloudLoadNotice").hidden = false;
+    }
   }
 }
 
@@ -10172,6 +10189,12 @@ $("animusPortalCustomerStatus")?.addEventListener("change", (event) => {
   if (!animusPortalTestCustomer) return;
   animusPortalTestCustomer.portalStatus = event.target.value;
   savePlaygroundTestCustomer(animusPortalTestCustomer);
+});
+
+$("crmRetryCloudLoad")?.addEventListener("click", async () => {
+  const button = $("crmRetryCloudLoad");
+  button.disabled = true;
+  try { await autoRestoreDashboardFromCloud(); } finally { button.disabled = false; }
 });
 
 persistRestoredDashboardIfNeeded();

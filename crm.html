@@ -22,10 +22,26 @@
       body.animus-ready .animus-boot-screen { opacity: 0; visibility: hidden; pointer-events: none; }
       @keyframes animus-boot-screen-in { from { opacity: 0; } to { opacity: 1; } }
       @keyframes animus-boot-logo-in { from { opacity: 0; transform: translateY(10px) scale(.975); } to { opacity: 1; transform: translateY(0) scale(1); } }
+      .animus-boot-recovery { position:absolute; bottom:32px; padding:12px 18px; border:1px solid #465066; border-radius:8px; background:#172033; color:#fff; cursor:pointer; }
+      .crm-cloud-load-notice { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:16px; padding:14px 16px; border:1px solid #c99a42; border-radius:8px; background:var(--animus-surface,#fff); color:var(--animus-ink,#172033); }
+      .crm-cloud-load-notice p { margin:0; overflow-wrap:anywhere; }
+      body.animus-dark-theme .crm-cloud-load-notice { background:#111a28; color:#e8eef7; }
+      .crm-cloud-load-notice[hidden],.animus-boot-recovery[hidden] { display:none; }
+      @media(max-width:600px) { .crm-cloud-load-notice { align-items:stretch; flex-direction:column; } }
     </style>
+    <script>
+      window.addEventListener("DOMContentLoaded", () => {
+        const retry = document.getElementById("animusBootRetry");
+        retry?.addEventListener("click", () => window.location.reload());
+        window.setTimeout(() => {
+          if (document.body.classList.contains("crm-booting") && retry) retry.hidden = false;
+        }, 8000);
+      });
+    </script>
   </head>
   <body class="crm-body crm-booting">
     <div class="animus-boot-screen" id="animusBootScreen" role="status" aria-live="polite">
+      <button type="button" class="animus-boot-recovery" id="animusBootRetry" hidden>Reload Command Center</button>
       <img class="animus-boot-logo" src="assets/animus-logo-splash.png" alt="ANIMUS Command Center loading">
     </div>
     <main class="crm-shell">
@@ -52,6 +68,10 @@
         </div>
       </header>
 
+      <section class="crm-cloud-load-notice" id="crmCloudLoadNotice" role="alert" hidden>
+        <p id="crmCloudLoadError"></p>
+        <button type="button" class="icon-button primary-action" id="crmRetryCloudLoad">Retry Connection</button>
+      </section>
       <nav class="crm-actions crm-nav-actions" aria-label="Command Center actions">
         <button type="button" class="icon-button active" data-crm-view="dashboard">Command Center</button>
         <button type="button" class="icon-button" data-crm-view="calendar">Calendar</button>
@@ -93,7 +113,7 @@
             </button>
           </div>
           <section class="crm-estimator-embed" id="crmEstimatorView" hidden>
-            <iframe id="crmEstimatorFrame" title="ANIMUS Estimation" src="animus-estimate-demo.html?standard=1&amp;v=20261012-estimator-top-spacing&amp;open=crm-template"></iframe>
+            <iframe id="crmEstimatorFrame" title="ANIMUS Estimation" src="about:blank"></iframe>
           </section>
 
           <section class="crm-estimator-embed crm-test-zone-embed" id="crmTestZoneView" hidden>
@@ -107,7 +127,7 @@
                 <button type="button" class="icon-button" id="crmTestZoneRefresh">Reset Legacy View</button>
               </div>
             </div>
-            <iframe id="crmTestZoneFrame" title="Legacy D2 Estimator" src="index.html?embedded=1&amp;new=1&amp;open=legacy-estimator"></iframe>
+            <iframe id="crmTestZoneFrame" title="Legacy D2 Estimator" src="about:blank"></iframe>
           </section>
         </section>
 
@@ -1169,7 +1189,7 @@
         caches.keys().then((keys) => keys.forEach((key) => caches.delete(key)));
       }
     </script>
-    <script src="crm.js?v=20261012-revenue-cloud-save"></script>
+    <script src="crm.js?v=20261012-crm-startup-recovery"></script>
     <script src="calendar-upgrade.js?v=20260808-calendar-popups"></script>
   <script src="animus-shell.js?v=20260916-account-settings"></script>
     <script src="animus-dashboard.js?v=20260901-dashboard-calendar-feed"></script>
