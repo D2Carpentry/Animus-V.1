@@ -328,11 +328,7 @@
       const row = typeof ensureExpenseRevenueRowForFile === "function" ? ensureExpenseRevenueRowForFile(file) : null;
       if (!row) continue;
       try {
-        const response = await fetch("/api/dashboard", {
-          method:"POST",
-          headers:{ "Content-Type":"application/json" },
-          cache:"no-store",
-          body:JSON.stringify({
+        const payload = {
             action:"mobileFilePatch",
             source:"ANIMUS Expense Revenue Sync",
             fileId:file.id || "",
@@ -346,9 +342,10 @@
               profit:Number(row.profit) || 0,
               expenseLines:Array.isArray(row.expenseLines) ? row.expenseLines : [],
             },
-          }),
-        });
-        if (!response.ok) throw new Error(`Expense cloud patch failed (${response.status}).`);
+        };
+        // Use the same ordered, bounded save path as Save All. Background
+        // expense updates must not overlap a full dashboard replacement.
+        await queueDashboardCloudSave(JSON.parse(JSON.stringify(payload)));
       } catch (error) {
         console.warn("ANIMUS could not patch this file's expense total to the cloud.", error);
       }

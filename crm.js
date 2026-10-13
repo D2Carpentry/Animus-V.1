@@ -1055,6 +1055,7 @@ function showDashboardSaveStatus(message, isError = false) {
   status.classList.toggle("error", isError);
   status.classList.add("visible");
   window.clearTimeout(showDashboardSaveStatus.timeoutId);
+  if (isError) return;
   showDashboardSaveStatus.timeoutId = window.setTimeout(() => {
     status.classList.remove("visible", "error");
     status.textContent = "";
@@ -1083,17 +1084,35 @@ async function postPayloadToCloudflare(payload, options = {}) {
   if (options.replaceLatest) url.searchParams.set("replaceLatest", "1");
   if (options.backupOnly) url.searchParams.set("backupOnly", "1");
   if (options.backupName) url.searchParams.set("backupName", options.backupName);
-  const response = await fetch(url.toString(), {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Animus-Compact-Response": "1" },
-    cache: "no-store",
-    body: JSON.stringify(payload),
-  });
-  const result = await response.json().catch(() => ({}));
-  if (!response.ok || result.ok === false) {
-    throw new Error(result.detail ? `${result.error || "Cloudflare save failed"}: ${result.detail}` : (result.error || `Cloudflare save failed with status ${response.status}.`));
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), options.timeoutMs || 120000);
+  try {
+    const response = await fetch(url.toString(), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Animus-Compact-Response": "1" },
+      cache: "no-store",
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+    let result;
+    try {
+      result = await response.json();
+    } catch (error) {
+      if (error.name === "AbortError") throw error;
+      throw new Error(response.ok ? "Cloudflare returned an unreadable save confirmation." : `Cloudflare save failed with status ${response.status}.`);
+    }
+    if (!response.ok || result.ok === false) {
+      throw new Error(result.detail ? `${result.error || "Cloudflare save failed"}: ${result.detail}` : (result.error || `Cloudflare save failed with status ${response.status}.`));
+    }
+    return result;
+  } catch (error) {
+    if (error.name === "AbortError") {
+      throw new Error("Cloudflare did not confirm this save before the connection timed out. Your edits remain open. Export Current Snapshot before refreshing.");
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timer);
   }
-  return result;
 }
 
 // R2 writes must stay in order. Without a queue, two quick expense saves can
@@ -1513,8 +1532,9 @@ async function saveDashboardToGoogle() {
   } catch (error) {
     showDashboardSaveStatus(error.message || "Save All could not be verified. The live cloud copy was not changed.", true);
   } finally {
-    saveButton.disabled = false;
-    if (saveButton.textContent !== "Saved") saveButton.textContent = "Save All";
+    const currentButton = $("crmSaveDemo") || saveButton;
+    currentButton.disabled = false;
+    if (currentButton.textContent !== "Saved") currentButton.textContent = "Save All";
   }
 }
 
