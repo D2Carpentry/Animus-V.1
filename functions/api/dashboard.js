@@ -303,7 +303,7 @@ function mergeFiles(existing = [], incoming = []) {
   return [...merged.values()];
 }
 
-function mergeRevenueRows(existing = [], incoming = []) {
+function mergeRevenueRows(existing = [], incoming = [], confirmedRowIds = new Set()) {
   const merged = new Map();
   const hasFinancialValue = (row = {}) => [row.gross, row.expenses, row.labor, row.profit]
     .some((value) => Math.abs(Number(value) || 0) > 0.0001);
@@ -322,7 +322,7 @@ function mergeRevenueRows(existing = [], incoming = []) {
     merged.set(key, {
       ...prior,
       ...row,
-      ...(incomingIsEmpty && priorHasValues ? {
+      ...(incomingIsEmpty && priorHasValues && !confirmedRowIds.has(key) ? {
         gross: prior.gross,
         expenses: prior.expenses,
         labor: prior.labor,
@@ -399,8 +399,18 @@ function mergeDashboard(existing = {}, incoming = {}) {
   const deletedRevenueKeys = new Set(
     Array.isArray(incoming.deletedRevenueKeys) ? incoming.deletedRevenueKeys.map((key) => String(key).trim().toLowerCase()) : [],
   );
-  const mergedRevenueRows = mergeRevenueRows(existing.revenueRows, incoming.revenueRows)
+  const confirmedRevenueRowIds = new Set(
+    incoming.action === "revenueUpdate" && Array.isArray(incoming.confirmedRevenueRowIds)
+      ? incoming.confirmedRevenueRowIds.map(normalizeMergeKey).filter(Boolean) : [],
+  );
+  const mergedRevenueRows = mergeRevenueRows(existing.revenueRows, incoming.revenueRows, confirmedRevenueRowIds)
     .filter((row) => !deletedRevenueKeys.has(rowMergeKey(row)));
+  if (incoming.action === "revenueUpdate") {
+    const changedKeys = new Set((incoming.revenueRows || []).map(rowMergeKey));
+    mergedRevenueRows.forEach((row) => {
+      if (changedKeys.has(rowMergeKey(row))) row.profit = (Number(row.gross) || 0) - (Number(row.expenses) || 0) - (Number(row.labor) || 0);
+    });
+  }
   return {
     ...existing,
     ...incoming,

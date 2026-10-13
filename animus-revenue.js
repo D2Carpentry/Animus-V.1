@@ -66,7 +66,7 @@
     row.revenueAudit.unshift({ rowId:row.id, field:"date", from:previous || "Date pending", to:row.date || "Date pending", at:new Date().toISOString(), by:"Owner" });
     if (typeof saveRevenueRows === "function") saveRevenueRows();
     render();
-    window.animusSaveRevenueChangeToCloud?.("Revenue date saved to Cloudflare.");
+    window.animusSaveRevenueChangeToCloud?.("Revenue date saved to Cloudflare.", null, row.id, "date");
   }
   function tableRow(row) {
     const file = typeof findFileForRevenue === "function" ? findFileForRevenue(row) : null;
@@ -194,7 +194,7 @@
     if (typeof saveRevenueRows === "function") saveRevenueRows();
     state.edit = null;
     render();
-    window.animusSaveRevenueChangeToCloud?.("Revenue update saved to Cloudflare.", linkedFile);
+    window.animusSaveRevenueChangeToCloud?.("Revenue update saved to Cloudflare.", linkedFile, row.id, field);
   }
   function exportCsv(singleId = "") { const exportRows = singleId ? rows().filter((row) => row.id === singleId) : rows(); const header = ["Date","Job","Customer","Gross Earnings","Expenses","Labor","Net Profit","Profit Margin"]; const lines = exportRows.map((row) => { const file = typeof findFileForRevenue === "function" ? findFileForRevenue(row) : null; const margin = numeric(row.gross) ? (profit(row) / numeric(row.gross)) * 100 : 0; return [row.date || "",row.clientJob || "",file?.clientName || "",numeric(row.gross).toFixed(2),numeric(row.expenses).toFixed(2),numeric(row.labor).toFixed(2),profit(row).toFixed(2),margin.toFixed(1)]; }); const csv = [header,...lines].map((line) => line.map((value) => `"${String(value).replace(/"/g,'""')}"`).join(",")).join("\n"); const blob = new Blob([csv], { type:"text/csv" }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "animus-job-profitability.csv"; link.click(); URL.revokeObjectURL(link.href); }
   function init() {

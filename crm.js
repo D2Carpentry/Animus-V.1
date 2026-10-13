@@ -1204,12 +1204,16 @@ function saveExpenseChangeToCloud(message = "Expense saved to Cloudflare.") {
 // Revenue is saved on its own after a confirmed Revenue edit. Keeping it out
 // of the general Command Center Save prevents unrelated file saves from ever
 // replacing the job-profitability ledger.
-function buildRevenueCloudPayload(linkedFile = null) {
-  const fields = ["id", "dashboardFileId", "fileNumber", "clientJob", "date", "gross", "expenses", "labor", "profit", "receiptNotes", "laborAssigns", "grossOverride", "revenueAudit"];
+function buildRevenueCloudPayload(linkedFile = null, rowId = "", editedField = "") {
+  const financialField = ["profit", "margin"].includes(editedField) ? "gross" : editedField;
+  const fields = editedField
+    ? ["id", "dashboardFileId", "fileNumber", "clientJob", "revenueAudit", financialField, ...(financialField === "gross" ? ["grossOverride"] : [])]
+    : ["id", "dashboardFileId", "fileNumber", "clientJob", "date", "gross", "expenses", "labor", "profit", "receiptNotes", "laborAssigns", "grossOverride", "revenueAudit"];
   return {
-    action: "dashboardSync",
+    action: rowId ? "revenueUpdate" : "dashboardSync",
     source: "ANIMUS Revenue Update",
-    revenueRows: crmRevenueRows.map((row) => Object.fromEntries(fields.filter((key) => Object.prototype.hasOwnProperty.call(row, key)).map((key) => [key, row[key]]))),
+    revenueRows: crmRevenueRows.filter((row) => !rowId || row.id === rowId).map((row) => Object.fromEntries(fields.filter((key) => Object.prototype.hasOwnProperty.call(row, key)).map((key) => [key, row[key]]))),
+    ...(rowId && ["gross", "expenses", "labor"].includes(financialField) ? { confirmedRevenueRowIds: [rowId] } : {}),
     deletedRevenueKeys: Array.from(loadDeletedRevenueKeys()),
     ...(linkedFile ? { dashboardFiles: [{
       id: linkedFile.id,
@@ -1222,13 +1226,16 @@ function buildRevenueCloudPayload(linkedFile = null) {
   };
 }
 
-function saveRevenueChangeToCloud(message = "Revenue saved to Cloudflare.", linkedFile = null) {
+function saveRevenueChangeToCloud(message = "Revenue saved to Cloudflare.", linkedFile = null, rowId = "", editedField = "") {
   saveRevenueRows();
-  const payload = JSON.parse(JSON.stringify(buildRevenueCloudPayload(linkedFile)));
+  const payload = JSON.parse(JSON.stringify(buildRevenueCloudPayload(linkedFile, rowId, editedField)));
   return queueDashboardCloudSave(payload)
     .then((result) => {
       const verification = verifyDashboardTestSnapshot(payload, result.dashboard || result.verification);
-      if (!verification.ok) throw new Error("Cloudflare did not confirm all submitted revenue amounts.");
+      if (!verification.ok) {
+        const affected = verification.mismatchedRevenue.map((row) => row.clientJob || row.fileNumber || row.id).join(", ");
+        throw new Error(`Cloudflare did not confirm the submitted amount for ${affected || "the linked workfile"}`);
+      }
       saveRevenueRows();
       showDashboardSaveStatus(message);
     })
@@ -1529,7 +1536,7 @@ function verifyDashboardTestSnapshot(sent, received) {
   const missingFiles = (sent.dashboardFiles || []).filter((file) => !receivedFiles.some((saved) => String(saved.id || saved.fileNumber) === String(file.id || file.fileNumber)));
   const mismatchedRevenue = (sent.revenueRows || []).filter((row) => {
     const saved = receivedRevenue.find((entry) => revenueRowKey(entry) === revenueRowKey(row));
-    return !saved || !dashboardTestValueMatches(row.gross, saved.gross) || !dashboardTestValueMatches(row.expenses, saved.expenses) || !dashboardTestValueMatches(row.labor, saved.labor);
+    return !saved || ["gross", "expenses", "labor"].some((field) => Object.prototype.hasOwnProperty.call(row, field) && !dashboardTestValueMatches(row[field], saved[field]));
   });
   return { ok: !missingFiles.length && !mismatchedRevenue.length, missingFiles, mismatchedRevenue };
 }
@@ -6726,7 +6733,7 @@ function deleteRevenueRow(rowId) {
   saveCrmFiles();
   saveRevenueRows();
   renderRevenue();
-  saveRevenueChangeToCloud("Revenue row deleted from Cloudflare.", file);
+  saveRevenueChangeToCloud("Revenue row deleted from Cloudflare.", file, rowId);
 }
 
 function parseRevenueImport(text) {
