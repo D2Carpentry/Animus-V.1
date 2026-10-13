@@ -187,6 +187,7 @@
     if (field === "profit") row.gross = next + numeric(row.expenses) + numeric(row.labor);
     else if (field === "margin") row.gross = next >= 100 ? numeric(row.gross) : (numeric(row.expenses) + numeric(row.labor)) / Math.max(.01, 1 - (next / 100));
     else row[field] = next;
+    if (["gross", "profit", "margin"].includes(field)) row.grossOverride = true;
     row.profit = profit(row);
     const linkedFile = field === "labor" && typeof window.syncRevenueLaborToFile === "function" ? window.syncRevenueLaborToFile(row) : null;
     row.revenueAudit = Array.isArray(row.revenueAudit) ? row.revenueAudit : [];
