@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import { isEasternBackupTime, runBackup, verifyCloudConnection } from './worker.mjs';
+assert(isEasternBackupTime(Date.parse('2026-10-18T07:00:00Z')));
+assert(!isEasternBackupTime(Date.parse('2026-10-18T08:00:00Z')));
+assert(isEasternBackupTime(Date.parse('2026-11-08T08:00:00Z')));
+assert(!isEasternBackupTime(Date.parse('2026-11-08T07:00:00Z')));
+assert(!isEasternBackupTime(Date.parse('2026-10-19T07:00:00Z')));
+let calls = 0;
+await runBackup(async (url, options) => {
+  calls++;
+  assert.equal(url, 'https://animus-v-1.pages.dev/api/dashboard');
+  assert.equal(JSON.parse(options.body).action, 'createCurrentCloudBackup');
+  return Response.json({ ok: true, verified: true, backupKey: 'dashboard/backups/test.json', kept: ['dashboard/backups/test.json', 'older1', 'older2'], deletedCount: 1 });
+});
+assert.equal(calls, 1);
+await assert.rejects(runBackup(async () => Response.json({ ok: false }, { status: 503 })));
+assert.equal((await verifyCloudConnection(async () => Response.json({ ok: true, backups: [{}] }))).ok, true);
+console.log('PASS: summer/winter Sunday 3AM, no off-hour saves, verified three-copy result, failures rejected');
