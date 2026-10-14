@@ -4,7 +4,9 @@ This is a separate Cloudflare Worker, not a replacement for the CRM Pages applic
 
 ## Deployment
 
-Connect the existing D2Carpentry/Animus-V.1 repository to a Worker named `animus-weekly-backup`. Set its root directory to `cloud-backup-worker`, production branch to `main`, leave the build command blank, and use `npx wrangler deploy` as the deploy command. No R2 binding or new API credential is required by the Worker code.
+The Worker `animus-weekly-backup` was deployed directly through the Cloudflare dashboard. Its Sunday cron triggers are managed there. Source and tests are stored in D2Carpentry/Animus-V.1, but a GitHub push alone does not redeploy this separate Worker. This avoids creating an additional Workers Builds API token. No R2 binding or new API credential is required by the Worker code.
+
+For a future authorized CLI deployment, run `wrangler deploy` from this directory. wrangler.jsonc mirrors the production schedule. If a Git integration is authorized later, use root directory `cloud-backup-worker`, production branch `main`, a blank build command, and deploy command `npx wrangler deploy`.
 
 The two Sunday UTC triggers are gated by America/New_York time. Exactly one is eligible to run at 3 AM Eastern, including after seasonal clock changes. A routine backup uses the CRM's existing `createCurrentCloudBackup` operation, verifies its success response, and does not restore or upload browser state.
 
