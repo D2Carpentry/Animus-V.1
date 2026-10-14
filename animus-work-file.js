@@ -24,6 +24,7 @@
       "Contact Attempted": "contact-attempted",
       "Inspection Completed": "inspection-completed",
       "In Negotiation": "negotiation",
+      "Pending Start": "pending-start",
       "In Progress": "in-progress",
       "Closed / Paid": "closed-paid",
       "Job Lost / Closed": "lost-closed",
@@ -97,6 +98,7 @@
     if (["Contact Established", "Contact Attempted"].includes(status)) return 1;
     if (status === "Inspection Completed") return 2;
     if (status === "In Negotiation") return 3;
+    if (status === "Pending Start") return 4;
     if (status === "In Progress") return 5;
     if (status === "Closed / Paid") return 6;
     return -1;
@@ -153,7 +155,7 @@
     const paid = paidTotal(file);
     const balance = Math.max(estimate - paid, 0);
     const cells = [
-      ["&#36;", "Estimate", money(estimate), "", "", "estimate"], ["&#9638;", "Paid", money(paid), "", "", "financials"], ["&#128179;", "Balance", money(balance), "", "balance", "financials"], ["&#128197;", "Start Date", field(file, "startDate") ? date(file.startDate) : "Not set", field(file, "startDateReason"), "", "startDate"],
+      ["&#36;", "Estimate", money(estimate), "", "", "estimate"], ["&#9638;", "Paid", money(paid), "", "", "financials"], ["&#128179;", "Balance", money(balance), "", "balance", "financials"], ["&#9638;", "Expenses", money(expenseTotal(file)), "", "expenses", "expenses"], ["&#128197;", "Start Date", field(file, "startDate") ? date(file.startDate) : "Not set", field(file, "startDateReason"), "start-date", "startDate"],
     ];
     return `<div class="animus-summary-strip">${cells.map(([icon, label, value, sub, extra, action]) => `<button class="animus-summary-cell ${extra || ""} ${action ? "clickable" : ""}"${action ? ` data-animus-summary="${action}"` : ""}><span class="animus-summary-icon">${icon}</span><span class="animus-summary-copy"><span>${escape(label)}</span><strong>${escape(value)}</strong>${sub ? `<small>${escape(sub)}</small>` : ""}</span></button>`).join("")}</div>`;
   }
@@ -330,13 +332,13 @@
     if (state.editor === "customer") fields = input("clientName", "Name", field(file, "clientName")) + input("clientPhone", "Phone", field(file, "clientPhone")) + input("clientEmail", "Email", field(file, "clientEmail"), "email") + input("projectAddress", "Address", field(file, "projectAddress"), "text", "wide");
     if (state.editor === "project") fields = select("projectType", field(file, "projectType", "Other"), window.CRM_PROJECT_TYPES || ["Closet", "Pantry", "Cabinetry", "Refinishing", "Built-In", "Other"]) + select("leadSource", field(file, "leadSource", "Manual"), ["Manual", "Angi", "Website", "Phone", "Text", "Referral", "Repeat Customer", "Other"]) + (field(file, "leadSource").toLowerCase() === "angi" ? input("leadFee", "Lead Fee", Number(file.leadFee) || "", "number") : "");
     if (state.editor === "progress") {
-      const statuses = ["New Lead", "Contact Established", "Contact Attempted", "Inspection Completed", "In Negotiation", "In Progress", "Closed / Paid", "Job Lost / Closed"];
-      const statusDetails = { "New Lead":["Needs Contact", "Contact Scheduled"], "Contact Established":["Inspection Date Set", "Inspection Pending"], "Contact Attempted":["Follow Up Tomorrow"], "Inspection Completed":["Estimate Pending", "Estimate Sent"], "In Negotiation":["Follow-Up Scheduled", "Waiting on Customer"], "In Progress":["On Schedule", "Completion Date Needed"], "Closed / Paid":["Invoice Sent", "Invoice Not Sent"], "Job Lost / Closed":["Future Marketing Follow-Up"] };
+      const statusDetails = CRM_STATUS_DETAILS;
+      const statuses = Object.keys(statusDetails);
       const selectedStatus = field(file, "fileStatus", "New Lead");
       fields = select("fileStatus", selectedStatus, statuses) + select("statusDetail", field(file, "statusDetail"), statusDetails[selectedStatus] || [field(file, "statusDetail")]);
     }
     if (state.editor === "action") fields = input("nextAction", "Next Action", field(file, "nextAction"), "text", "wide") + input("nextActionDate", "Due Date", field(file, "nextActionDate") || field(file, "followUpDate"), "date") + input("assignedTo", "Assigned To", assignment(file));
-    if (state.editor === "assigned") fields = input("assignedTo", "Employee name", assignment(file), "text", "wide");
+    if (state.editor === "assigned") fields = input("assignedTo", "Employee name", assignment(file) === "Unassigned" ? "" : assignment(file), "text", "wide");
     if (state.editor === "financials") fields = input("estimateTotal", "Estimate Amount", Number(file.estimateTotal) || "", "number") + input("materialTotal", "Materials", Number(file.materialTotal) || "", "number") + input("laborTotal", "Labor", Number(file.laborTotal) || "", "number") + input("totalPaidOverride", "Total Paid (Manual)", file.totalPaidOverride !== undefined && file.totalPaidOverride !== "" ? Number(file.totalPaidOverride) : paidTotal(file), "number") + input("initialDeposit", "Initial Deposit", Number(file.initialDeposit) || "", "number") + input("midpointDeposit", "Midpoint Deposit", Number(file.midpointDeposit) || "", "number") + input("finalPaymentAmount", "Final Payment", Number(file.finalPaymentAmount) || "", "number");
     if (state.editor === "details") fields = input("inspectionDate", "Inspection Date", field(file, "inspectionDate"), "date") + input("inspectionTime", "Inspection Time", field(file, "inspectionTime"), "time") + input("startDate", "Start Date", field(file, "startDate"), "date") + input("followUpDate", "Follow-Up Date", field(file, "followUpDate"), "date") + input("anticipatedCompletionDate", "Anticipated Completion", field(file, "anticipatedCompletionDate"), "date") + select("arrivalWindow", field(file, "arrivalWindow", "Open"), ["Open", "7:00 AM", "8:00 AM", "9:00 AM", "10:00 AM", "Afternoon"]) + (field(file, "leadSource").toLowerCase() === "angi" ? input("leadFee", "Lead Fee", Number(file.leadFee) || "", "number") : "");
     title = state.editor === "financials" ? "Edit Financials" : state.editor === "details" ? "Edit Job Details" : state.editor === "assigned" ? "Assign Employee" : "Edit File";
@@ -366,10 +368,17 @@
     root.innerHTML = `<button class="animus-record-back" data-animus-back>&larr; Back to CRM / Files</button>${editorMarkup(file)}<header class="animus-record-header"><div class="animus-record-person"><div class="animus-record-avatar">${escape(initials(file.clientName))}</div><div class="animus-record-title"><div class="animus-record-name-line"><h2>${escape(file.clientName || "Unnamed Client")}</h2><details class="animus-customer-info"><summary>Customer Info</summary><div class="animus-customer-info-panel"><strong>Customer Information</strong>${phone ? `<a href="tel:${escape(phone)}">Call: ${escape(field(file, "clientPhone"))}</a><a href="sms:${escape(phone)}">Text customer</a>` : `<span>Phone: Not added</span>`}${email ? `<a href="mailto:${escape(email)}">Email: ${escape(email)}</a>` : `<span>Email: Not added</span>`}${address ? `<a target="_blank" rel="noreferrer" href="https://www.google.com/maps/search/?api=1&amp;query=${encodeURIComponent(address)}">Open address in Maps</a>` : `<span>Address: Not added</span>`}<button class="animus-record-button small" data-animus-edit="customer">Edit Customer</button></div></details></div><p class="animus-record-file-number">Project # ${escape(file.fileNumber || "Not assigned")}</p><p class="animus-record-subtitle">${escape(field(file, "projectType", "Other"))} &bull; ${escape(field(file, "leadSource", "Manual"))}</p><span class="animus-status-badge animus-status-${statusTone(file.fileStatus)}">${escape(field(file, "fileStatus", "New Lead"))}</span></div></div><div class="animus-record-actions"><button class="animus-record-button" data-animus-open="editFile">Edit File</button><details class="animus-more-menu"><summary class="animus-record-button">More</summary><div class="animus-more-menu-panel"><button class="animus-record-button small" data-animus-open="archive">Archive File</button><button class="animus-record-button small danger" data-animus-open="delete">Delete File</button></div></details><button class="animus-record-button primary" data-animus-save>Save</button></div></header>${summaryMarkup(file)}${tabsMarkup()}<main class="animus-tab-panel">${panel(file)}</main>`;
     const editor = root.querySelector(".animus-inline-editor");
     const contentPanel = root.querySelector("main.animus-tab-panel");
-    if (editor && contentPanel) contentPanel.prepend(editor);
+    if (editor && state.editor === "assigned" && root.querySelector(".animus-assigned-card")) {
+      root.querySelector(".animus-assigned-card").append(editor);
+    } else if (editor && contentPanel) contentPanel.prepend(editor);
+    editor?.querySelector('[data-animus-field="fileStatus"]')?.addEventListener("change", (event) => {
+      const choices = CRM_STATUS_DETAILS;
+      const detail = editor.querySelector('[data-animus-field="statusDetail"]');
+      detail.replaceChildren(...(choices[event.target.value] || [""]).map((value) => new Option(value, value)));
+    });
   }
 
-  function saveEditor() {
+  async function saveEditor() {
     const file = currentFile();
     if (!file) return;
     const fields = [...document.querySelectorAll("[data-animus-field]")];
@@ -388,6 +397,24 @@
       if (typeof window.syncFileLaborToRevenue === "function") window.syncFileLaborToRevenue(file);
     }
     if (typeof window.addSystemNote === "function") window.addSystemNote(file, "Work file updated.");
+    if (state.editor === "assigned") {
+      crmLocalChangeVersion += 1;
+      const button = document.querySelector("[data-animus-save-editor]");
+      button.disabled = true;
+      button.textContent = "Saving...";
+      try {
+        window.saveCrmFiles({ syncExpenses:false });
+        const result = await window.queueDashboardCloudSave({ action:"dashboardSync", dashboardFiles:[{ id:file.id, fileNumber:file.fileNumber, assignedTo:file.assignedTo, timeline:file.timeline }] });
+        const saved = (result?.dashboard || result?.verification)?.dashboardFiles?.find((entry) => entry.id === file.id);
+        if (!saved || ("assignedTo" in saved && saved.assignedTo !== file.assignedTo)) throw new Error("Cloudflare did not confirm the assignment.");
+        window.showDashboardSaveStatus?.("Assignment saved to Cloudflare.");
+      } catch (error) {
+        button.disabled = false;
+        button.textContent = "Retry Save";
+        window.showDashboardSaveStatus?.(`${error.message} Your assignment remains in the editor. Retry Save.`, true);
+        return;
+      }
+    }
     if (typeof window.saveCrmFiles === "function") window.saveCrmFiles();
     state.editor = "";
     if (typeof window.renderCrm === "function") window.renderCrm(); else renderWorkFile();
@@ -586,7 +613,14 @@
     }
     if (!target) return;
     if (target.dataset.animusTab) { state.tab = target.dataset.animusTab; state.editor = ""; renderWorkFile(); return; }
-    if (target.dataset.animusEdit) { state.editor = target.dataset.animusEdit; renderWorkFile(); return; }
+    if (target.dataset.animusEdit) {
+      state.editor = target.dataset.animusEdit;
+      renderWorkFile();
+      const editor = document.querySelector("#animusWorkFile .animus-inline-editor");
+      editor?.scrollIntoView({ block: "nearest" });
+      editor?.querySelector("input, select")?.focus({ preventScroll: true });
+      return;
+    }
     if (target.hasAttribute("data-animus-save-editor")) { saveEditor(); return; }
     if (target.hasAttribute("data-animus-cancel-editor")) { state.editor = ""; renderWorkFile(); return; }
     if (target.hasAttribute("data-animus-complete-action")) { completeNextAction(); return; }
@@ -596,6 +630,7 @@
       else if (target.dataset.animusSummary === "startDate") window.openCrmStartDateModal?.();
       else if (["financials", "details"].includes(target.dataset.animusSummary)) { state.tab = target.dataset.animusSummary; state.editor = ""; renderWorkFile(); }
       else if (target.dataset.animusSummary === "payroll") openExisting("payroll");
+      else if (target.dataset.animusSummary === "expenses") openExisting("expenses");
       else { state.editor = "action"; renderWorkFile(); }
       return;
     }

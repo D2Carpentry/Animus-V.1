@@ -41,6 +41,7 @@ const CRM_STATUS_DESCRIPTIONS = {
   "Contact Attempted": "A contact attempt was made. Set a next-day follow-up reminder.",
   "Inspection Completed": "You met the client, took site dimensions, and discussed wood types/finishes.",
   "In Negotiation": "Customer is considering the estimate. Set a follow-up date and keep it out of active jobs.",
+  "Pending Start": "Job is approved and waiting for its start date.",
   "In Progress": "Job has started. Confirm expected completion date and midpoint deposit.",
   "Closed / Paid": "Job folder is archived and contact info is saved for future marketing.",
   "Job Lost / Closed": "Archive the file and save contact info for future marketing.",
@@ -52,6 +53,7 @@ const CRM_STATUS_DETAILS = {
   "Contact Attempted": ["Follow Up Tomorrow"],
   "Inspection Completed": ["Estimate Pending", "Estimate Sent"],
   "In Negotiation": ["Follow-Up Scheduled", "Waiting on Customer"],
+  "Pending Start": ["Start Date Pending", "Start Date Set"],
   "In Progress": ["On Schedule", "Completion Date Needed"],
   "Closed / Paid": ["Invoice Sent", "Invoice Not Sent"],
   "Job Lost / Closed": ["Future Marketing Follow-Up"],
@@ -79,7 +81,7 @@ function crmFileCategory(file = {}) {
   const status = String(file.fileStatus || "New Lead").trim();
   if (["Job Lost / Closed", "Closed / Paid"].includes(status)) return CRM_FILE_CATEGORY_RULES.archive;
   if (status === "In Negotiation") return CRM_FILE_CATEGORY_RULES.negotiation;
-  if (status === "In Progress") return CRM_FILE_CATEGORY_RULES.active;
+  if (["In Progress", "Pending Start"].includes(status)) return CRM_FILE_CATEGORY_RULES.active;
   if (["Scheduled", "In Progress", "Completed"].includes(String(file.projectStage || "").trim())) return CRM_FILE_CATEGORY_RULES.active;
   if (hasEstimateWorkflowDetail(file) || status === "Inspection Completed") return CRM_FILE_CATEGORY_RULES.estimate;
   if (["Contact Established", "Contact Attempted"].includes(status)) return CRM_FILE_CATEGORY_RULES.contact;
@@ -1924,6 +1926,7 @@ function normalizeCrmFile(file) {
 }
 
 function inferProjectStage(status = "") {
+  if (status === "Pending Start") return "Scheduled";
   if (status === "In Progress") return "In Progress";
   if (status === "Closed / Paid") return "Paid";
   if (status === "In Negotiation") return "Estimate";
@@ -2022,6 +2025,7 @@ function renderFileList() {
     "Contact Attempted": "contact-attempted",
     "Inspection Completed": "inspection-completed",
     "In Negotiation": "negotiation",
+    "Pending Start": "pending-start",
     "In Progress": "in-progress",
     "Closed / Paid": "closed-paid",
     "Job Lost / Closed": "lost-closed",
@@ -2316,8 +2320,7 @@ function saveMaterialAmountEdit() {
 function addSystemNote(file, text) {
   if (!text) return;
   const timestamp = new Date().toISOString();
-  file.notes = [...(file.notes || []), { at: timestamp, text, source: "system" }];
-  file.timeline = [...(file.timeline || []), `Workflow note added ${formatNoteTimestamp(timestamp)}`];
+  file.timeline = [...(file.timeline || []), `${text} ${formatNoteTimestamp(timestamp)}`];
 }
 
 function openDateField(id) {
@@ -3296,7 +3299,7 @@ function attachEditableEstimateToFile(file, data, fileName = "") {
   file.projectType = normalizeProjectType(file.projectType || data.projectType);
   file.otherProjectType = file.projectType === "Other" ? (file.otherProjectType || data.projectTypeOther || "") : "";
   file.estimateStatus = data.estimateStatus || file.estimateStatus || "Pending";
-  addSystemNote(file, `Editable estimate attached${fileName ? ` from ${fileName}` : ""}.`);
+  addSystemNote(file, "Estimate completed.");
 }
 
 function uploadEstimateForActiveFile(file) {
@@ -3431,7 +3434,7 @@ function syncSupplementFromEstimator(data) {
       updatedAt: new Date().toISOString(),
     };
     file.supplements.push(supplement);
-    addSystemNote(file, `${supplement.estimateNumber} saved to this work file.`);
+    addSystemNote(file, "Supplement completed.");
   }
   supplement.data = data;
   supplement.estimateNumber = data.estimateNumber || supplement.estimateNumber;
@@ -3743,12 +3746,10 @@ function dashboardFileFromEstimate(data, row) {
     materialTotal: Number(row.expenses) || 0,
     materialItems: estimateMaterialItems(data),
     editableEstimate: data,
-    notes: Array.isArray(existing?.notes) && existing.notes.length
-      ? existing.notes
-      : [{ at: importedAt, text: data.notes || "Estimate uploaded into Revenue. Treat as a new lead/customer file." }],
+    notes: Array.isArray(existing?.notes) ? existing.notes : [],
     timeline: [
       ...(Array.isArray(existing?.timeline) ? existing.timeline : []),
-      existing ? `Estimate file updated ${formatNoteTimestamp(importedAt)}` : `Estimate file uploaded ${formatNoteTimestamp(importedAt)}`,
+      `Estimate completed. ${formatNoteTimestamp(importedAt)}`,
     ],
   };
   return file;
@@ -3766,10 +3767,7 @@ function dashboardApprovedFileFromEstimate(data, row) {
     invoiceStatus: "Not Created",
     nextAction: "Set start date, create invoice, and prepare assignment",
     nextActionDate: todayIso(1),
-    notes: [
-      ...(Array.isArray(file.notes) ? file.notes : []),
-      { at: importedAt, text: "Approved estimate imported. Next step: set start date, prepare invoice/deposit, and build assignment." },
-    ],
+    notes: Array.isArray(file.notes) ? file.notes : [],
     timeline: [...(Array.isArray(file.timeline) ? file.timeline : []), `Approved estimate imported ${formatNoteTimestamp(importedAt)}`],
   };
 }
@@ -3866,7 +3864,7 @@ function createDashboardFileFromRevenueRow(row) {
     depositTotal: 0,
     materialTotal: Number(row.expenses) || 0,
     materialItems: Array.isArray(estimate.materialItems) ? estimate.materialItems : [],
-    notes: [{ at: importedAt, text: "Lead file created from an attached Revenue estimate." }],
+    notes: [],
     timeline: [`Revenue estimate linked ${formatNoteTimestamp(importedAt)}`],
   };
   crmFiles.unshift(file);
@@ -6983,6 +6981,13 @@ function savePriceLineEdit(id) {
   renderPriceDatabase();
 }
 
+function setPriceEntryOpen(open) {
+  const modal = $("crmPriceEntryModal");
+  if (!modal) return;
+  modal.hidden = !open;
+  (open ? $("crmPriceProduct") : $("crmOpenPriceEntry"))?.focus();
+}
+
 function addPriceLine() {
   const product = $("crmPriceProduct").value.trim();
   const price = parseMoney($("crmPriceAmount").value);
@@ -7008,6 +7013,7 @@ function addPriceLine() {
     $(id).value = "";
   });
   renderPriceDatabase();
+  setPriceEntryOpen(false);
 }
 
 function deletePriceLine(id) {
@@ -9384,6 +9390,22 @@ $("crmStartDateQuickInput")?.addEventListener("keydown", (event) => {
   }
 });
 $("crmAddPriceLine").addEventListener("click", addPriceLine);
+$("crmOpenPriceEntry")?.addEventListener("click", () => setPriceEntryOpen(true));
+$("crmClosePriceEntry")?.addEventListener("click", () => setPriceEntryOpen(false));
+$("crmCancelPriceEntry")?.addEventListener("click", () => setPriceEntryOpen(false));
+$("crmPriceEntryModal")?.addEventListener("click", (event) => {
+  if (event.target === $("crmPriceEntryModal")) setPriceEntryOpen(false);
+});
+$("crmPriceEntryModal")?.addEventListener("keydown", (event) => {
+  if (event.key !== "Tab") return;
+  const controls = [...$("crmPriceEntryModal").querySelectorAll("button, input")];
+  const first = controls[0], last = controls[controls.length - 1];
+  if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+  else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && $("crmPriceEntryModal") && !$("crmPriceEntryModal").hidden) setPriceEntryOpen(false);
+});
 $("crmPriceSearch").addEventListener("input", renderPriceDatabase);
 $("crmPriceSort").addEventListener("change", renderPriceDatabase);
 $("crmReceiptAddLine")?.addEventListener("click", () => addReceiptLine());

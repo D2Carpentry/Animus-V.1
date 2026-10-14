@@ -412,7 +412,7 @@ body.animus-unified-ui .animus-work-files-layout .crm-file-workspace { gap: 16px
 
 .animus-summary-strip {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   overflow: hidden;
   margin: 0 0 18px;
   border: 1px solid #e2e8f0;
@@ -455,9 +455,19 @@ body.animus-unified-ui .animus-work-files-layout .crm-file-workspace { gap: 16px
 .animus-summary-copy { min-width: 0; }
 .animus-summary-copy span { display: block; margin-bottom: 2px; color: #69758a; font-size: 10px; font-weight: 750; }
 .animus-summary-copy strong { display: block; overflow: hidden; color: #102a5e; font-size: 16px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
-.animus-summary-cell:nth-child(4) .animus-summary-copy strong { overflow: hidden; font-size: 12px; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
+.animus-summary-cell.start-date .animus-summary-copy strong { font-size: 12px; line-height: 1.25; white-space: normal; }
 .animus-summary-copy small { display: block; overflow: hidden; margin-top: 1px; color: #233c6f; font-size: 10px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
 .animus-summary-cell.balance .animus-summary-copy strong { color: #d32929; }
+.animus-summary-cell.expenses .animus-summary-copy strong { color:#713fd2; }
+.animus-assigned-card .animus-inline-editor { margin:12px 0 0; }
+@media (min-width:1241px) and (max-width:1700px) {
+  .animus-summary-cell { padding:12px 9px; }
+  .animus-summary-icon { display:none; }
+}
+@media (max-width:1240px) {
+  .animus-summary-cell.start-date { grid-column:1 / -1; }
+  .animus-summary-cell:not(:last-child) { border-bottom:1px solid #e6ebf3; }
+}
 
 .animus-record-tabs {
   display: flex;
