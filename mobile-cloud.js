@@ -198,15 +198,43 @@ function renderExpenses() {
 function renderReceiptReview() {
   const panel = $("receiptReview"); if (!receiptDraft) { panel.hidden = true; return; }
   panel.hidden = false;
+  if (receiptDraft.amountManual === undefined) receiptDraft.amountManual = String(receiptDraft.amount ?? "").trim() !== "";
+  if (String(receiptDraft.amount ?? "").trim() === "" && receiptDraft.items.length) receiptDraft.amount = selectedReceiptItemTotal(receiptDraft.items).toFixed(2);
   const itemRows = receiptDraft.items.map((item, index) => `<article class="receipt-item" data-item="${index}"><input data-field="name" value="${escapeHtml(item.name || "")}" placeholder="Item"><input data-field="total" value="${escapeHtml(item.total ?? "")}" inputmode="decimal" placeholder="0.00"><label><input data-field="use" type="checkbox" ${item.use !== false ? "checked" : ""}> Add this item</label></article>`).join("");
   const preview = receiptDraft.isPdf ? `<iframe src="${receiptDraft.imageDataUrl}" title="Receipt PDF"></iframe>` : `<img src="${receiptDraft.imageDataUrl}" alt="Receipt preview">`;
-  panel.innerHTML = `<div class="review-heading"><div><p class="eyebrow">Review receipt</p><h2>${receiptDraft.ai ? "AI extraction ready" : "Receipt ready for review"}</h2></div><button type="button" id="cancelReceipt">Cancel</button></div><div class="review-preview">${preview}</div><div class="review-grid"><label>Date<input id="receiptDate" type="date" value="${escapeHtml(receiptDraft.date)}"></label><label>Vendor<input id="receiptVendor" value="${escapeHtml(receiptDraft.vendor)}" placeholder="Vendor"></label><label>Expense title<input id="receiptTitle" value="${escapeHtml(receiptDraft.title)}" placeholder="Receipt title"></label><label>Category<select id="receiptCategory">${categoryOptions(receiptDraft.category)}</select></label><label class="full">Notes<textarea id="receiptNotes" placeholder="Notes">${escapeHtml(receiptDraft.notes)}</textarea></label></div><div class="items-head"><h3>Items</h3><button type="button" id="addItem">+ Add item</button></div><div class="receipt-items">${itemRows || `<p class="subcopy">No items extracted. Add one below or save the receipt total.</p>`}</div><div class="review-actions"><button type="button" id="addItemBottom">Add item</button><button type="button" class="save" id="saveReceipt">Save expense</button></div>`;
+  panel.innerHTML = `<div class="review-heading"><div><p class="eyebrow">Review receipt</p><h2>${receiptDraft.ai ? "AI extraction ready" : "Receipt ready for review"}</h2></div><button type="button" id="cancelReceipt">Cancel</button></div><div class="review-preview">${preview}</div><div class="review-grid"><label>Date<input id="receiptDate" type="date" value="${escapeHtml(receiptDraft.date)}"></label><label>Vendor<input id="receiptVendor" value="${escapeHtml(receiptDraft.vendor)}" placeholder="Vendor"></label><label>Expense title<input id="receiptTitle" value="${escapeHtml(receiptDraft.title)}" placeholder="Receipt title"></label><label>Category<select id="receiptCategory">${categoryOptions(receiptDraft.category)}</select></label><label class="full">Notes<textarea id="receiptNotes" placeholder="Notes">${escapeHtml(receiptDraft.notes)}</textarea></label></div><div class="items-head"><h3>Items</h3><button type="button" id="addItem">+ Add item</button></div><div class="receipt-items">${itemRows || `<p class="subcopy">No items extracted. Add one below or save the receipt total.</p>`}</div><div class="receipt-total-review"><div class="receipt-total-heading"><span>Selected item total</span><strong id="receiptItemSubtotal"></strong></div><label for="receiptAmount">Receipt total</label><input id="receiptAmount" inputmode="decimal" value="${escapeHtml(receiptDraft.amount ?? "")}" placeholder="0.00" aria-describedby="receiptAmountError"><button type="button" id="useReceiptItemTotal">Use item total</button><p id="receiptAmountError" class="receipt-total-error" role="alert" hidden></p><div class="receipt-total-heading"><span>Total to save</span><strong id="receiptSaveTotal" aria-live="polite"></strong></div></div><div class="review-actions"><button type="button" id="addItemBottom">Add item</button><button type="button" class="save" id="saveReceipt">Save expense</button></div>`;
   $("cancelReceipt").addEventListener("click", () => { receiptDraft = null; renderExpenses(); });
   $("addItem").addEventListener("click", addReceiptItem); $("addItemBottom").addEventListener("click", addReceiptItem); $("saveReceipt").addEventListener("click", saveReceipt);
+  $("receiptAmount").addEventListener("input", () => { receiptDraft.amount = $("receiptAmount").value; receiptDraft.amountManual = receiptDraft.amount.trim() !== ""; updateReceiptTotalReview(); });
+  $("useReceiptItemTotal").addEventListener("click", () => { captureReceiptDraft(); receiptDraft.amountManual = false; receiptDraft.amount = selectedReceiptItemTotal(receiptDraft.items).toFixed(2); $("receiptAmount").value = receiptDraft.amount; updateReceiptTotalReview(); });
+  panel.querySelector(".receipt-items").addEventListener("input", () => { captureReceiptDraft(); if (!receiptDraft.amountManual) { receiptDraft.amount = selectedReceiptItemTotal(receiptDraft.items).toFixed(2); $("receiptAmount").value = receiptDraft.amount; } updateReceiptTotalReview(); });
+  updateReceiptTotalReview();
+}
+function selectedReceiptItemTotal(items = []) { return Math.round(items.filter(item => item.use !== false).reduce((sum, item) => sum + parseMoney(item.total), 0) * 100) / 100; }
+function receiptTotalToSave(draft) {
+  const value = String(draft.amount ?? "").trim();
+  if (!value) return selectedReceiptItemTotal(draft.items);
+  const normalized = value.replace(/[$,\s]/g, "");
+  if (!/^-?(?:\d+\.?\d{0,2}|\.\d{1,2})$/.test(normalized) || !Number.isFinite(Number(normalized))) throw new Error("Enter a valid receipt total with no more than two decimal places.");
+  return Math.round(Number(normalized) * 100) / 100;
+}
+function updateReceiptTotalReview() {
+  $("receiptItemSubtotal").textContent = money.format(selectedReceiptItemTotal(receiptDraft.items));
+  const error = $("receiptAmountError");
+  try { $("receiptSaveTotal").textContent = money.format(receiptTotalToSave(receiptDraft)); error.hidden = true; $("receiptAmount").removeAttribute("aria-invalid"); }
+  catch (problem) { $("receiptSaveTotal").textContent = "--"; error.textContent = problem.message; error.hidden = false; $("receiptAmount").setAttribute("aria-invalid", "true"); }
+}
+function mobileReceiptExpenseLines(saved, items, amount) {
+  const lines = items.map((item, index) => ({ id:`${saved.id}-${index}`, receiptGroupId:saved.id, amount:parseMoney(item.lineTotal), note:item.name, vendor:saved.vendor, date:saved.date, category:item.category }));
+  const difference = Math.round((amount - lines.reduce((sum, line) => sum + line.amount, 0)) * 100) / 100;
+  // Preserve the original item prices while reconciling tax or a manually
+  // corrected receipt total with the work-file/revenue ledger.
+  if (difference || !lines.length) lines.push({ id:`${saved.id}-total-adjustment`, receiptGroupId:saved.id, amount:difference, note:lines.length ? "Receipt total adjustment" : saved.title || "Receipt expense", vendor:saved.vendor, date:saved.date, category:saved.category });
+  return lines;
 }
 function categoryOptions(selected = "Supplies") { return ["Supplies","Materials","Hardware","Paint / Finish","Equipment","Labor","Fuel","Other"].map((item) => `<option${item === selected ? " selected" : ""}>${item}</option>`).join(""); }
 function addReceiptItem() { captureReceiptDraft(); receiptDraft.items.push({ name:"", total:"", use:true }); renderReceiptReview(); }
-function captureReceiptDraft() { if (!receiptDraft || !$("receiptDate")) return; receiptDraft.date = $("receiptDate").value || dateToday(); receiptDraft.vendor = $("receiptVendor").value.trim(); receiptDraft.title = $("receiptTitle").value.trim(); receiptDraft.category = $("receiptCategory").value; receiptDraft.notes = $("receiptNotes").value.trim(); receiptDraft.items = [...document.querySelectorAll("[data-item]")].map((node) => ({ name:node.querySelector("[data-field='name']").value.trim(), total:node.querySelector("[data-field='total']").value, use:node.querySelector("[data-field='use']").checked })); }
+function captureReceiptDraft() { if (!receiptDraft || !$("receiptDate")) return; receiptDraft.date = $("receiptDate").value || dateToday(); receiptDraft.vendor = $("receiptVendor").value.trim(); receiptDraft.title = $("receiptTitle").value.trim(); receiptDraft.category = $("receiptCategory").value; receiptDraft.notes = $("receiptNotes").value.trim(); receiptDraft.amount = $("receiptAmount").value; receiptDraft.items = [...document.querySelectorAll("[data-item]")].map((node) => ({ name:node.querySelector("[data-field='name']").value.trim(), total:node.querySelector("[data-field='total']").value, use:node.querySelector("[data-field='use']").checked })); }
 
 function cleanPhone(value = "") { return String(value || "").replace(/[^\d+]/g, ""); }
 function phoneHref(value) { const phone = cleanPhone(value); return phone ? `tel:${phone}` : ""; }
@@ -450,9 +478,11 @@ async function receiveReceipt(file) {
   finally { receiptAbortController = null; hideBusy(); renderExpenses(); window.scrollTo({ top:0, behavior:"smooth" }); }
 }
 async function saveReceipt() {
-  let file = activeFile(); if (!file) return; captureReceiptDraft(); const button = $("saveReceipt"); button.disabled = true; button.textContent = "Saving...";
+  let file = activeFile(); if (!file || !receiptDraft) return; captureReceiptDraft();
+  let amount;
+  try { amount = receiptTotalToSave(receiptDraft); } catch (_) { updateReceiptTotalReview(); $("receiptAmount").focus(); return; }
+  const button = $("saveReceipt"); button.disabled = true; button.textContent = "Saving...";
   const items = receiptDraft.items.filter((item) => item.use && (item.name || parseMoney(item.total))).map((item) => ({ name:item.name || "Receipt item", price:parseMoney(item.total), lineTotal:parseMoney(item.total), category:receiptDraft.category }));
-  const amount = items.reduce((sum,item) => sum + parseMoney(item.lineTotal), 0) || parseMoney(receiptDraft.amount);
   receiptDraft.id ||= uid("mobile-receipt");
   const record = { id:receiptDraft.id, fileId:file.id, date:receiptDraft.date, vendor:receiptDraft.vendor, title:receiptDraft.title || receiptDraft.vendor || "Receipt", category:receiptDraft.category, amount, notes:receiptDraft.notes, imageDataUrl:receiptDraft.imageDataUrl, items };
   try {
@@ -460,7 +490,7 @@ async function saveReceipt() {
     const storageFileId = file.fileNumber || file.id;
     record.fileId = storageFileId;
     const response = await fetch(EXPENSE_API, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ fileId:storageFileId, expense:record }), cache:"no-store" }); const result = await response.json().catch(() => ({})); if (!response.ok || result.ok === false) throw new Error(result.error || "Receipt could not be saved.");
-    const saved = result.expense; receipts = [saved, ...receipts.filter((entry) => entry.id !== saved.id)]; file.expenseLines = (file.expenseLines || []).filter((line) => line.receiptGroupId !== saved.id); file.expenseLines.push(...items.map((item,index) => ({ id:`${saved.id}-${index}`, receiptGroupId:saved.id, amount:parseMoney(item.lineTotal), note:item.name, vendor:saved.vendor, date:saved.date, category:item.category }))); const revenueRow = updateRevenueExpense(file); await saveFilePatch(file, { expenseLines:file.expenseLines }, revenueRow); receiptDraft = null; renderExpenses(); notify("Saved to cloud");
+    const saved = result.expense; receipts = [saved, ...receipts.filter((entry) => entry.id !== saved.id)]; file.expenseLines = (file.expenseLines || []).filter((line) => (line.receiptGroupId || line.id) !== saved.id); file.expenseLines.push(...mobileReceiptExpenseLines(saved, items, amount)); const revenueRow = updateRevenueExpense(file); await saveFilePatch(file, { expenseLines:file.expenseLines }, revenueRow); receiptDraft = null; renderExpenses(); notify("Saved to cloud");
   } catch (error) { notify("Receipt save failed", true); window.alert(error.message || "Receipt could not be saved."); } finally { if ($("saveReceipt")) { $("saveReceipt").disabled=false; $("saveReceipt").textContent="Save expense"; } }
 }
 
