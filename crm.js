@@ -2042,10 +2042,12 @@ function renderFileList() {
     </button>
   `).join("") || `<p class="crm-empty-state">No files match this view yet.</p>`;
 
-  document.querySelectorAll("[data-file-id]").forEach((button) => {
+  $("crmFileList").querySelectorAll("button.crm-file-card[data-file-id]").forEach((button) => {
     button.addEventListener("click", () => {
+      const file = crmFiles.find((entry) => String(entry.id) === button.dataset.fileId);
+      if (!file) return;
       saveActiveFile();
-      activeFileId = button.dataset.fileId;
+      activeFileId = file.id;
       renderCrm();
     });
   });
