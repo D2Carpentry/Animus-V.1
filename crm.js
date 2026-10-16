@@ -3250,7 +3250,7 @@ function openEstimatorInCommandCenter(url, estimateData = null) {
   }
   const estimatorUrl = new URL(url, window.location.href);
   estimatorUrl.searchParams.set("embedded", "1");
-  estimatorUrl.searchParams.set("v", "20261012-estimator-top-spacing");
+  estimatorUrl.searchParams.set("v", "20261015-invoice-pdf");
   const requestId = makeCrmId("estimate-open");
   estimatorUrl.searchParams.set("open", requestId);
   pendingEstimatorOpen = estimateData ? { requestId, estimate: estimateData } : null;
@@ -3280,7 +3280,7 @@ function sendEstimateToEstimator(estimateData, target = "", file = activeFile())
   if (target) estimatorUrl.hash = target.replace(/^#/, "");
   estimatorUrl.searchParams.set("fromDashboard", "1");
   estimatorUrl.searchParams.set("standard", "1");
-  estimatorUrl.searchParams.set("v", "20261015-invoice-date");
+  estimatorUrl.searchParams.set("v", "20261015-invoice-pdf");
   estimatorUrl.searchParams.set("open", Date.now().toString());
   openEstimatorInCommandCenter(estimatorUrl.toString(), associatedEstimate);
   return true;
@@ -8371,7 +8371,7 @@ document.querySelectorAll("[data-crm-view]").forEach((button) => {
     if (frame && (!currentSrc || currentSrc === "about:blank")) {
       const estimatorUrl = new URL("animus-estimate-demo.html", window.location.href);
       estimatorUrl.searchParams.set("standard", "1");
-      estimatorUrl.searchParams.set("v", "20261015-invoice-date");
+      estimatorUrl.searchParams.set("v", "20261015-invoice-pdf");
       estimatorUrl.searchParams.set("open", Date.now().toString());
       frame.src = estimatorUrl.toString();
     }

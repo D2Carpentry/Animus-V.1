@@ -259,6 +259,9 @@
   <div class="price-database-modal" id="priceDatabaseModal" hidden><section class="price-database-dialog" role="dialog" aria-modal="true" aria-labelledby="priceDatabaseTitle"><header class="price-database-head"><div><strong id="priceDatabaseTitle">Price Database</strong><p class="subtle">Review, edit, add, or click a part to use it in Materials &amp; Supplies.</p></div><div class="price-database-head-actions"><button class="btn primary" id="openFullPriceDatabase" type="button">Open Database Page</button><button class="btn" id="priceDatabaseClose" type="button">Close</button></div></header><div class="price-database-tools"><input id="priceDatabaseSearch" type="search" placeholder="Search item, category, vendor, or unit"><button class="btn primary" id="priceDatabaseAdd" type="button">Add Price Line</button></div><div class="price-database-list" id="priceDatabaseEditor"></div></section></div>
   <div class="note-editor-backdrop" id="noteEditorModal" hidden><section class="note-editor-modal" role="dialog" aria-modal="true" aria-labelledby="noteEditorTitle"><header class="note-editor-head"><div><strong id="noteEditorTitle">Line Explanation</strong><p class="subtle">Write the longer note here, then save it back to the estimate line.</p></div><button class="btn" id="noteEditorClose" type="button">Close</button></header><div class="note-editor-body"><textarea id="noteEditorText" placeholder="Type the full explanation for this line..."></textarea><div class="note-editor-actions"><button class="btn" id="noteEditorCancel" type="button">Cancel</button><button class="btn primary" id="noteEditorSave" type="button">Save Note</button></div></div></section></div>
   <script src="materials-database.js?v=20260804-price-update-2"></script>
+  <script src="vendor/jspdf.umd.min.js"></script>
+  <script src="vendor/html2canvas.min.js"></script>
+  <script src="animus-document-export.js?v=20261015-invoice-pdf-main-download"></script>
   <script>
     (() => {
       const KEY = 'animusEstimateDemoDraftV1';
@@ -497,7 +500,36 @@
       const renderCustomerReviewWithoutInvoicePayment=renderCustomerReview;
       renderCustomerReview=function renderCustomerReviewWithInvoicePayment(data=estimateDataFromState()){ renderCustomerReviewWithoutInvoicePayment(data); if(data.documentMode!=='invoice') return; const totals=$('estimateSheet')?.querySelector('.totals'); if(!totals) return; totals.insertAdjacentHTML('beforeend',`<div><span>Paid</span><strong>-${money(data.totals.paid||0)}</strong></div><div class="grand-total"><span>Balance Due</span><strong>${money(data.totals.balance)}</strong></div>`); };
       function showEstimatePreview(){ dataFromForm(); calculate(); $('customerReview')?.scrollIntoView({behavior:'smooth',block:'start'}); }
-      function printCustomerReview(){ save(); renderCustomerReview(estimateDataFromState()); setTimeout(()=>window.print(),60); }
+      let pdfExportBusy=false;
+      async function printCustomerReview(action='download'){
+        if(pdfExportBusy)return false;
+        pdfExportBusy=true;
+        const buttons=[$('reviewPrintBtn'),$('printBtn'),$('sharePdf'),$('shareDownload'),$('shareEmail')].filter(Boolean);
+        const labels=buttons.map(button=>button.textContent);
+        buttons.forEach(button=>button.disabled=true);
+        $('reviewPrintBtn').textContent='Creating PDF...';
+        $('saveNote').setAttribute('role','status');
+        $('saveNote').textContent='Preparing PDF...';
+        try{
+          dataFromForm(); calculate();
+          const copy=modeCopy();
+          const filename=`${safeFileName([state.clientName,state.manualEstimateNumber||state.workFileNumber,copy.name].filter(Boolean).join(' - ')||copy.name)}.pdf`;
+          const blob=await window.AnimusDocumentExport.createPdf($('estimateSheet'));
+          window.AnimusDocumentExport.download(blob,filename);
+          $('saveNote').textContent=`${copy.name} PDF downloaded.`;
+          if(action==='email'){
+            location.href=`mailto:${encodeURIComponent(state.email||'')}?subject=${encodeURIComponent(state.title||copy.name)}&body=${encodeURIComponent(`Please see the attached ${copy.name.toLowerCase()}.`)}`;
+            $('saveNote').textContent='PDF downloaded. Attach it to your email before sending.';
+          }
+          return true;
+        }catch(error){
+          $('saveNote').textContent=`PDF export failed: ${error.message||'Please try again.'} Your entries are unchanged.`;
+          return false;
+        }finally{
+          pdfExportBusy=false;
+          buttons.forEach((button,index)=>{button.disabled=false;button.textContent=labels[index];});
+        }
+      }
       function createWorkFileFromEstimate(){ const data=currentEstimateData(); if(!String(data.clientName||'').trim()){ $('saveNote').textContent='Add the customer name before creating a work file.'; return; } save(); if(window.parent&&window.parent!==window){ window.parent.postMessage({type:'animus-create-work-file-from-estimate',estimate:data,fileName:state.importedEstimateFileName||''}, window.location.origin); $('saveNote').textContent='Creating work file in ANIMUS...'; } else { $('saveNote').textContent='Open this estimator inside ANIMUS to create the work file.'; } }
       function recoverSavedDraft(){
         try {
@@ -584,8 +616,8 @@
         $('reviewPrintBtn').onclick=printCustomerReview;
         $('shareSide').onclick=event=>{event.stopPropagation();openShareMenu();};
         $('sharePdf').onclick=()=>{closeShareMenu();printCustomerReview();};
-        $('shareEmail').onclick=()=>{closeShareMenu();save();location.href=`mailto:?subject=${encodeURIComponent(state.title||'Estimate')}&body=${encodeURIComponent('Please see the attached estimate. Download or print the PDF from ANIMUS Estimation.')}`;};
-        $('shareDownload').onclick=()=>{closeShareMenu();saveDraftToComputer();};
+        $('shareEmail').onclick=()=>{closeShareMenu();printCustomerReview('email');};
+        $('shareDownload').onclick=()=>{closeShareMenu();printCustomerReview();};
         $('photoPreviewClose').onclick=()=>$('photoPreview').hidden=true;
         $('addWarrantyBtn').onclick=addSelectedWarranty;
         $('uploadWarrantyBtn').onclick=()=>$('warrantyUploadInput').click();
