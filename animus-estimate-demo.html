@@ -534,7 +534,14 @@
       function bind(){
         const openShareMenu=()=>{const menu=$('shareMenu'); if(menu) menu.hidden=!menu.hidden;};
         const closeShareMenu=()=>{const menu=$('shareMenu'); if(menu) menu.hidden=true;};
-        const setMode=mode=>{state.mode=mode;document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));$('estimateStatus').textContent=mode==='supplement'?'Supplement draft - choose the work file that should receive this supplement copy':mode==='invoice'?'Invoice draft - review client info, line items, notes, and invoice total.':mode==='workorder'?'Work order draft - prepare the employee assignment and preview.':'Draft estimate - not connected to a work file';syncModeUI();};
+        const setMode=mode=>{
+          if(mode==='invoice'&&state.mode!=='invoice'){
+            state.date=today();
+            state.estimateDate=state.date;
+            $('date').value=state.date;
+          }
+          state.mode=mode;document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));$('estimateStatus').textContent=mode==='supplement'?'Supplement draft - choose the work file that should receive this supplement copy':mode==='invoice'?'Invoice draft - review client info, line items, notes, and invoice total.':mode==='workorder'?'Work order draft - prepare the employee assignment and preview.':'Draft estimate - not connected to a work file';syncModeUI();
+        };
         const openPhotoPreview=(src,alt='Project photo')=>{const modal=$('photoPreview'),img=$('photoPreviewImage'); if(!modal||!img)return; img.src=src; img.alt=alt; modal.hidden=false;};
         $('estimateMenuToggle').onclick=event=>{event.stopPropagation();const menu=$('estimateMenu'), toggle=$('estimateMenuToggle');menu.hidden=!menu.hidden;toggle.setAttribute('aria-expanded',String(!menu.hidden));};
         document.addEventListener('click',event=>{if(!event.target.closest('.actions')) closeEstimateMenu();if(!event.target.closest('.summary-actions')) closeShareMenu();});
