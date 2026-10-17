@@ -8,7 +8,7 @@ function expired() {
   return Object.assign(new Error('Sign-in expired or revoked.'),{status:401});
 }
 
-// Staged only. Signature verification alone cannot detect a disabled account.
+// Signature verification alone cannot detect a disabled account.
 export function createLiveAdministratorVerifier({verifyIdentity=createAdministratorVerifier(),fetcher=fetch}={}) {
   return async function verify(request,env) {
     const identity=await verifyIdentity(request,env);

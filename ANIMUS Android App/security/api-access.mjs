@@ -23,8 +23,8 @@ function failure(status,message,headers) {
   return new Response(JSON.stringify({ok:false,error:message}),{status,headers:output});
 }
 
-// Staging only: mount within the API subtree, never over UI routes.
-export function createApiGuard(verify=createLiveAdministratorVerifier()) {
+// Mount within the API subtree; static documents have their own access gate.
+export function createApiGuard(verify=createLiveAdministratorVerifier(),{verifyBackup}={}) {
   return async function guard(context) {
     const {request,env}=context;
     const origin=request.headers.get('Origin');
@@ -39,16 +39,18 @@ export function createApiGuard(verify=createLiveAdministratorVerifier()) {
       headers.set('Access-Control-Allow-Headers',allowedHeaders.join(', '));
       return new Response(null,{status:204,headers});
     }
-    let user;
+    let user,isBackup=false;
     try {
-      user=await verify(request,env);
-      if(user?.role!=='admin'||typeof user.uid!=='string'||!user.uid||typeof user.email!=='string'||!user.email)throw {status:403};
+      if(verifyBackup&&(request.headers.get('Authorization')||'').startsWith('AnimusBackup ')){
+        user=await verifyBackup(request,env);isBackup=true;
+      }else user=await verify(request,env);
+      if(user?.role!==(isBackup?'backup':'admin')||typeof user.uid!=='string'||!user.uid||typeof user.email!=='string'||!user.email)throw {status:403};
     } catch(error) {
       const status=[401,403,503].includes(error?.status)?error.status:503;
       const message=status===401?'Sign-in required.':status===403?'Administrator access required.':'Identity verification unavailable.';
       return failure(status,message,headers);
     }
-    const principal=Object.freeze({uid:user.uid,email:user.email,role:'admin'});
+    const principal=Object.freeze({uid:user.uid,email:user.email,role:isBackup?'backup':'admin'});
     context.data??={};
     context.data.animusIdentity=principal;
     const forwardedHeaders=new Headers(request.headers);
@@ -56,6 +58,7 @@ export function createApiGuard(verify=createLiveAdministratorVerifier()) {
     forwardedHeaders.set('X-Animus-Actor',principal.email);
     forwardedHeaders.delete('X-Animus-Migration-Key');
     forwardedHeaders.delete('Authorization');
+    forwardedHeaders.delete('Cookie');
     const response=await context.next(new Request(request,{headers:forwardedHeaders}));
     const secured=new Headers(response.headers);
     for(const name of [...secured.keys()])if(name.toLowerCase().startsWith('access-control-'))secured.delete(name);

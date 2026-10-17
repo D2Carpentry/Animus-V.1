@@ -19,10 +19,10 @@
     const params=new URLSearchParams(location.search);
     async function load(){
       try{
-        const response=await fetch(`${API}?t=${Date.now()}`,{cache:"no-store"});
-        const result=await response.json();
-        if(!response.ok||result.ok===false) throw new Error(result.error||"Cloud document could not be loaded.");
-        const files=result.dashboard?.dashboardFiles||[];
+        const response=window.ANIMUS_DOCUMENT_DATA?null:await fetch(`${API}?t=${Date.now()}`,{cache:"no-store"});
+        const result=window.ANIMUS_DOCUMENT_DATA||await response.json();
+        if((response&&!response.ok)||result.ok===false) throw new Error(result.error||"Cloud document could not be loaded.");
+        const files=result.dashboard?.dashboardFiles||result.dashboardFiles||[];
         const file=files.find((entry)=>String(entry.id||"")===params.get("fileId"));
         const estimate=file?.editableEstimate;
         if(!file||!estimate) throw new Error("No current editable estimate is attached to this work file.");

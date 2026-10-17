@@ -62,6 +62,8 @@ window.AnimusMobile = {
     if (!receiptDraft) throw new Error("The receipt could not be prepared. Please retry.");
   },
   get selectedFileId() { return activeFileId; }
+  ,documentData(id) { const file=state.files.find(file=>file.id===id); return file?structuredClone(file):null; }
+  ,clearCloud() { state={files:[],revenue:[],prices:[],payroll:[],deletedFileKeys:[],deletedPriceIds:[]}; activeFileId=""; receipts=[]; receiptDraft=null; workPhotoDrafts=[]; closeSheet(); renderAll(); }
 };
 const canonicalNotify = notify;
 const canonicalCalendarRender = renderCalendar;

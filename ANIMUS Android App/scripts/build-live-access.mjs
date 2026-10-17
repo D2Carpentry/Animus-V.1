@@ -1,0 +1,17 @@
+import {mkdir,copyFile} from 'node:fs/promises';
+import {fileURLToPath} from 'node:url';
+import path from 'node:path';
+import {build} from 'esbuild';
+const root=fileURLToPath(new URL('../',import.meta.url));
+const out=path.join(root,'build/live-access');
+await mkdir(out+'/functions/api',{recursive:true});
+await mkdir(out+'/signin',{recursive:true});
+await copyFile(root+'web-sign-in/live-index.html',out+'/signin/index.html');
+await copyFile(root+'web-sign-in/sign-in.css',out+'/signin/sign-in.css');
+await build({entryPoints:[root+'security/pages-entry.mjs'],bundle:true,format:'esm',platform:'browser',target:'es2022',outfile:out+'/functions/api/_middleware.js',minify:true});
+await build({entryPoints:[root+'security/pages-html.mjs'],bundle:true,format:'esm',platform:'browser',target:'es2022',outfile:out+'/functions/_middleware.js'});
+const browser=await build({entryPoints:[root+'web-sign-in/crm-access.js'],bundle:true,format:'iife',platform:'browser',target:'chrome120',outfile:out+'/crm-access.js',minify:true,metafile:true});
+if(Object.keys(browser.metafile.inputs).some(input=>/firestore|grpc|firebase\/analytics/i.test(input)))throw Error('Unexpected non-authentication dependency.');
+await build({entryPoints:[root+'web-sign-in/live-main.js'],bundle:true,format:'iife',platform:'browser',target:'chrome120',outfile:out+'/signin/sign-in.js',minify:true});
+await build({entryPoints:[path.resolve(root,'../cloud-backup-worker/worker.mjs')],bundle:true,format:'esm',platform:'browser',target:'es2022',outfile:out+'/backup-worker.mjs'});
+console.log('Built staged live access in '+out+'; no production files replaced.');

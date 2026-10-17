@@ -17,6 +17,8 @@ import { safeExternalUrl, routeFromNotification, safeFilename, nextReminder } fr
 import {mountCalendar,calendarIcons} from './calendar.js';
 import {localDateKey,eventDate} from './calendar-model.js';
 import { createAuthSession } from './auth-session.js';
+import {createAuthenticatedClient} from './authenticated-client.js';
+import {createLiveTransport,mountPrivateImages} from './live-transport.js';
 
 const native = Capacitor.isNativePlatform();
 const config = window.ANIMUS_APP_CONFIG || {demo:true};
@@ -24,6 +26,14 @@ const originalFetch = window.fetch.bind(window);
 // Native-only bridge: browser previews never load or emulate Firebase web auth.
 const FirebaseAuthentication = registerPlugin('FirebaseAuthentication');
 const accountSession = createAuthSession({provider:FirebaseAuthentication,fetcher:originalFetch,authUrl:config.authUrl});
+const liveClient=createAuthenticatedClient({provider:FirebaseAuthentication,fetcher:originalFetch,onSignInRequired(){accountSession.invalidate();requestAccountSignIn();}});
+let cloudAccountUid=null;
+const identityReady=config.demo?Promise.resolve():Promise.resolve().then(async()=>{
+  if(!native||!config.googleSignInConfigured)return;
+  await accountSession.restore();
+  cloudAccountUid=accountSession.snapshot().user?.uid||null;
+  if(cloudAccountUid)await accountSession.verify();
+}).catch(()=>{accountSession.invalidate();});
 const demoFetch = createDemoTransport();
 const SecureStorage = registerPlugin('AnimusSecureStorage');
 let captureBusy = false;
@@ -40,6 +50,18 @@ if (config.demo) window.fetch = async (input, init) => {
   if (url.origin === location.origin || ['data:','blob:'].includes(url.protocol)) return originalFetch(input, init);
   return demoFetch(input, init);
 };
+else window.fetch=createLiveTransport({client:liveClient,fetcher:originalFetch,ready:identityReady,verified:()=>native&&Boolean(accountSession.snapshot().verified),onSignInRequired:requestAccountSignIn});
+
+function requestAccountSignIn(){
+  if(!$('nativeDialog')){document.addEventListener('DOMContentLoaded',()=>guard(()=>accountPanel(false)),{once:true});return;}
+  if(!$('nativeDialog').open)void guard(()=>accountPanel(false));
+}
+async function clearLiveSession(){
+  liveClient.invalidate();accountSession.invalidate();
+  window.AnimusMobile?.clearCloud();pendingRestore=null;
+  await Preferences.remove({key:'captured-photo'});await Preferences.remove({key:'capture-context'});
+  try{await Filesystem.rmdir({path:'shares',directory:Directory.Cache,recursive:true});}catch{}
+}
 
 function message(text) {
   const toast = $('nativeToast');
@@ -84,12 +106,13 @@ async function openExternal(value) {
 function blobBase64(blob) {
   return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result).split(',')[1]);r.onerror=()=>reject(new Error('File could not be prepared.'));r.readAsDataURL(blob);});
 }
-async function shareFile(url, filename = 'ANIMUS-document.pdf') {
+async function shareFile(url, filename = '') {
   const safeUrl = new URL(url, location.href);
   if (!['https:','data:','blob:'].includes(safeUrl.protocol)) throw new Error('Unsupported document link.');
   if (safeUrl.protocol === 'data:' && !/^data:(application\/pdf|text\/vcard|text\/x-vcard)/i.test(url)) throw new Error('Unsupported document type.');
-  const response = await originalFetch(url);
+  const response = !config.demo&&safeUrl.origin==='https://animus-v-1.pages.dev'&&safeUrl.pathname.startsWith('/api/')?await liveClient.request(safeUrl.href):await originalFetch(url);
   if (!response.ok) throw new Error('The document could not be downloaded. Please try again.');
+  if(!filename){const type=response.headers.get('Content-Type')?.split(';')[0];filename='ANIMUS-document'+({'image/jpeg':'.jpg','image/png':'.png','image/webp':'.webp','application/pdf':'.pdf','text/vcard':'.vcf'}[type]||'.pdf');}
   const blob = await response.blob();
   if (blob.size > 30 * 1024 * 1024) throw new Error('This file is too large to share from the app.');
   if (/\.pdf$/i.test(filename) && new TextDecoder().decode(await blob.slice(0,5).arrayBuffer()) !== '%PDF-') throw new Error('This link did not return a PDF. Open the work file and check its attached document.');
@@ -107,9 +130,20 @@ window.open = (url, target, features) => {
   const documentUrl = new URL(String(url), location.href);
   if (documentUrl.origin === location.origin && documentUrl.pathname.endsWith('/mobile-document.html')) {
     if(config.demo) message('No saved estimate PDF is attached to this preview file.');
-    else { documentUrl.protocol='https:';documentUrl.host='animus-v-1.pages.dev';guard(()=>openExternal(documentUrl.href)); }
+    else guard(async()=>{
+      if(!accountSession.snapshot().verified)throw Error('Sign in before opening this document.');
+      const file=window.AnimusMobile?.documentData(documentUrl.searchParams.get('fileId'));
+      if(!file)throw Error('Reopen this work file before viewing its estimate.');
+      const response=await originalFetch('mobile-document.html');
+      if(!response.ok)throw Error('The document viewer could not load.');
+      const document=new DOMParser().parseFromString(await response.text(),'text/html');
+      const seed=document.createElement('script');seed.textContent='window.ANIMUS_DOCUMENT_DATA='+JSON.stringify({dashboard:{dashboardFiles:[file]}}).replace(/</g,'\\u003c')+';';document.head.prepend(seed);
+      panel('Current estimate','<iframe id="nativeEstimateViewer" title="Current estimate" sandbox="allow-scripts allow-modals allow-downloads" style="width:100%;height:70dvh;border:0;background:white"></iframe>');
+      $('nativeEstimateViewer').srcdoc='<!doctype html>'+document.documentElement.outerHTML;
+    });
     return null;
   }
+  if(!config.demo&&documentUrl.origin==='https://animus-v-1.pages.dev'&&documentUrl.pathname.startsWith('/api/')){guard(()=>shareFile(documentUrl.href));return null;}
   if (/^(data:application\/pdf|blob:)|\.pdf(?:[?#]|$)/i.test(String(url))) guard(()=>shareFile(String(url)));
   else guard(()=>openExternal(String(url)));
   return null;
@@ -255,10 +289,10 @@ function settingsPanel() {
 }
 async function accountPanel(refresh = true) {
   const available=native&&config.googleSignInConfigured;
-  if(available&&refresh)await accountSession.restore();
+  if(available&&refresh){await accountSession.restore();if(!config.demo&&accountSession.snapshot().user)await accountSession.verify();}
   const state=accountSession.snapshot();
   panel('Account', '<p id="accountState" role="status"></p><p id="accountEmail"></p><p id="accountUid" class="native-meta"></p><p class="native-meta">Administrator: d2carpentryanddesign@gmail.com</p><div class="native-setting-actions"><button type="button" id="accountSignIn" class="primary-action">Continue with Google</button><button type="button" id="accountVerify" class="primary-action">Verify administrator access</button><button type="button" id="accountSignOut">Sign out</button></div><p id="accountError" role="alert" hidden></p>');
-  $('accountState').textContent=!available?'Google sign-in is available in the configured Android app, not this browser preview.':state.verified?'Administrator verified. This preview still uses test records only.':state.user?'Google account signed in. '+(config.authUrl?'Administrator verification is required.':'Administrator verification service is not connected. CRM data remains disconnected.'):'Sign in to test your Google account. CRM data remains disconnected.';
+  $('accountState').textContent=!available?'Google sign-in is available in the configured Android app, not this browser preview.':state.verified?(config.demo?'Administrator verified. This preview still uses test records only.':'Administrator verified. Connected to live ANIMUS cloud.'):state.user?'Google account signed in. '+(config.authUrl?'Administrator verification is required.':'Administrator verification service is not connected. CRM data remains disconnected.'):'Sign in with your company Google account. CRM data remains disconnected.';
   $('accountEmail').textContent=state.user?.email||'';
   $('accountUid').textContent=state.user?`Account ID: ${state.user.uid}`:'';
   $('accountSignIn').disabled=!available;$('accountSignIn').hidden=Boolean(state.user);
@@ -266,17 +300,17 @@ async function accountPanel(refresh = true) {
   $('accountVerify').hidden=!available||!state.user||!config.authUrl||Boolean(state.verified);
   $('accountVerify').onclick=async()=>{
     $('accountVerify').disabled=true;$('accountVerify').textContent='Verifying...';
-    try{await accountSession.verify();await accountPanel(false);}
+    try{await accountSession.verify();await accountPanel(false);if(!config.demo)await window.AnimusMobile?.refresh();}
     catch{await accountPanel(false);$('accountError').hidden=false;$('accountError').textContent='Administrator access was not confirmed. Check your connection and retry. CRM data remains disconnected.';}
   };
   $('accountSignIn').onclick=async()=>{
     const button=$('accountSignIn');button.disabled=true;button.textContent='Signing in...';
-    try{await accountSession.signIn();await accountPanel(false);}
+    try{await accountSession.signIn();cloudAccountUid=accountSession.snapshot().user?.uid||null;await accountPanel(false);if(!config.demo)await window.AnimusMobile?.refresh();}
     catch(error){await accountPanel(false);$('accountError').hidden=false;$('accountError').textContent=cancelled(error)?'Sign-in cancelled.':'Sign-in could not be completed. Check your connection and try again. Your CRM remains disconnected.';}
   };
   $('accountSignOut').onclick=async()=>{
     $('accountSignOut').disabled=true;
-    try{await accountSession.signOut();await accountPanel();}catch{ $('accountSignOut').disabled=false;$('accountError').hidden=false;$('accountError').textContent='Sign-out failed. Please retry.'; }
+    try{if(!config.demo)await clearLiveSession();await accountSession.signOut();await accountPanel();}catch{ $('accountSignOut').disabled=false;$('accountError').hidden=false;$('accountError').textContent='Sign-out failed. Please retry.'; }
   };
 }
 async function initialize() {
@@ -297,11 +331,20 @@ async function initialize() {
     if(native&&(camera||library)) {event.preventDefault();event.stopImmediatePropagation();guard(()=>selectCapture(target.id==='detailWorkPhoto'||library,library));return;}
     if(native&&target.tagName==='A'&&!target.dataset.nativeBypass){
       if(target.download){event.preventDefault();event.stopImmediatePropagation();guard(()=>shareFile(target.href,target.download));}
-      else if(target.href&&/^(https:|tel:|sms:|mailto:|geo:)/.test(target.href)){event.preventDefault();event.stopImmediatePropagation();guard(()=>openExternal(target.href));}
+      else if(target.href&&/^(https:|tel:|sms:|mailto:|geo:)/.test(target.href)){event.preventDefault();event.stopImmediatePropagation();const url=new URL(target.href);guard(()=>!config.demo&&url.origin==='https://animus-v-1.pages.dev'&&url.pathname.startsWith('/api/')?shareFile(url.href):openExternal(url.href));}
     }
   },true);
   icons();
   if(!native)return;
+  if(!config.demo){
+    mountPrivateImages({root:document.body,client:liveClient});
+    await FirebaseAuthentication.addListener('authStateChange',event=>{
+      const next=event.user?.uid||null;
+      if(cloudAccountUid&&cloudAccountUid!==next)void clearLiveSession();
+      cloudAccountUid=next;
+    });
+    await identityReady;if(!accountSession.snapshot().verified)await accountPanel(false);
+  }
   await guard(()=>StatusBar.setStyle({style:Style.Dark}));
   await guard(()=>SplashScreen.hide());
   const updateConnection=({connected})=>{connection.hidden=connected;};

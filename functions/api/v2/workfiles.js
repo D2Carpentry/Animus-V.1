@@ -4,10 +4,10 @@ export async function onRequestOptions() {
   return options();
 }
 
-export async function onRequestGet({ request, env }) {
+export async function onRequestGet({ request, env, data }) {
   const missing = requireDatabase(env);
   if (missing) return missing;
-  const unauthorized = requireAdmin(request, env);
+  const unauthorized = requireAdmin(request, env, data?.animusIdentity);
   if (unauthorized) return unauthorized;
   const url = new URL(request.url);
   const id = cleanId(url.searchParams.get("id"));
@@ -31,10 +31,10 @@ export async function onRequestPut(context) {
   return saveWorkfile(context, false);
 }
 
-async function saveWorkfile({ request, env }) {
+async function saveWorkfile({ request, env, data }) {
   const missing = requireDatabase(env);
   if (missing) return missing;
-  const unauthorized = requireAdmin(request, env);
+  const unauthorized = requireAdmin(request, env, data?.animusIdentity);
   if (unauthorized) return unauthorized;
   const record = await request.json();
   const idempotencyKey = cleanId(request.headers.get("Idempotency-Key"));
@@ -81,10 +81,10 @@ async function saveWorkfile({ request, env }) {
   return json(responseBody, existing ? 200 : 201, { ETag: `\"${nextVersion}\"` });
 }
 
-export async function onRequestDelete({ request, env }) {
+export async function onRequestDelete({ request, env, data }) {
   const missing = requireDatabase(env);
   if (missing) return missing;
-  const unauthorized = requireAdmin(request, env);
+  const unauthorized = requireAdmin(request, env, data?.animusIdentity);
   if (unauthorized) return unauthorized;
   const url = new URL(request.url);
   const id = cleanId(url.searchParams.get("id"));
