@@ -52,7 +52,7 @@ The desktop CRM, current customer records, backup retention, and existing cloud 
 ## Staged API Access
 
 - `security/api-access.mjs` is not mounted or deployed on live CRM routes.
-- Fifty-six automated tests pass, including API denial before handler access,
+- Sixty-one automated tests pass, including API denial before handler access,
   allowlisted CORS, private media responses, audit-header replacement, preserved
   conflicts, and canonical synthetic note save/read-back without altering another
   file or its financial data.
@@ -62,6 +62,20 @@ The desktop CRM, current customer records, backup retention, and existing cloud 
   This client is not yet connected to live desktop/mobile callers.
 - No live customer read/write test was performed. Desktop login, backup identity,
   account revocation and staging deployment tests remain required before rollout.
+
+## Live Rollout Preparation - October 17, 2026
+
+- Current cloud snapshot copied read-only to a separate local recovery directory
+  and verified by SHA-256 read-back. No cloud writes or restores were performed.
+- Staged live verifier now checks signed identity followed by Google's current
+  account status on every request. Tests cover disabled, deleted, revoked,
+  mismatched and unverified accounts, missing configuration, malformed responses,
+  redirects, provider errors and network outages. Denials never reach handlers.
+- These new tests use synthetic signed identities and stub Google account lookup;
+  they are not evidence of a commissioned live account-status integration.
+- Live API enforcement, all desktop/mobile callers, private document handling,
+  backup-only service authentication and realistic 54 MB snapshot staging tests
+  remain required before enabling the Android live build.
 
 ## Browser Identity Test - October 17, 2026
 

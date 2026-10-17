@@ -1,4 +1,4 @@
-import {createAdministratorVerifier} from '../auth-worker/verify.mjs';
+import {createLiveAdministratorVerifier} from './live-administrator.mjs';
 
 const allowedOrigins=new Set(['https://animus-v-1.pages.dev','https://localhost']);
 const allowedMethods=['GET','HEAD','POST','PUT','PATCH','DELETE','OPTIONS'];
@@ -24,7 +24,7 @@ function failure(status,message,headers) {
 }
 
 // Staging only: mount within the API subtree, never over UI routes.
-export function createApiGuard(verify=createAdministratorVerifier()) {
+export function createApiGuard(verify=createLiveAdministratorVerifier()) {
   return async function guard(context) {
     const {request,env}=context;
     const origin=request.headers.get('Origin');

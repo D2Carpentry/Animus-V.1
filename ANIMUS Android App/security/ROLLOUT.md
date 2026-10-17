@@ -44,7 +44,12 @@ protect a separately public bucket URL.
 
 `api-access.mjs` is a Pages-style middleware factory, tested without live storage.
 It verifies the Firebase signature, project, issuer, expiry, verified Google
-email and pinned administrator UID through the existing verifier. There is no
+email and pinned administrator UID through the existing verifier. The staged
+default now also calls Google's account lookup for each verified request to check
+disabled/deleted accounts and the `auth_time` revocation cutoff. It requires the
+project's public `FIREBASE_WEB_API_KEY` server configuration and fails closed if
+account status cannot be confirmed; it does not need a new service-account key.
+This live account-status check is tested locally, not deployed yet. There is no
 email-only, migration-key, query-token or browser-cache bypass. It covers all
 `/api` routes, including unknown future routes, before downstream handlers run.
 Mount it only within the API subtree: it deliberately has no pathname-based
@@ -104,8 +109,9 @@ and retest those tools before a production release.
    media/document flows. Preserve drafts when authentication expires.
 3. Prepare scheduled backup authentication limited to creating verified backups
    and required metadata checks, not general customer-data reads/writes.
-4. Implement a revoked/disabled-account policy. JWT signature verification alone
-   is not immediate session revocation. Keep server-side role decisions.
+4. Configure and commission the staged revoked/disabled-account check against
+   Firebase before mounting it. JWT signature verification alone is not immediate
+   session revocation. Keep server-side role decisions.
 5. Test this guard plus every canonical handler in an isolated staging deployment
    with synthetic records, including conflicts, notes, revenue, receipts, PDFs,
    backups and all alternate URLs. Prove denied calls never reach R2/D1/extraction.
@@ -118,3 +124,15 @@ and retest those tools before a production release.
 
 Do not upload `security/api-access.mjs` into `functions/` manually. Do not enable
 only a new protected mobile endpoint while leaving equivalent APIs anonymous.
+
+## Current Cloud Recovery Check - October 17, 2026
+
+The current live cloud dashboard was downloaded read-only into a separate local
+recovery directory outside the deployment checkout. Its original bytes were
+preserved, SHA-256 hashed, then read back and verified. No browser state or older
+snapshot was imported, no live record was changed, and no backup was deleted.
+The snapshot is approximately 54 MB. Loading and saving realistic-sized data
+must be included in staging tests; small synthetic records alone are insufficient.
+
+References: [Firebase account lookup](https://firebase.google.com/docs/reference/rest/auth#section-get-account-info)
+and [session revocation](https://firebase.google.com/docs/auth/admin/manage-sessions).
