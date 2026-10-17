@@ -52,10 +52,14 @@ The desktop CRM, current customer records, backup retention, and existing cloud 
 ## Staged API Access
 
 - `security/api-access.mjs` is not mounted or deployed on live CRM routes.
-- Forty automated tests pass, including API denial before handler access,
+- Fifty automated tests pass, including API denial before handler access,
   allowlisted CORS, private media responses, audit-header replacement, preserved
   conflicts, and canonical synthetic note save/read-back without altering another
   file or its financial data.
+- Prepared authenticated-client tests also cover token-origin restrictions,
+  expired/sign-out sessions, account changes during refresh, no automatic write
+  retry, intact conflict responses, bounded media and sign-out during downloads.
+  This client is not yet connected to live desktop/mobile callers.
 - No live customer read/write test was performed. Desktop login, backup identity,
   account revocation and staging deployment tests remain required before rollout.
   This positive device test has not yet been completed.

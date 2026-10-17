@@ -61,6 +61,26 @@ reject the prepared guard's forwarded request. This is intentional: do not ship
 the guard over v2 until its authorization integration is implemented and tested.
 Do not weaken those checks or insert a privileged migration key to make it work.
 
+## Prepared Client
+
+`src/authenticated-client.js` is also unconnected to live callers. It accepts the
+existing native identity-provider shape; the desktop Firebase adapter is still
+required. It sends tokens only in headers to the canonical HTTPS API origin,
+strips client audit/migration headers, and does not retry failed writes. Existing
+conflict/server responses stay intact for the canonical save logic. No tokens,
+customer records or write queues are saved in browser storage by this module.
+
+Its PDF/image loader uses authenticated fetch, bounded in-memory downloads and
+disposable blob URLs, never URL credentials. Wire `invalidate()` to sign-out and
+every identity change before using it in a UI. This aborts in-flight work and
+revokes preview URLs. Dispose each document when its viewer closes. This cannot
+erase a document a user has deliberately downloaded or already viewed.
+
+Desktop setup is currently blocked by the Firebase console returning an error
+when loading the terms-acceptance status for the company account. Reload, account
+inspection and the official terms-status workflow did not resolve it. No terms,
+IAM grants or new authorized domains were changed to bypass this error.
+
 ## Deployment Gates
 
 1. Register/configure browser Google sign-in for the existing Firebase project;
