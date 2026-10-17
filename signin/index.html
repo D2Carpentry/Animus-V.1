@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#15171b">
+  <title>ANIMUS Sign-In</title>
+  <link rel="icon" href="/icon.svg">
+  <link rel="stylesheet" href="/signin/sign-in.css">
+  <script src="/signin/sign-in.js" defer></script>
+</head>
+<body>
+  <main class="sign-in-page">
+    <header><img src="/assets/animus-sidebar-logo.png" alt="ANIMUS" width="64" height="64"><div><p class="brand">ANIMUS</p><p class="subheading">Command Center</p></div></header>
+    <section class="account-panel" aria-labelledby="accountTitle">
+      <h1 id="accountTitle">Company Sign-In</h1>
+      <p id="status" role="status">Sign in to access your CRM.</p>
+      <p id="email" hidden></p>
+      <div class="actions"><button id="signIn" class="primary" type="button">Continue with Google</button>
+      <button id="openCrm" class="primary" type="button" hidden>Open CRM</button>
+      <button id="signOut" class="secondary" type="button" hidden>Sign out</button></div>
+      <p id="error" role="alert" hidden></p>
+    </section>
+  </main>
+</body>
+</html>
