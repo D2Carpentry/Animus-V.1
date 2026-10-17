@@ -4,10 +4,13 @@ An isolated Android app project reusing the existing ANIMUS mobile interface and
 
 ## What exists
 
+- Version 0.3.1 connects the Account panel to the deployed administrator verifier
+  and adds Verify administrator access for an already-signed-in owner. No customer
+  data is connected. The owner still needs to verify successfully on the phone.
 - Version 0.3.0 adds Account and sign-in in App settings. Google authentication runs
   only in the configured installed Android app. Browser previews do not simulate
   sign-in. The separate `auth-worker` verifies server-side administrator identity
-  with a pinned Firebase UID and verified Google email, but is not deployed yet.
+  with a pinned Firebase UID and verified Google email.
   Signing in does not unlock customer records; this build still uses test records.
 
 - Version 0.2.0 adds an in-app Agenda, Month, and Day calendar with workfile dates, search, appointment-type filters, event details, phone/maps/workfile actions, and reminder shortcuts. Calendar navigation no longer leaves ANIMUS. The separate Google button is an external shortcut, not an automatic sync connection.
@@ -27,10 +30,12 @@ An isolated Android app project reusing the existing ANIMUS mobile interface and
 
 The Firebase project and Android app are registered and Google sign-in is enabled.
 The matching configuration is installed locally but excluded from Git; another
-build machine must supply it. Actual-device sign-in testing, deployed administrator
+build machine must supply it. Google sign-in has been confirmed by the owner on
+Android and matched in Firebase. Actual-device server-side administrator
 verification, production CRM authentication/security review, release signing,
 Google Play distribution and automatic CRM-event triggers remain unfinished.
-The notification and authentication services are source code, not deployed services.
+The authentication service is deployed without customer-data bindings. The
+notification service is source code, not deployed.
 A notification is only reported connected after its token is confirmed by the
 server. This is not a production release yet.
 

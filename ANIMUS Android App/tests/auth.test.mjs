@@ -37,6 +37,13 @@ test('session service rejects untrusted origins/methods and returns no tokens or
   assert.equal(response.headers.get('Cache-Control'),'no-store');assert.equal(response.headers.get('Access-Control-Allow-Origin'),'https://localhost');
   assert.ok(!(await response.text()).includes('Bearer'));
 });
+test('Cloudflare zero-length POST streams reach authentication but nonempty bodies are rejected',async()=>{
+  const headers=(await request()).headers;
+  const empty=new Request('https://auth.test/session',{method:'POST',headers,body:new ReadableStream({start(c){c.close();}}),duplex:'half'});
+  assert.equal((await handle(empty,env)).status,200);
+  const data=new Request('https://auth.test/session',{method:'POST',headers,body:new ReadableStream({start(c){c.enqueue(new Uint8Array([1]));c.close();}}),duplex:'half'});
+  assert.equal((await handle(data,env)).status,400);
+});
 function provider(){return {getCurrentUser:async()=>({user:{uid:'owner-uid',email:env.ADMIN_EMAIL,emailVerified:true}}),signInWithGoogle:async()=>({user:{uid:'owner-uid',email:env.ADMIN_EMAIL,emailVerified:true}}),getIdToken:async()=>({token:'native-token'}),signOut:async()=>{}};}
 test('native identity alone never implies administrator access or contacts CRM',async()=>{
   let calls=0;

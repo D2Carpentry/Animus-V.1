@@ -13,7 +13,7 @@ if (live) {
   // ANIMUS_SECURITY_REVIEWED is not evidence that the existing APIs enforce identity.
   throw new Error('Live builds remain disabled until desktop and mobile cloud endpoints enforce authentication and device tests pass.');
 }
-const authUrl = process.env.ANIMUS_AUTH_URL || '';
+const authUrl = process.env.ANIMUS_AUTH_URL ?? 'https://animus-app-auth.d2carpentryanddesign.workers.dev';
 if (authUrl && (new URL(authUrl).protocol !== 'https:' || new URL(authUrl).username || new URL(authUrl).password || new URL(authUrl).search || new URL(authUrl).hash)) throw new Error('Authentication service must use a plain HTTPS URL.');
 const pushUrl = process.env.ANIMUS_PUSH_URL || '';
 if (pushUrl && new URL(pushUrl).protocol !== 'https:') throw new Error('Push service must use HTTPS.');

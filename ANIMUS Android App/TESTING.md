@@ -42,7 +42,11 @@ The desktop CRM, current customer records, backup retention, and existing cloud 
 - Cancel account selection, deny prompts, switch accounts, disconnect the network,
   sign out, then restart. Never interpret local identity as a server admin grant.
 - Browser preview intentionally disables Google sign-in. It must not manufacture
-  an authenticated user. The deployed administrator verifier is not connected yet.
+  an authenticated user.
+- In 0.3.1 the owner UID is verified in Firebase and pinned server-side. After
+  installing the update, use Account and sign-in > Verify administrator access.
+  Check for Administrator verified and the explicit test-records-only status.
+  This positive device test has not yet been completed.
 - Before live rollout, pin the observed owner UID only after checking it in the
   Firebase console, deploy/configure the verifier, protect all canonical API and
   document routes, check revocation, and regression-test desktop login and saving.

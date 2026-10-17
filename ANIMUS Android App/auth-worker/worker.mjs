@@ -12,7 +12,12 @@ export function createAuthHandler(verify=createAdministratorVerifier()) {
     if(url.pathname!=='/session')return reply({ok:false,error:'Not found.'},404);
     if(request.method==='OPTIONS')return new Response(null,{status:204,headers:{...headers,'Access-Control-Allow-Methods':'POST, OPTIONS','Access-Control-Allow-Headers':'Authorization'}});
     if(request.method!=='POST')return reply({ok:false,error:'Method not allowed.'},405);
-    if(request.body)return reply({ok:false,error:'Session requests do not accept a body.'},400);
+    // Cloudflare can expose a stream even for a zero-length POST body.
+    if(request.body){
+      const reader=request.body.getReader();
+      const first=await reader.read();
+      if(!first.done){await reader.cancel();return reply({ok:false,error:'Session requests do not accept a body.'},400);}
+    }
     try {
       const user=await verify(request,env);
       return reply({ok:true,user:{uid:user.uid,email:user.email},role:user.role});

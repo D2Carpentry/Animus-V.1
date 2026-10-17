@@ -47,7 +47,8 @@ test('packaging keeps desktop untouched and defaults to isolated mode',async()=>
   const html=await readFile(new URL('../www/index.html',import.meta.url),'utf8');
   assert.match(html,/"demo":true/);
   assert.match(html,/"firebaseConfigured":(?:true|false)/);
-  assert.match(html,/"authUrl":""/);
+  const packaged=JSON.parse(html.match(/window\.ANIMUS_APP_CONFIG=(.*?);<\/script>/)[1]);
+  assert.ok(packaged.authUrl===''||packaged.authUrl==='https://animus-app-auth.d2carpentryanddesign.workers.dev');
   assert.match(build,/if \(live\)/);
   assert.match(build,/Live builds remain disabled/);
   const config=JSON.parse(await readFile(new URL('../capacitor.config.json',import.meta.url),'utf8'));

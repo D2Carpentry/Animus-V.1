@@ -257,12 +257,18 @@ async function accountPanel(refresh = true) {
   const available=native&&config.googleSignInConfigured;
   if(available&&refresh)await accountSession.restore();
   const state=accountSession.snapshot();
-  panel('Account', '<p id="accountState" role="status"></p><p id="accountEmail"></p><p id="accountUid" class="native-meta"></p><p class="native-meta">Administrator: d2carpentryanddesign@gmail.com</p><div class="native-setting-actions"><button type="button" id="accountSignIn" class="primary-action">Continue with Google</button><button type="button" id="accountSignOut">Sign out</button></div><p id="accountError" role="alert" hidden></p>');
+  panel('Account', '<p id="accountState" role="status"></p><p id="accountEmail"></p><p id="accountUid" class="native-meta"></p><p class="native-meta">Administrator: d2carpentryanddesign@gmail.com</p><div class="native-setting-actions"><button type="button" id="accountSignIn" class="primary-action">Continue with Google</button><button type="button" id="accountVerify" class="primary-action">Verify administrator access</button><button type="button" id="accountSignOut">Sign out</button></div><p id="accountError" role="alert" hidden></p>');
   $('accountState').textContent=!available?'Google sign-in is available in the configured Android app, not this browser preview.':state.verified?'Administrator verified. This preview still uses test records only.':state.user?'Google account signed in. '+(config.authUrl?'Administrator verification is required.':'Administrator verification service is not connected. CRM data remains disconnected.'):'Sign in to test your Google account. CRM data remains disconnected.';
   $('accountEmail').textContent=state.user?.email||'';
   $('accountUid').textContent=state.user?`Account ID: ${state.user.uid}`:'';
   $('accountSignIn').disabled=!available;$('accountSignIn').hidden=Boolean(state.user);
   $('accountSignOut').hidden=!state.user;
+  $('accountVerify').hidden=!available||!state.user||!config.authUrl||Boolean(state.verified);
+  $('accountVerify').onclick=async()=>{
+    $('accountVerify').disabled=true;$('accountVerify').textContent='Verifying...';
+    try{await accountSession.verify();await accountPanel(false);}
+    catch{await accountPanel(false);$('accountError').hidden=false;$('accountError').textContent='Administrator access was not confirmed. Check your connection and retry. CRM data remains disconnected.';}
+  };
   $('accountSignIn').onclick=async()=>{
     const button=$('accountSignIn');button.disabled=true;button.textContent='Signing in...';
     try{await accountSession.signIn();await accountPanel(false);}
