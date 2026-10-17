@@ -1,0 +1,11 @@
+{
+  "appId": "com.animuscrm.app",
+  "appName": "ANIMUS Preview",
+  "webDir": "www",
+  "android": { "allowMixedContent": false, "backgroundColor": "#111418" },
+  "server": { "androidScheme": "https" },
+  "plugins": {
+    "SplashScreen": { "launchAutoHide": true, "launchShowDuration": 800, "backgroundColor": "#111418", "showSpinner": false },
+    "PushNotifications": { "presentationOptions": ["badge", "sound", "alert"] }
+  }
+}

@@ -1,0 +1,3 @@
+# Configure with wrangler secret put. Never include these in the Android app.
+ADMIN_KEY=replace-with-a-random-secret-at-least-32-characters-long
+FCM_SERVICE_ACCOUNT={"project_id":"your-firebase-project","client_email":"service-account-email","private_key":"private-key"}

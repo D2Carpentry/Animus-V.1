@@ -1,0 +1,12 @@
+{
+  "name": "animus-app-notifications",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-10-16",
+  "vars": { "ALLOWED_ORIGINS": "https://localhost" },
+  "d1_databases": [{
+    "binding": "PUSH_DB",
+    "database_name": "animus-app-notifications",
+    "database_id": "REPLACE_AFTER_CREATING_SEPARATE_DATABASE",
+    "migrations_dir": "migrations"
+  }]
+}
