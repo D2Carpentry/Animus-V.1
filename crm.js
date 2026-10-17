@@ -509,7 +509,14 @@ function mergeCrmNotes(primary = [], secondary = [], deletedIds = []) {
 }
 
 function mergeCrmTimeline(primary = [], secondary = []) {
-  return [...new Set([...(Array.isArray(primary) ? primary : []), ...(Array.isArray(secondary) ? secondary : [])].filter(Boolean))];
+  const merged = new Map();
+  for (const entry of [...(Array.isArray(primary) ? primary : []), ...(Array.isArray(secondary) ? secondary : [])]) {
+    if (!entry) continue;
+    const key = JSON.stringify(entry, (_key, value) => value && typeof value === "object" && !Array.isArray(value)
+      ? Object.fromEntries(Object.keys(value).sort().map((name) => [name, value[name]])) : value);
+    if (!merged.has(key)) merged.set(key, entry);
+  }
+  return [...merged.values()];
 }
 
 function mergeDashboardFiles(primary = [], secondary = []) {

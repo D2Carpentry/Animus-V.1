@@ -293,7 +293,14 @@ function mergeNotes(existing = [], incoming = [], deletedIds = []) {
 }
 
 function mergeTimeline(existing = [], incoming = []) {
-  return [...new Set([...(Array.isArray(existing) ? existing : []), ...(Array.isArray(incoming) ? incoming : [])].filter(Boolean))];
+  const merged = new Map();
+  for (const entry of [...(Array.isArray(existing) ? existing : []), ...(Array.isArray(incoming) ? incoming : [])]) {
+    if (!entry) continue;
+    const key = JSON.stringify(entry, (_key, value) => value && typeof value === "object" && !Array.isArray(value)
+      ? Object.fromEntries(Object.keys(value).sort().map((name) => [name, value[name]])) : value);
+    if (!merged.has(key)) merged.set(key, entry);
+  }
+  return [...merged.values()];
 }
 
 function mergeFiles(existing = [], incoming = []) {
