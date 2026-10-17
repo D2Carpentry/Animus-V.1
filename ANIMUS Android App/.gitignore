@@ -17,3 +17,5 @@ android/app/google-services.json
 !/.env.example
 push-worker/.dev.vars
 push-worker/.wrangler/
+auth-worker/.dev.vars
+auth-worker/.wrangler/

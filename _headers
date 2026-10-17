@@ -36,3 +36,9 @@
   Content-Disposition: attachment; filename="ANIMUS-Preview-0.2.0.apk"
   Cache-Control: no-store
   X-Content-Type-Options: nosniff
+
+/downloads/animus-android-preview-0.3.0.apk
+  Content-Type: application/vnd.android.package-archive
+  Content-Disposition: attachment; filename="ANIMUS-Preview-0.3.0.apk"
+  Cache-Control: no-store
+  X-Content-Type-Options: nosniff

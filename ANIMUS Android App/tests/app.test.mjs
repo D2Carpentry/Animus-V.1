@@ -46,7 +46,10 @@ test('packaging keeps desktop untouched and defaults to isolated mode',async()=>
   assert.match(build,/ANIMUS_SECURITY_REVIEWED/);
   const html=await readFile(new URL('../www/index.html',import.meta.url),'utf8');
   assert.match(html,/"demo":true/);
-  assert.match(html,/"firebaseConfigured":false/);
+  assert.match(html,/"firebaseConfigured":(?:true|false)/);
+  assert.match(html,/"authUrl":""/);
+  assert.match(build,/if \(live\)/);
+  assert.match(build,/Live builds remain disabled/);
   const config=JSON.parse(await readFile(new URL('../capacitor.config.json',import.meta.url),'utf8'));
   assert.equal(config.server.url,undefined);assert.equal(config.server.allowNavigation,undefined);
 });

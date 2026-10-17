@@ -9,9 +9,12 @@ const source = process.env.ANIMUS_SOURCE_DIR || path.resolve(root, '..');
 const out = path.join(root, 'www');
 const live = process.env.ANIMUS_LIVE_CLOUD === '1';
 // A developer cannot accidentally ship a customer-data app by running the default build.
-if (live && process.env.ANIMUS_SECURITY_REVIEWED !== 'YES') {
-  throw new Error('Live builds are blocked until authentication and cloud-write security have been reviewed.');
+if (live) {
+  // ANIMUS_SECURITY_REVIEWED is not evidence that the existing APIs enforce identity.
+  throw new Error('Live builds remain disabled until desktop and mobile cloud endpoints enforce authentication and device tests pass.');
 }
+const authUrl = process.env.ANIMUS_AUTH_URL || '';
+if (authUrl && (new URL(authUrl).protocol !== 'https:' || new URL(authUrl).username || new URL(authUrl).password || new URL(authUrl).search || new URL(authUrl).hash)) throw new Error('Authentication service must use a plain HTTPS URL.');
 const pushUrl = process.env.ANIMUS_PUSH_URL || '';
 if (pushUrl && new URL(pushUrl).protocol !== 'https:') throw new Error('Push service must use HTTPS.');
 await mkdir(path.join(out, 'assets'), { recursive: true });
@@ -35,10 +38,11 @@ if (!live) {
 const html = await readFile(path.join(source, 'mobile-cloud.html'), 'utf8');
 const scripts = '<script src="mobile-cloud.js?v=20261015-completed-pending-payment"></script>';
 if (!html.includes(scripts)) throw new Error('Mobile entry changed; review app packaging before building.');
-const config = { demo: !live, pushUrl, firebaseConfigured: false,version:JSON.parse(await readFile(path.join(root,'package.json'),'utf8')).version };
+const config = { demo: !live, pushUrl, authUrl, firebaseConfigured: false, googleSignInConfigured:false, version:JSON.parse(await readFile(path.join(root,'package.json'),'utf8')).version };
 try {
   const firebase = JSON.parse(await readFile(path.join(root, 'android/app/google-services.json'), 'utf8'));
   config.firebaseConfigured = firebase.client?.some(client => client.client_info?.android_client_info?.package_name === 'com.animuscrm.app') || false;
+  config.googleSignInConfigured = firebase.project_info?.project_id === 'animus-b5c5d' && firebase.client?.some(client => client.client_info?.android_client_info?.package_name === 'com.animuscrm.app' && client.oauth_client?.some(o => o.client_type === 1) && client.oauth_client?.some(o => o.client_type === 3)) || false;
 } catch { /* Notification setup remains visibly unavailable until Firebase is configured. */ }
 await writeFile(path.join(out, 'index.html'), html.replace('</head>', '<link rel="stylesheet" href="native.css"><link rel="stylesheet" href="calendar.css"></head>')
   .replace(scripts, `<script>window.ANIMUS_APP_CONFIG=${JSON.stringify(config).replace(/</g, '\\u003c')};</script><script src="native.js"></script><script src="mobile-cloud.js"></script>`));

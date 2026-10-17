@@ -1,0 +1,9 @@
+{
+  "name": "animus-app-auth",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-10-16",
+  "vars": {
+    "FIREBASE_PROJECT_ID": "animus-b5c5d",
+    "ADMIN_EMAIL": "d2carpentryanddesign@gmail.com"
+  }
+}

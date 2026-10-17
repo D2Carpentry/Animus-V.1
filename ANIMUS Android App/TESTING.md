@@ -31,3 +31,18 @@
 - Production signing, privacy disclosures, and Google Play testing/release.
 
 The desktop CRM, current customer records, backup retention, and existing cloud API code were not changed for this preview.
+
+## Google Sign-In Preview 0.3.0
+
+- Install the APK on an Android phone with Google Play services.
+- App settings > Account and sign-in > Continue with Google.
+- Choose d2carpentryanddesign@gmail.com yourself. Do not send passwords or codes.
+- Verify that the account email and Account ID appear. No customer records should
+  appear: authentication testing stays separate from the preview data transport.
+- Cancel account selection, deny prompts, switch accounts, disconnect the network,
+  sign out, then restart. Never interpret local identity as a server admin grant.
+- Browser preview intentionally disables Google sign-in. It must not manufacture
+  an authenticated user. The deployed administrator verifier is not connected yet.
+- Before live rollout, pin the observed owner UID only after checking it in the
+  Firebase console, deploy/configure the verifier, protect all canonical API and
+  document routes, check revocation, and regression-test desktop login and saving.

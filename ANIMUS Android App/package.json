@@ -1,6 +1,6 @@
 {
   "name": "animus-android",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -12,6 +12,7 @@
     "preview": "node scripts/serve.mjs"
   },
   "dependencies": {
+    "@capacitor-firebase/authentication": "8.5.2",
     "@capacitor/android": "^8.0.0",
     "@capacitor/app": "^8.0.0",
     "@capacitor/browser": "^8.0.0",
@@ -31,6 +32,7 @@
     "@fullcalendar/interaction": "6.1.22",
     "@fullcalendar/list": "6.1.22",
     "@fullcalendar/timegrid": "6.1.22",
+    "jose": "6.2.12",
     "lucide": "^0.468.0"
   },
   "devDependencies": {

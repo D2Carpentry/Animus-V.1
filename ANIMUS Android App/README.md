@@ -4,6 +4,12 @@ An isolated Android app project reusing the existing ANIMUS mobile interface and
 
 ## What exists
 
+- Version 0.3.0 adds Account and sign-in in App settings. Google authentication runs
+  only in the configured installed Android app. Browser previews do not simulate
+  sign-in. The separate `auth-worker` verifies server-side administrator identity
+  with a pinned Firebase UID and verified Google email, but is not deployed yet.
+  Signing in does not unlock customer records; this build still uses test records.
+
 - Version 0.2.0 adds an in-app Agenda, Month, and Day calendar with workfile dates, search, appointment-type filters, event details, phone/maps/workfile actions, and reminder shortcuts. Calendar navigation no longer leaves ANIMUS. The separate Google button is an external shortcut, not an automatic sync connection.
 - Preview appointments can be created, edited, and deleted without modifying workfile dates or contacting the live CRM. Source workfile/cloud events remain read-only until a reviewed scheduling API is available. Appointments and test records reset when the preview restarts.
 
@@ -19,7 +25,14 @@ An isolated Android app project reusing the existing ANIMUS mobile interface and
 
 ## Not yet enabled
 
-Firebase, an actual Android device test, production CRM authentication/security review, release signing, Google Play distribution, and automatic CRM-event triggers. The notification service is source code, not a deployed service. A notification is only reported connected after the device token is confirmed by the server. This is not a production release yet.
+The Firebase project and Android app are registered and Google sign-in is enabled.
+The matching configuration is installed locally but excluded from Git; another
+build machine must supply it. Actual-device sign-in testing, deployed administrator
+verification, production CRM authentication/security review, release signing,
+Google Play distribution and automatic CRM-event triggers remain unfinished.
+The notification and authentication services are source code, not deployed services.
+A notification is only reported connected after its token is confirmed by the
+server. This is not a production release yet.
 
 ## Build
 
@@ -56,7 +69,11 @@ Dependency audit at creation: zero production dependency advisories. The Capacit
 
 ## Live release gate
 
-Do not enable live data until authenticated per-user API access, roles, mobile targeted updates, stale-record conflict behavior, and actual-device persistence are reviewed. The build requires both `ANIMUS_LIVE_CLOUD=1` and `ANIMUS_SECURITY_REVIEWED=YES`; the latter is a developer assertion, not an authentication mechanism.
+Live builds are disabled even with `ANIMUS_SECURITY_REVIEWED=YES`. Do not enable
+them until authenticated per-user API access covers every existing desktop/mobile
+route, document/image downloads and backups, and actual-device persistence is
+verified. An app-only login or an additional protected endpoint does not protect
+anonymous routes to the same customer records. See `auth-worker/README.md`.
 
 No admin API key is shipped to the phone. Notifications do not modify workfiles. Adding automatic lead/payment/estimate-view notifications later must happen only after confirmed server-side events, not from client guesses. Store minimal notification text to avoid customer details on a locked phone.
 

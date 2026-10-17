@@ -16,10 +16,14 @@ import { createDemoTransport } from './demo.js';
 import { safeExternalUrl, routeFromNotification, safeFilename, nextReminder } from './policy.js';
 import {mountCalendar,calendarIcons} from './calendar.js';
 import {localDateKey,eventDate} from './calendar-model.js';
+import { createAuthSession } from './auth-session.js';
 
 const native = Capacitor.isNativePlatform();
 const config = window.ANIMUS_APP_CONFIG || {demo:true};
 const originalFetch = window.fetch.bind(window);
+// Native-only bridge: browser previews never load or emulate Firebase web auth.
+const FirebaseAuthentication = registerPlugin('FirebaseAuthentication');
+const accountSession = createAuthSession({provider:FirebaseAuthentication,fetcher:originalFetch,authUrl:config.authUrl});
 const demoFetch = createDemoTransport();
 const SecureStorage = registerPlugin('AnimusSecureStorage');
 let captureBusy = false;
@@ -244,9 +248,30 @@ async function handleNotification(data) {
   else if(!route.fileId)window.AnimusMobile?.openView(route.view);
 }
 function settingsPanel() {
-  panel('App settings',`<p>${config.demo?'Isolated preview. Test records reset when the app restarts.':'Live cloud connection. Records remain in ANIMUS cloud.'}</p><div class="native-setting-actions"><button type="button" id="notificationSettings">Notifications and reminders</button><button type="button" id="shareApp">Share ANIMUS link</button></div><p class="native-meta">ANIMUS Android ${config.version}<br>${pushReady?'Remote notifications connected':'Remote notifications not connected'}</p>`);
+  panel('App settings',`<p>${config.demo?'Isolated preview. Test records reset when the app restarts.':'Live cloud connection. Records remain in ANIMUS cloud.'}</p><div class="native-setting-actions"><button type="button" id="accountSettings">Account and sign-in</button><button type="button" id="notificationSettings">Notifications and reminders</button><button type="button" id="shareApp">Share ANIMUS link</button></div><p class="native-meta">ANIMUS Android ${config.version}<br>${pushReady?'Remote notifications connected':'Remote notifications not connected'}</p>`);
+  $('accountSettings').onclick=()=>guard(accountPanel);
   $('notificationSettings').onclick=()=>guard(notificationsPanel);
   $('shareApp').onclick=()=>guard(async()=>native?Share.share({title:'ANIMUS',text:'ANIMUS Field CRM',url:'https://animus-v-1.pages.dev/mobile-cloud'}):navigator.clipboard.writeText('https://animus-v-1.pages.dev/mobile-cloud'));
+}
+async function accountPanel(refresh = true) {
+  const available=native&&config.googleSignInConfigured;
+  if(available&&refresh)await accountSession.restore();
+  const state=accountSession.snapshot();
+  panel('Account', '<p id="accountState" role="status"></p><p id="accountEmail"></p><p id="accountUid" class="native-meta"></p><p class="native-meta">Administrator: d2carpentryanddesign@gmail.com</p><div class="native-setting-actions"><button type="button" id="accountSignIn" class="primary-action">Continue with Google</button><button type="button" id="accountSignOut">Sign out</button></div><p id="accountError" role="alert" hidden></p>');
+  $('accountState').textContent=!available?'Google sign-in is available in the configured Android app, not this browser preview.':state.verified?'Administrator verified. This preview still uses test records only.':state.user?'Google account signed in. '+(config.authUrl?'Administrator verification is required.':'Administrator verification service is not connected. CRM data remains disconnected.'):'Sign in to test your Google account. CRM data remains disconnected.';
+  $('accountEmail').textContent=state.user?.email||'';
+  $('accountUid').textContent=state.user?`Account ID: ${state.user.uid}`:'';
+  $('accountSignIn').disabled=!available;$('accountSignIn').hidden=Boolean(state.user);
+  $('accountSignOut').hidden=!state.user;
+  $('accountSignIn').onclick=async()=>{
+    const button=$('accountSignIn');button.disabled=true;button.textContent='Signing in...';
+    try{await accountSession.signIn();await accountPanel(false);}
+    catch(error){await accountPanel(false);$('accountError').hidden=false;$('accountError').textContent=cancelled(error)?'Sign-in cancelled.':'Sign-in could not be completed. Check your connection and try again. Your CRM remains disconnected.';}
+  };
+  $('accountSignOut').onclick=async()=>{
+    $('accountSignOut').disabled=true;
+    try{await accountSession.signOut();await accountPanel();}catch{ $('accountSignOut').disabled=false;$('accountError').hidden=false;$('accountError').textContent='Sign-out failed. Please retry.'; }
+  };
 }
 async function initialize() {
   document.body.classList.add('native-app');

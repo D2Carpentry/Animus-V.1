@@ -5,6 +5,7 @@
   "android": { "allowMixedContent": false, "backgroundColor": "#111418" },
   "server": { "androidScheme": "https" },
   "plugins": {
+    "FirebaseAuthentication": { "skipNativeAuth": false, "providers": ["google.com"] },
     "SplashScreen": { "launchAutoHide": true, "launchShowDuration": 800, "backgroundColor": "#111418", "showSpinner": false },
     "PushNotifications": { "presentationOptions": ["badge", "sound", "alert"] }
   }
