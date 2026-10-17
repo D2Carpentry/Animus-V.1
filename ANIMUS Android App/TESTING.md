@@ -1,5 +1,14 @@
 # Preview verification - October 16, 2026
 
+## Calendar update 0.2.0
+
+- 21 automated JavaScript tests pass, including local dates/DST, multi-day/all-day boundaries, stable-key deduplication, search, validation, and isolated appointment CRUD.
+- Browser testing confirmed calendar navigation stays inside ANIMUS, workfile links open the right file, invalid time ranges preserve the form, creation and edits update the agenda, and notes are searchable.
+- Appointment deletion now uses an in-app confirmation instead of a blocking JavaScript prompt. Cancel preserves the appointment; confirmed deletion removes it from the preview.
+- Unsaved appointment confirmation preserves typed values when cancelled. Three-day all-day appointments remain visible on all three dates after the app's Refresh action.
+- Month layout has no page overflow at 320/360/390/430/768 pixels; Agenda has no overflow at 320/390/768 pixels. Day view provides a scoped vertical time grid.
+- Agenda, Month, and Day views are implemented with FullCalendar 6.1.22. Live Google sync and production calendar writes are not enabled.
+
 ## Passed
 
 - Android debug APK compilation (JDK 21, SDK 36).

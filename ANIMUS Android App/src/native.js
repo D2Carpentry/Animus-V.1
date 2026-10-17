@@ -14,6 +14,8 @@ import { StatusBar, Style } from '@capacitor/status-bar';
 import { createIcons, Bell, Settings, Share2, X, ArrowLeft, Camera as CameraIcon, ImagePlus } from 'lucide';
 import { createDemoTransport } from './demo.js';
 import { safeExternalUrl, routeFromNotification, safeFilename, nextReminder } from './policy.js';
+import {mountCalendar,calendarIcons} from './calendar.js';
+import {localDateKey,eventDate} from './calendar-model.js';
 
 const native = Capacitor.isNativePlatform();
 const config = window.ANIMUS_APP_CONFIG || {demo:true};
@@ -24,8 +26,9 @@ let captureBusy = false;
 let pendingRestore = null;
 let pushReady = false;
 let foregroundNotifications = [];
+let dismissConfirmation = null;
 const $ = id => document.getElementById(id);
-const icons = () => createIcons({icons:{Bell,Settings,Share2,X,ArrowLeft,Camera:CameraIcon,ImagePlus}});
+const icons = () => createIcons({icons:{...calendarIcons,Bell,Settings,Share2,X,ArrowLeft,Camera:CameraIcon,ImagePlus}});
 
 // Only the packaged preview uses this transport. The production website is untouched.
 if (config.demo) window.fetch = async (input, init) => {
@@ -44,7 +47,23 @@ function message(text) {
 }
 function cancelled(error) { return /cancel|dismiss|no image/i.test(error?.message || String(error)); }
 async function guard(task) { try { return await task(); } catch(error) { if (!cancelled(error)) message(error.message || 'The action could not be completed. Please try again.'); } }
-function closePanel() { $('nativeDialog')?.close(); }
+function confirmAction({title,description,confirmLabel='Continue',danger=false}) {
+  const dialog=$('nativeConfirm');
+  if(dialog.open)return Promise.resolve(false);
+  dialog.innerHTML='<h2 id="nativeConfirmTitle"></h2><p id="nativeConfirmDescription"></p><footer><button type="button" id="nativeConfirmCancel">Cancel</button><button type="button" id="nativeConfirmProceed"></button></footer>';
+  $('nativeConfirmTitle').textContent=title;$('nativeConfirmDescription').textContent=description;
+  $('nativeConfirmProceed').textContent=confirmLabel;$('nativeConfirmProceed').className=danger?'danger':'primary-action';
+  return new Promise(resolve=>{
+    const finish=value=>{dialog.close();dismissConfirmation=null;resolve(value);};
+    dismissConfirmation=finish;$('nativeConfirmCancel').onclick=()=>finish(false);$('nativeConfirmProceed').onclick=()=>finish(true);
+    dialog.oncancel=e=>{e.preventDefault();finish(false);};dialog.onclick=e=>{if(e.target===dialog)finish(false);};
+    dialog.showModal();$('nativeConfirmCancel').focus();
+  });
+}
+async function closePanel(force = false) {
+  if(force!==true&&window.AnimusCalendar?.hasDraft()&&!await confirmAction({title:'Discard appointment?',description:'Your unsaved changes will be lost.',confirmLabel:'Discard',danger:true}))return;
+  $('nativeDialog')?.close();
+}
 function panel(title, content) {
   const dialog = $('nativeDialog');
   dialog.innerHTML = `<header><h2>${title}</h2><button type="button" id="nativeClose" aria-label="Close"><i data-lucide="x"></i></button></header><div class="native-dialog-body">${content}</div>`;
@@ -159,12 +178,17 @@ async function scheduleReminder(form) {
   const permission=await LocalNotifications.requestPermissions();
   if(permission.display!=='granted') throw new Error('Allow notifications to create a reminder.');
   const id=crypto.getRandomValues(new Uint32Array(1))[0] % 2000000000 + 1000;
-  const extra=['detail','expenses'].includes(window.AnimusMobile?.view)?{fileId:window.AnimusMobile.selectedFileId}:{view:'files'};
+  const fileId=form.get('workFileId')||(['detail','expenses'].includes(window.AnimusMobile?.view)?window.AnimusMobile.selectedFileId:'');
+  const extra=fileId?{fileId}:{view:'calendar'};
   await LocalNotifications.schedule({notifications:[{id,title:'ANIMUS reminder',body:String(form.get('title')||'Work follow-up').slice(0,150),channelId:'animus-updates',isExactNotification:false,schedule:{at},extra}]});
   closePanel();message('Reminder scheduled on this phone.');
 }
-function reminderPanel() {
-  panel('New reminder',`<form id="reminderForm"><label>Reminder<input name="title" maxlength="150" required placeholder="Follow up with customer"></label><label>Date<input type="date" name="date" required></label><label>Time<input type="time" name="time" required></label><button class="primary-action" type="submit">Schedule reminder</button></form>`);
+function reminderPanel(event = null) {
+  panel('New reminder',`<form id="reminderForm"><input type="hidden" name="workFileId"><label>Reminder<input name="title" maxlength="150" required placeholder="Follow up with customer"></label><label>Date<input type="date" name="date" required></label><label>Time<input type="time" name="time" required></label><button class="primary-action" type="submit">Schedule reminder</button></form>`);
+  if(event?.start){
+    const at=new Date(Math.max(Date.now()+15*60000,eventDate(event.start).getTime()-15*60000));
+    const form=$('reminderForm');form.elements.title.value=event.title.slice(0,150);form.elements.workFileId.value=event.fileId||'';form.elements.date.value=localDateKey(at);form.elements.time.value=`${String(at.getHours()).padStart(2,'0')}:${String(at.getMinutes()).padStart(2,'0')}`;
+  }
   $('reminderForm').onsubmit=event=>{event.preventDefault();guard(()=>scheduleReminder(new FormData(event.currentTarget)));};
 }
 async function notificationsPanel() {
@@ -220,17 +244,19 @@ async function handleNotification(data) {
   else if(!route.fileId)window.AnimusMobile?.openView(route.view);
 }
 function settingsPanel() {
-  panel('App settings',`<p>${config.demo?'Isolated preview. Test records reset when the app restarts.':'Live cloud connection. Records remain in ANIMUS cloud.'}</p><div class="native-setting-actions"><button type="button" id="notificationSettings">Notifications and reminders</button><button type="button" id="shareApp">Share ANIMUS link</button></div><p class="native-meta">ANIMUS Android 0.1.0<br>${pushReady?'Remote notifications connected':'Remote notifications not connected'}</p>`);
+  panel('App settings',`<p>${config.demo?'Isolated preview. Test records reset when the app restarts.':'Live cloud connection. Records remain in ANIMUS cloud.'}</p><div class="native-setting-actions"><button type="button" id="notificationSettings">Notifications and reminders</button><button type="button" id="shareApp">Share ANIMUS link</button></div><p class="native-meta">ANIMUS Android ${config.version}<br>${pushReady?'Remote notifications connected':'Remote notifications not connected'}</p>`);
   $('notificationSettings').onclick=()=>guard(notificationsPanel);
   $('shareApp').onclick=()=>guard(async()=>native?Share.share({title:'ANIMUS',text:'ANIMUS Field CRM',url:'https://animus-v-1.pages.dev/mobile-cloud'}):navigator.clipboard.writeText('https://animus-v-1.pages.dev/mobile-cloud'));
 }
 async function initialize() {
   document.body.classList.add('native-app');
-  document.body.insertAdjacentHTML('beforeend','<dialog id="nativeDialog" aria-modal="true"></dialog><div id="nativeToast" role="status" hidden></div>');
+  document.body.insertAdjacentHTML('beforeend','<dialog id="nativeDialog" aria-modal="true"></dialog><dialog id="nativeConfirm" role="alertdialog" aria-labelledby="nativeConfirmTitle" aria-describedby="nativeConfirmDescription"></dialog><div id="nativeToast" role="status" hidden></div>');
   const actions=document.querySelector('.top-actions');
   actions.insertAdjacentHTML('beforeend','<button type="button" id="nativeNotifications" aria-label="Notifications" title="Notifications"><i data-lucide="bell"></i></button><button type="button" id="nativeSettings" aria-label="App settings" title="App settings"><i data-lucide="settings"></i></button>');
   $('nativeNotifications').onclick=()=>guard(notificationsPanel);$('nativeSettings').onclick=settingsPanel;
   $('nativeDialog').addEventListener('click',event=>{if(event.target===$('nativeDialog'))closePanel();});
+  $('nativeDialog').addEventListener('cancel',event=>{event.preventDefault();closePanel();});
+  window.AnimusCalendar=mountCalendar({demo:config.demo,panel,closePanel,message,reminder:reminderPanel,openExternal,confirmAction});
   const banner=document.createElement('div');banner.id='nativeEnvironment';banner.textContent=config.demo?'PREVIEW · Test records only':'ANIMUS · Live cloud';document.querySelector('.content').prepend(banner);
   const connection=document.createElement('div');connection.id='nativeConnection';connection.hidden=true;connection.role='status';connection.textContent='Offline. Edits are not uploaded. Keep this screen open and retry when connected.';document.querySelector('.content').prepend(connection);
   document.addEventListener('click',event=>{
@@ -253,9 +279,10 @@ async function initialize() {
   await LocalNotifications.createChannel({id:'animus-updates',name:'ANIMUS reminders',importance:4,visibility:0});
   await LocalNotifications.addListener('localNotificationActionPerformed',event=>guard(()=>handleNotification(event.notification.extra)));
   await App.addListener('backButton',async()=>{
+    if($('nativeConfirm').open){dismissConfirmation?.(false);return;}
     if($('nativeDialog').open){closePanel();return;}
-    if(!$('sheet').hidden){if(window.AnimusMobile.hasDraft&&!confirm('Close this form? Unsaved entries will be lost.'))return;window.AnimusMobile.closeSheet();return;}
-    if(window.AnimusMobile?.view!=='files'){if(window.AnimusMobile.hasDraft&&!confirm('Leave this screen? Unsaved entries will be lost.'))return;window.AnimusMobile.openView('files');return;}
+    if(!$('sheet').hidden){if(window.AnimusMobile.hasDraft&&!await confirmAction({title:'Close this form?',description:'Unsaved entries will be lost.',confirmLabel:'Close form',danger:true}))return;window.AnimusMobile.closeSheet();return;}
+    if(window.AnimusMobile?.view!=='files'){if(window.AnimusMobile.hasDraft&&!await confirmAction({title:'Leave this screen?',description:'Unsaved entries will be lost.',confirmLabel:'Leave',danger:true}))return;window.AnimusMobile.openView('files');return;}
     await App.minimizeApp();
   });
   await App.addListener('appUrlOpen',event=>{

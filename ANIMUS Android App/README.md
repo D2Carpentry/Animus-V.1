@@ -4,6 +4,9 @@ An isolated Android app project reusing the existing ANIMUS mobile interface and
 
 ## What exists
 
+- Version 0.2.0 adds an in-app Agenda, Month, and Day calendar with workfile dates, search, appointment-type filters, event details, phone/maps/workfile actions, and reminder shortcuts. Calendar navigation no longer leaves ANIMUS. The separate Google button is an external shortcut, not an automatic sync connection.
+- Preview appointments can be created, edited, and deleted without modifying workfile dates or contacting the live CRM. Source workfile/cloud events remain read-only until a reviewed scheduling API is available. Appointments and test records reset when the preview restarts.
+
 - Capacitor Android project with a bundled, locally loaded mobile interface (not a remote website with unrestricted native access).
 - Camera and gallery return photos to the existing receipt or work-photo review workflow before upload. Camera activity restoration preserves the original workfile binding.
 - Android Back closes dialogs or returns to Files, with an unsaved-form warning.

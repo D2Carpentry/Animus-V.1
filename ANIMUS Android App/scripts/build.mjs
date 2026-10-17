@@ -20,6 +20,7 @@ for (const name of ['mobile-cloud.css', 'assets/animus-logo.svg', 'assets/animus
   await copyFile(path.join(source, name), path.join(out, name));
 }
 await copyFile(path.join(root, 'src/native.css'), path.join(out, 'native.css'));
+await copyFile(path.join(root, 'src/calendar.css'), path.join(out, 'calendar.css'));
 if (!live) {
   const {jsPDF}=createRequire(import.meta.url)(path.join(source,'vendor/jspdf.umd.min.js'));
   for (const type of ['estimate','invoice','supplement','workorder']) {
@@ -34,18 +35,19 @@ if (!live) {
 const html = await readFile(path.join(source, 'mobile-cloud.html'), 'utf8');
 const scripts = '<script src="mobile-cloud.js?v=20261015-completed-pending-payment"></script>';
 if (!html.includes(scripts)) throw new Error('Mobile entry changed; review app packaging before building.');
-const config = { demo: !live, pushUrl, firebaseConfigured: false };
+const config = { demo: !live, pushUrl, firebaseConfigured: false,version:JSON.parse(await readFile(path.join(root,'package.json'),'utf8')).version };
 try {
   const firebase = JSON.parse(await readFile(path.join(root, 'android/app/google-services.json'), 'utf8'));
   config.firebaseConfigured = firebase.client?.some(client => client.client_info?.android_client_info?.package_name === 'com.animuscrm.app') || false;
 } catch { /* Notification setup remains visibly unavailable until Firebase is configured. */ }
-await writeFile(path.join(out, 'index.html'), html.replace('</head>', '<link rel="stylesheet" href="native.css"></head>')
+await writeFile(path.join(out, 'index.html'), html.replace('</head>', '<link rel="stylesheet" href="native.css"><link rel="stylesheet" href="calendar.css"></head>')
   .replace(scripts, `<script>window.ANIMUS_APP_CONFIG=${JSON.stringify(config).replace(/</g, '\\u003c')};</script><script src="native.js"></script><script src="mobile-cloud.js"></script>`));
 const adapter = `
 // Packaging adapter: call the existing mobile operations, never a second persistence layer.
 window.AnimusMobile = {
   get view() { return activeView; },
-  get hasDraft() { return Boolean(receiptDraft || workPhotoDrafts.length || (!$("sheet").hidden && $("sheet").querySelector("input,textarea"))); },
+  get hasDraft() { return Boolean(window.AnimusCalendar?.hasDraft() || receiptDraft || workPhotoDrafts.length || (!$("sheet").hidden && $("sheet").querySelector("input,textarea"))); },
+  get calendarData() { return structuredClone({files:state.files,events:[...(state.calendarEvents||[]),...(state.externalCalendarEvents||[]),...(state.calendar||[])]}); },
   closeSheet,
   openView,
   refresh: loadCloud,
@@ -58,8 +60,11 @@ window.AnimusMobile = {
   get selectedFileId() { return activeFileId; }
 };
 const canonicalNotify = notify;
+const canonicalCalendarRender = renderCalendar;
+renderCalendar = function() { return window.AnimusCalendar ? window.AnimusCalendar.render() : canonicalCalendarRender(); };
 notify = function(text, error) { return canonicalNotify(window.ANIMUS_APP_CONFIG.demo ? String(text).replace(/cloud/gi, "preview") : text, error); };
 openDesktop = function(route) {
+  if (route === "googleCalendar" || route === "calendar") { openView("calendar"); return; }
   if (window.ANIMUS_APP_CONFIG.demo && route !== "googleCalendar") { window.alert("Desktop tools are not connected in this isolated preview. Your live CRM has not been changed."); return; }
   const url = new URL("https://animus-v-1.pages.dev/crm");
   if (route === "googleCalendar") return window.AnimusNative.openExternal("https://calendar.google.com/calendar/u/0/r?authuser=" + encodeURIComponent(D2_GOOGLE_CALENDAR_ACCOUNT));
