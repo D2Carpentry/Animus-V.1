@@ -77,9 +77,10 @@ The desktop CRM, current customer records, backup retention, and existing cloud 
 - Browser build includes app/auth only, not Firestore, gRPC or analytics. No CRM
   endpoint is called from this page. Production dependency audit has zero findings;
   existing iOS build-tool development dependencies have three moderate findings.
-- A real browser sign-in and server verification still need testing on the
-  deployed page. Do not interpret layout/unit tests as a successful owner login.
-  This positive device test has not yet been completed.
-- Before live rollout, pin the observed owner UID only after checking it in the
-  Firebase console, deploy/configure the verifier, protect all canonical API and
-  document routes, check revocation, and regression-test desktop login and saving.
+- Real Google sign-in on the deployed page in Brave verified the approved company
+  administrator server-side twice. Sign-out cleared the grant; refreshing after
+  the second successful sign-in returned to Signed out, as expected with in-memory
+  persistence. No customer records were read or modified during these tests.
+- Before live rollout, protect all canonical API and document routes, check
+  revocation and expiry, and regression-test desktop login and saving. The pinned
+  owner identity and deployed verifier do not yet protect the live CRM API.

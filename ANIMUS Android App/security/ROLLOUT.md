@@ -85,6 +85,9 @@ page is identity-only, using real Google sign-in and in-memory SDK persistence.
 Its public Firebase configuration identifies the client; it is not an admin key.
 Only Firebase app/auth modules are included in the browser bundle. Firestore,
 gRPC, analytics and all CRM data APIs are excluded by the build check.
+Real deployed-page Google sign-in and server verification succeeded twice for
+the approved owner in Brave. Sign-out cleared the grant, and refresh after a
+successful sign-in returned to Signed out. Customer data remained disconnected.
 
 The SDK's unused Node Firestore dependency pins a vulnerable older gRPC range.
 A scoped override pins its gRPC dependency to the fixed 1.13.6 release. Production
@@ -94,8 +97,9 @@ and retest those tools before a production release.
 
 ## Deployment Gates
 
-1. Register/configure browser Google sign-in for the existing Firebase project;
-   test the owner's desktop login, sign-out, expiry and retry without live writes.
+1. Browser registration, owner login, sign-out and repeat verification are tested
+   on the isolated page. Complete expiry and interrupted-network testing before
+   integrating login with the desktop CRM; do not enable live writes yet.
 2. Add the same authenticated request helper to all desktop/mobile callers and
    media/document flows. Preserve drafts when authentication expires.
 3. Prepare scheduled backup authentication limited to creating verified backups
