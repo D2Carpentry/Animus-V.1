@@ -6,6 +6,7 @@
 - Verified current cloud cleanup byte-for-byte: 21 workfiles and 47 revenue rows retained; only exact duplicate timeline copies removed. The full original cloud recovery object and local snapshot remain intact.
 - Owner Google sign-in opened the secured production dashboard and workfile notes after deployment. Anonymous API/static requests return 401; browser CRM navigation redirects to sign-in. Android origin CORS preflight succeeds.
 - Signed backup-only metadata access and the deployed weekly service health check both succeeded after access enforcement.
+- Android 0.4.0 compilation and lint passed. APK signature verification passed and matched 0.3.1, with version code increased to 5. Public download content type was verified. The APK contains live configuration but no customer snapshot or backup-service credential.
 - The prior phone app successfully verified the owner account, as confirmed by the user. Version 0.4.0 live record reads/writes, camera/gallery uploads, PDF sharing, and reminders still require a phone test after installation. Remote push is not connected.
 
 Earlier sections below record isolated preview results, not proof of live-device workflows.

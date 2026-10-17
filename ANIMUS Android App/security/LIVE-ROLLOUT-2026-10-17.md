@@ -19,4 +19,9 @@
 - Existing tabs require reload and sign-in. An expired session must not be replaced with an older browser snapshot.
 - 91 automated tests passed, including denied anonymous access, cookie CSRF protection, backup scope limits, record merge behavior, and concurrent repair cancellation. Real-device camera, notification delivery, and live Android workflows still require device verification.
 
-Deployment success, owner access after cutover, anonymous denial, and backup connectivity must be verified before calling the rollout complete.
+## Post-Cutover Verification
+
+- Owner session loaded the production dashboard and current workfile notes after enforcement. Anonymous API/static requests returned 401 and HTML navigation redirected to sign-in.
+- Signed backup-only metadata access and weekly service health returned success; using that service signature to download CRM records was denied. An older deployment host redirected to Cloudflare Access.
+- Android 0.4.0 internal live test APK compiled and passed lint and signature verification with the same certificate as 0.3.1. Device workflow verification and remote push configuration remain pending; this is not a general Play Store release.
+- All 93 automated tests passed. Temporary local backup credential was removed after the encrypted cloud settings and connectivity were verified.
