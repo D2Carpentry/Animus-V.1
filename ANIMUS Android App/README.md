@@ -6,7 +6,11 @@ An isolated Android app project reusing the existing ANIMUS mobile interface and
 
 - Version 0.3.1 connects the Account panel to the deployed administrator verifier
   and adds Verify administrator access for an already-signed-in owner. No customer
-  data is connected. The owner still needs to verify successfully on the phone.
+  data is connected. The owner confirmed successful phone verification on
+  October 16, 2026 after the server certificate-fetch compatibility fix.
+- `security/` contains a tested but unmounted API guard and the desktop/mobile
+  rollout inventory. It does not yet protect live CRM endpoints. See
+  [the rollout checklist](security/ROLLOUT.md) before enabling real records.
 - Version 0.3.0 adds Account and sign-in in App settings. Google authentication runs
   only in the configured installed Android app. Browser previews do not simulate
   sign-in. The separate `auth-worker` verifies server-side administrator identity

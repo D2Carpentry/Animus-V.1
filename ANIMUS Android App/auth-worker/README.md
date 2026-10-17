@@ -11,7 +11,8 @@ email sent by an app or from client-side visibility.
 The verified owner's UID is an encrypted Cloudflare runtime setting, not committed
 here. No private signing keys are uploaded. Live smoke checks confirm anonymous
 and invalid-token requests are rejected, untrusted origins are denied and Android
-preflight works. A successful owner-token request still requires the phone test.
+preflight works. On October 16, 2026 the owner reported that the installed
+Android preview displayed Administrator verified after retrying the fixed service.
 
 Google certificate retrieval uses `redirect: 'manual'` and rejects non-success
 responses. Workers does not support the browser's `redirect: 'error'` mode.

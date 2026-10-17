@@ -46,6 +46,18 @@ The desktop CRM, current customer records, backup retention, and existing cloud 
 - In 0.3.1 the owner UID is verified in Firebase and pinned server-side. After
   installing the update, use Account and sign-in > Verify administrator access.
   Check for Administrator verified and the explicit test-records-only status.
+- Owner reported successful Administrator verified status on October 16, 2026.
+  This confirms the identity step, not access to live CRM data.
+
+## Staged API Access
+
+- `security/api-access.mjs` is not mounted or deployed on live CRM routes.
+- Forty automated tests pass, including API denial before handler access,
+  allowlisted CORS, private media responses, audit-header replacement, preserved
+  conflicts, and canonical synthetic note save/read-back without altering another
+  file or its financial data.
+- No live customer read/write test was performed. Desktop login, backup identity,
+  account revocation and staging deployment tests remain required before rollout.
   This positive device test has not yet been completed.
 - Before live rollout, pin the observed owner UID only after checking it in the
   Firebase console, deploy/configure the verifier, protect all canonical API and
