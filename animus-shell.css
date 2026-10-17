@@ -8,6 +8,7 @@ body.animus-dark-theme .crm-price-entry-dialog { background:#111c2c!important; c
 body.animus-dark-theme .crm-price-entry-dialog h2,body.animus-dark-theme .crm-price-entry-dialog label { color:#e8eef7!important; }
 body.animus-dark-theme .crm-price-entry-dialog input { background:#0b1422!important; color:#e8eef7!important; border-color:#334155!important; }
 .animus-status-pending-start,.animus-file-status-inline.pending-start { background:#dbeafe!important; color:#1e40af!important; }
+.animus-status-completed-pending-payment,.animus-file-status-inline.completed-pending-payment,.animus-file-status.completed-pending-payment { background:#0f766e!important; color:#fff!important; }
 @media(max-width:760px) { .crm-price-entry-dialog .field-grid.three { grid-template-columns:1fr; } }
 :root { --animus-navy:#071a33; --animus-navy-2:#112b4c; --animus-gold:#c99a42; --animus-bg:#f7f9fc; --animus-line:#e2e8f0; --animus-blue:#2563eb; }
 body.animus-unified-ui { min-width:1080px; background:var(--animus-bg); }

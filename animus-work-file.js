@@ -25,6 +25,7 @@
       "Inspection Completed": "inspection-completed",
       "In Negotiation": "negotiation",
       "Pending Start": "pending-start",
+      "Completed-Pending Payment": "completed-pending-payment",
       "In Progress": "in-progress",
       "Closed / Paid": "closed-paid",
       "Job Lost / Closed": "lost-closed",
@@ -100,6 +101,7 @@
     if (status === "In Negotiation") return 3;
     if (status === "Pending Start") return 4;
     if (status === "In Progress") return 5;
+    if (status === "Completed-Pending Payment") return 6;
     if (status === "Closed / Paid") return 6;
     return -1;
   }

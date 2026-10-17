@@ -140,7 +140,7 @@ function fileCategory(file = {}) {
   const estimateStatus = file.estimateStatus || "";
   if (["Job Lost / Closed", "Closed / Paid"].includes(status)) return "archive";
   if (status === "In Negotiation") return "negotiation";
-  if (["Job Won", "In Progress", "Work Completed"].includes(status)) return "active";
+  if (["Job Won", "In Progress", "Work Completed", "Completed-Pending Payment"].includes(status)) return "active";
   if (
     status === "Inspection Completed" ||
     ["Inspection Pending", "Inspection Date Set", "Estimate Attached", "Estimate Pending", "Estimate Sent"].includes(detail) ||

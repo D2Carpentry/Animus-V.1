@@ -51,7 +51,7 @@ function fileCategory(file = {}) {
   const detail = String(file.statusDetail || "").trim();
   const estimateStatus = String(file.estimateStatus || "").trim();
   if (["Closed / Paid", "Job Lost / Closed"].includes(status)) return "closed";
-  if (status === "In Progress") return "active";
+  if (["In Progress", "Completed-Pending Payment"].includes(status)) return "active";
   if (status === "In Negotiation") return "negotiation";
   if (status === "Inspection Completed" || ["Inspection Pending", "Inspection Date Set", "Estimate Attached", "Estimate Pending", "Estimate Sent"].includes(detail) || ["Pending", "Sent"].includes(estimateStatus)) return "estimate";
   if (["Contact Established", "Contact Attempted"].includes(status)) return "contact";

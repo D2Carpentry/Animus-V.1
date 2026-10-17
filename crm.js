@@ -43,6 +43,7 @@ const CRM_STATUS_DESCRIPTIONS = {
   "In Negotiation": "Customer is considering the estimate. Set a follow-up date and keep it out of active jobs.",
   "Pending Start": "Job is approved and waiting for its start date.",
   "In Progress": "Job has started. Confirm expected completion date and midpoint deposit.",
+  "Completed-Pending Payment": "Work is complete and payment is still outstanding.",
   "Closed / Paid": "Job folder is archived and contact info is saved for future marketing.",
   "Job Lost / Closed": "Archive the file and save contact info for future marketing.",
 };
@@ -55,6 +56,7 @@ const CRM_STATUS_DETAILS = {
   "In Negotiation": ["Follow-Up Scheduled", "Waiting on Customer"],
   "Pending Start": ["Start Date Pending", "Start Date Set"],
   "In Progress": ["On Schedule", "Completion Date Needed"],
+  "Completed-Pending Payment": ["Awaiting Payment", "Payment Follow-Up Scheduled"],
   "Closed / Paid": ["Invoice Sent", "Invoice Not Sent"],
   "Job Lost / Closed": ["Future Marketing Follow-Up"],
 };
@@ -81,7 +83,7 @@ function crmFileCategory(file = {}) {
   const status = String(file.fileStatus || "New Lead").trim();
   if (["Job Lost / Closed", "Closed / Paid"].includes(status)) return CRM_FILE_CATEGORY_RULES.archive;
   if (status === "In Negotiation") return CRM_FILE_CATEGORY_RULES.negotiation;
-  if (["In Progress", "Pending Start"].includes(status)) return CRM_FILE_CATEGORY_RULES.active;
+  if (["In Progress", "Pending Start", "Completed-Pending Payment"].includes(status)) return CRM_FILE_CATEGORY_RULES.active;
   if (["Scheduled", "In Progress", "Completed"].includes(String(file.projectStage || "").trim())) return CRM_FILE_CATEGORY_RULES.active;
   if (hasEstimateWorkflowDetail(file) || status === "Inspection Completed") return CRM_FILE_CATEGORY_RULES.estimate;
   if (["Contact Established", "Contact Attempted"].includes(status)) return CRM_FILE_CATEGORY_RULES.contact;
@@ -1926,6 +1928,7 @@ function normalizeCrmFile(file) {
 }
 
 function inferProjectStage(status = "") {
+  if (status === "Completed-Pending Payment") return "Completed";
   if (status === "Pending Start") return "Scheduled";
   if (status === "In Progress") return "In Progress";
   if (status === "Closed / Paid") return "Paid";
@@ -1940,7 +1943,7 @@ function inferEstimateStatus(status = "", detail = "") {
   if (detail === "Estimate Pending") return "Pending";
   if (detail === "Estimate Sent") return "Sent";
   if (status === "In Negotiation") return "Sent";
-  if (["In Progress", "Closed / Paid"].includes(status)) return "Approved";
+  if (["In Progress", "Completed-Pending Payment", "Closed / Paid"].includes(status)) return "Approved";
   if (status === "Job Lost / Closed") return "Declined";
   return "Not Started";
 }
@@ -2026,6 +2029,7 @@ function renderFileList() {
     "Inspection Completed": "inspection-completed",
     "In Negotiation": "negotiation",
     "Pending Start": "pending-start",
+    "Completed-Pending Payment": "completed-pending-payment",
     "In Progress": "in-progress",
     "Closed / Paid": "closed-paid",
     "Job Lost / Closed": "lost-closed",

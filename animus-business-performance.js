@@ -37,7 +37,7 @@
       ["Pending Contact", "contact", (file) => ["Contact Established", "Contact Attempted"].includes(file.fileStatus)],
       ["Pending Estimates", "estimate", (file) => file.fileStatus === "Inspection Completed" || file.statusDetail === "Estimate Pending"],
       ["In Negotiation", "negotiation", (file) => file.fileStatus === "In Negotiation"],
-      ["Active Jobs", "active", (file) => ["Job Won", "In Progress", "Work Completed"].includes(file.fileStatus)],
+      ["Active Jobs", "active", (file) => ["Job Won", "In Progress", "Work Completed", "Completed-Pending Payment"].includes(file.fileStatus)],
       ["Closed Files", "archive", (file) => ["Closed / Paid", "Job Lost / Closed"].includes(file.fileStatus)],
     ];
     return rules.map(([name, filter, test]) => {
@@ -52,7 +52,7 @@
   }
 
   function isLanded(file = {}) {
-    return ["Job Won", "In Progress", "Work Completed", "Closed / Paid"].includes(file.fileStatus);
+    return ["Job Won", "In Progress", "Work Completed", "Completed-Pending Payment", "Closed / Paid"].includes(file.fileStatus);
   }
 
   function fileType(file = {}) {

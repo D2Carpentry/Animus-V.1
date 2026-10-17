@@ -13,6 +13,7 @@
 /* Mobile-only polish matching the desktop work-file status colors. */
 .badge.status-new-lead{background:#16a34a;color:#fff}
 .badge.status-contact-established{background:#fee2e2;color:#c2410c}
+.badge.status-completed-pending-payment{background:#0f766e;color:#fff}
 .badge.status-contact-attempted{background:#991b1b;color:#fff}
 .badge.status-inspection-completed{background:#efe7ff;color:#6d28d9}
 .badge.status-in-negotiation{background:#dc2626;color:#fff}

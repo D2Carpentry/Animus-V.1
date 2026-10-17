@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="styles.css?v=20260930-start-date-reason-popup">
     <link rel="stylesheet" href="calendar-upgrade.css?v=20260808-calendar-popups">
     <link rel="stylesheet" href="expenses-v6.css?v=20260916-expense-revenue-price-polish">
-  <link rel="stylesheet" href="animus-shell.css?v=20261013-desktop-controls">
+  <link rel="stylesheet" href="animus-shell.css?v=20261015-completed-pending-payment">
     <link rel="stylesheet" href="animus-dashboard.css?v=20260822-command-center-home">
     <link rel="stylesheet" href="animus-work-file.css?v=20261013-desktop-controls">
     <link rel="stylesheet" href="animus-operations.css?v=20260822-operations-layout">
@@ -238,6 +238,7 @@
                       <option>In Negotiation</option>
                       <option>Pending Start</option>
                       <option>In Progress</option>
+                      <option>Completed-Pending Payment</option>
                       <option>Closed / Paid</option>
                       <option>Job Lost / Closed</option>
                     </select>
@@ -1197,12 +1198,12 @@
         caches.keys().then((keys) => keys.forEach((key) => caches.delete(key)));
       }
     </script>
-    <script src="crm.js?v=20261015-invoice-pdf"></script>
+    <script src="crm.js?v=20261015-completed-pending-payment"></script>
     <script src="calendar-upgrade.js?v=20260808-calendar-popups"></script>
   <script src="animus-shell.js?v=20261013-desktop-controls"></script>
-    <script src="animus-dashboard.js?v=20261013-desktop-controls"></script>
+    <script src="animus-dashboard.js?v=20261015-completed-pending-payment"></script>
     <link rel="stylesheet" href="animus-business-performance.css?v=20260916-net-revenue">
-    <script src="animus-business-performance.js?v=20260916-net-revenue"></script>
+    <script src="animus-business-performance.js?v=20261015-completed-pending-payment"></script>
     <script src="expenses-v6.js?v=20261012-expense-read-only-sync"></script>
     <link rel="stylesheet" href="animus-revenue.css?v=20260924-compact-no-file-number">
     <style>
@@ -1235,7 +1236,7 @@
       @media (max-width: 700px) { .expense-image-list-row { grid-template-columns: 76px minmax(0, 1fr) 16px; gap: 8px; } .expense-image-list-row b { display: none; } }
     </style>
     <script src="animus-revenue.js?v=20261012-confirmed-revenue-row"></script>
-    <script src="animus-work-file.js?v=20261013-desktop-controls"></script>
+    <script src="animus-work-file.js?v=20261015-completed-pending-payment"></script>
     <script src="animus-contacts.js?v=20261013-desktop-controls"></script>
     <link rel="stylesheet" href="animus-payroll.css?v=20260822-payroll-center">
     <script src="animus-payroll.js?v=20260822-payroll-center"></script>

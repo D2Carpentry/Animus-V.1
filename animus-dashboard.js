@@ -15,7 +15,7 @@
     const detail = String(file?.statusDetail || "").trim();
     const estimateStatus = String(file?.estimateStatus || "").trim();
     if (["Closed / Paid", "Job Lost / Closed"].includes(fileStatus)) return "archive";
-    if (["In Progress", "Pending Start"].includes(fileStatus)) return "active";
+    if (["In Progress", "Pending Start", "Completed-Pending Payment"].includes(fileStatus)) return "active";
     if (fileStatus === "In Negotiation") return "negotiation";
     if (fileStatus === "Inspection Completed" || ["Inspection Pending", "Inspection Date Set", "Estimate Attached", "Estimate Pending", "Estimate Sent"].includes(detail) || ["Pending", "Sent"].includes(estimateStatus)) return "estimate";
     if (["Contact Established", "Contact Attempted"].includes(fileStatus)) return "contact";
