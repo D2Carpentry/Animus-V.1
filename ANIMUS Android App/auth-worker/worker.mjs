@@ -1,11 +1,13 @@
 import {createAdministratorVerifier} from './verify.mjs';
 
+const allowedOrigins=new Set(['https://localhost','https://animus-v-1.pages.dev']);
+
 // This service confirms identity only. It has no CRM bucket or database bindings.
 export function createAuthHandler(verify=createAdministratorVerifier()) {
   return async function handle(request,env) {
     const origin=request.headers.get('Origin');
     const headers={'Cache-Control':'no-store','Content-Type':'application/json','Vary':'Origin','X-Content-Type-Options':'nosniff'};
-    if(origin&&origin!=='https://localhost')return new Response(JSON.stringify({ok:false,error:'Origin not allowed.'}),{status:403,headers});
+    if(origin&&!allowedOrigins.has(origin))return new Response(JSON.stringify({ok:false,error:'Origin not allowed.'}),{status:403,headers});
     if(origin)headers['Access-Control-Allow-Origin']=origin;
     const reply=(body,status=200)=>new Response(JSON.stringify(body),{status,headers});
     const url=new URL(request.url);

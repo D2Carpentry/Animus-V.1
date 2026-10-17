@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build:web-sign-in": "node scripts/build-web-sign-in.mjs",
     "build": "node scripts/build.mjs",
     "android:sync": "npm run build && cap sync android",
     "android:open": "cap open android",
@@ -32,8 +33,12 @@
     "@fullcalendar/interaction": "6.1.22",
     "@fullcalendar/list": "6.1.22",
     "@fullcalendar/timegrid": "6.1.22",
+    "firebase": "12.19.0",
     "jose": "6.2.12",
     "lucide": "^0.468.0"
+  },
+  "overrides": {
+    "@firebase/firestore": { "@grpc/grpc-js": "1.13.6" }
   },
   "devDependencies": {
     "@capacitor/cli": "^8.0.0",

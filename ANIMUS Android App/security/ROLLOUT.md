@@ -76,10 +76,21 @@ every identity change before using it in a UI. This aborts in-flight work and
 revokes preview URLs. Dispose each document when its viewer closes. This cannot
 erase a document a user has deliberately downloaded or already viewed.
 
-Desktop setup is currently blocked by the Firebase console returning an error
-when loading the terms-acceptance status for the company account. Reload, account
-inspection and the official terms-status workflow did not resolve it. No terms,
-IAM grants or new authorized domains were changed to bypass this error.
+On October 17, 2026 Firebase was accessible in the owner's regular Brave browser;
+the connected browser tab was the failing environment. With explicit approval,
+ANIMUS Web was registered and `animus-v-1.pages.dev` was added to Firebase's domain
+allowlist and the identity verifier's origin allowlist. No hosting, billing, new
+IAM grants or live API enforcement were enabled. The standalone `/auth-preview/`
+page is identity-only, using real Google sign-in and in-memory SDK persistence.
+Its public Firebase configuration identifies the client; it is not an admin key.
+Only Firebase app/auth modules are included in the browser bundle. Firestore,
+gRPC, analytics and all CRM data APIs are excluded by the build check.
+
+The SDK's unused Node Firestore dependency pins a vulnerable older gRPC range.
+A scoped override pins its gRPC dependency to the fixed 1.13.6 release. Production
+dependency audit is clean. Three moderate alerts remain in the existing
+Capacitor CLI/xcode/uuid development toolchain, not the browser bundle; resolve
+and retest those tools before a production release.
 
 ## Deployment Gates
 

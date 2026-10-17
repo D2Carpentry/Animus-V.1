@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>ANIMUS Sign-In Test</title>
+  <link rel="icon" href="../icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="sign-in.css">
+  <script src="sign-in.js" defer></script>
+</head>
+<body>
+  <main>
+    <header><img src="../assets/animus-sidebar-logo.png" alt="ANIMUS" width="52" height="52"><div><p class="brand">ANIMUS</p><p class="subheading">Administrator sign-in</p></div><span class="test-badge">Test</span></header>
+    <section aria-labelledby="accountHeading">
+      <h1 id="accountHeading">Account</h1>
+      <p id="status" role="status" aria-live="polite">Connecting to Google sign-in...</p>
+      <p id="email" hidden></p>
+      <div class="actions">
+        <button id="signIn" type="button" disabled><i data-lucide="log-in" aria-hidden="true"></i>Continue with Google</button>
+        <button id="verify" type="button" hidden><i data-lucide="shield-check" aria-hidden="true"></i>Verify administrator</button>
+        <button id="signOut" type="button" class="secondary" hidden><i data-lucide="log-out" aria-hidden="true"></i>Sign out</button>
+      </div>
+      <p id="error" role="alert" hidden></p>
+    </section>
+    <footer><span class="connection-dot" aria-hidden="true"></span>Live CRM disconnected</footer>
+  </main>
+</body>
+</html>

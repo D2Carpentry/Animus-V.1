@@ -52,7 +52,7 @@ The desktop CRM, current customer records, backup retention, and existing cloud 
 ## Staged API Access
 
 - `security/api-access.mjs` is not mounted or deployed on live CRM routes.
-- Fifty automated tests pass, including API denial before handler access,
+- Fifty-six automated tests pass, including API denial before handler access,
   allowlisted CORS, private media responses, audit-header replacement, preserved
   conflicts, and canonical synthetic note save/read-back without altering another
   file or its financial data.
@@ -62,6 +62,23 @@ The desktop CRM, current customer records, backup retention, and existing cloud 
   This client is not yet connected to live desktop/mobile callers.
 - No live customer read/write test was performed. Desktop login, backup identity,
   account revocation and staging deployment tests remain required before rollout.
+
+## Browser Identity Test - October 17, 2026
+
+- ANIMUS Web registered without Firebase Hosting or billing changes.
+- Exact `animus-v-1.pages.dev` domain authorized for Google sign-in.
+- Verifier deployed with exact desktop/Android origins. Live smoke: both allowed
+  origins receive 204 preflight; unrelated origin receives 403; anonymous desktop
+  request receives 401. Same administrator identity remains pinned.
+- SDK adapter initializes in-memory persistence, projects only public user fields,
+  sanitizes OAuth errors and prevents a late response restoring a signed-out grant.
+- Layout checked at 1366x900, 390x844 and 320x568: no horizontal overflow, logo
+  renders, primary controls are 48px tall. Screenshots saved for desktop/mobile.
+- Browser build includes app/auth only, not Firestore, gRPC or analytics. No CRM
+  endpoint is called from this page. Production dependency audit has zero findings;
+  existing iOS build-tool development dependencies have three moderate findings.
+- A real browser sign-in and server verification still need testing on the
+  deployed page. Do not interpret layout/unit tests as a successful owner login.
   This positive device test has not yet been completed.
 - Before live rollout, pin the observed owner UID only after checking it in the
   Firebase console, deploy/configure the verifier, protect all canonical API and

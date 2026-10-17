@@ -20,9 +20,14 @@ Token rejection logs contain only a fixed event name and allowlisted diagnostic
 code, never tokens, claims, account identifiers or exception messages.
 
 `ANIMUS_AUTH_URL` overrides the HTTPS service base URL when building the preview.
-Only the installed Android app supports sign-in. A browser preview never simulates
-a successful Google login. The native Firebase SDK manages its session; JS does
+The installed Android app and the separate `/auth-preview/` web sign-in test use
+real Firebase Google sign-in. The mobile layout preview never simulates a
+successful Google login. The native Firebase SDK manages its session; JS does
 not put Firebase tokens in localStorage, Preferences, files, logs or URLs.
+The web test initializes Firebase with in-memory persistence only. The service
+accepts only `https://localhost` (Android) and `https://animus-v-1.pages.dev`
+(approved web client) as browser origins. The same pinned UID/email checks apply
+to both, with no new CRM users, bindings or data access.
 
 This verifier is NOT protection for the existing CRM APIs. Those handlers do not
 currently verify Firebase identity. Before enabling real customer records, apply

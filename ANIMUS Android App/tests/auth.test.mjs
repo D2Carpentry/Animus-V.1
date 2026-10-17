@@ -37,6 +37,12 @@ test('session service rejects untrusted origins/methods and returns no tokens or
   assert.equal(response.headers.get('Cache-Control'),'no-store');assert.equal(response.headers.get('Access-Control-Allow-Origin'),'https://localhost');
   assert.ok(!(await response.text()).includes('Bearer'));
 });
+test('approved desktop origin can verify identity without admitting preview subdomains or lookalikes',async()=>{
+  const origin='https://animus-v-1.pages.dev';
+  const response=await handle(await request({}, {headers:{Origin:origin}}),env);
+  assert.equal(response.status,200);assert.equal(response.headers.get('Access-Control-Allow-Origin'),origin);
+  for(const Origin of ['http://animus-v-1.pages.dev','https://evil.animus-v-1.pages.dev','https://animus-v-1.pages.dev.evil.test','null'])assert.equal((await handle(await request({}, {headers:{Origin}}),env)).status,403);
+});
 test('Cloudflare zero-length POST streams reach authentication but nonempty bodies are rejected',async()=>{
   const headers=(await request()).headers;
   const empty=new Request('https://auth.test/session',{method:'POST',headers,body:new ReadableStream({start(c){c.close();}}),duplex:'half'});

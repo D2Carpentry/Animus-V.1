@@ -1,0 +1,6 @@
+{
+  "mode": "identity-test-only",
+  "customerDataConnected": false,
+  "firebaseProject": "animus-b5c5d",
+  "sdkScope": "app-and-auth-only"
+}

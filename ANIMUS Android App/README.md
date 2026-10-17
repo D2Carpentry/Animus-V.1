@@ -4,6 +4,11 @@ An isolated Android app project reusing the existing ANIMUS mobile interface and
 
 ## What exists
 
+- The separate `/auth-preview/` page tests real Google sign-in in a browser and
+  the same administrator verifier, without loading CRM data. Source is in
+  `web-sign-in/`; run `npm run build:web-sign-in` to regenerate the standalone
+  page. This does not replace or gate the current desktop CRM.
+
 - Version 0.3.1 connects the Account panel to the deployed administrator verifier
   and adds Verify administrator access for an already-signed-in owner. No customer
   data is connected. The owner confirmed successful phone verification on
