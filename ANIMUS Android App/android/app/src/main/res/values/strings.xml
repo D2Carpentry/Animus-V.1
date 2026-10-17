@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">ANIMUS Preview</string>
-    <string name="title_activity_main">ANIMUS Preview</string>
+    <string name="app_name">ANIMUS</string>
+    <string name="title_activity_main">ANIMUS</string>
     <string name="package_name">com.animuscrm.app</string>
     <string name="custom_url_scheme">com.animuscrm.app</string>
 </resources>

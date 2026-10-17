@@ -23,7 +23,7 @@ function waitFor(promise,signal) {
   });
 }
 
-// Prepared shared client only; no live caller is switched to it yet.
+// Shared native client: credentials are attached only to canonical API calls.
 export function createAuthenticatedClient({provider,fetcher=fetch,onSignInRequired=()=>{},objectUrls=URL,timeoutMs=30000}) {
   let generation=0;
   let owner=null;

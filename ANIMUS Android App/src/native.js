@@ -137,7 +137,7 @@ window.open = (url, target, features) => {
       const response=await originalFetch('mobile-document.html');
       if(!response.ok)throw Error('The document viewer could not load.');
       const document=new DOMParser().parseFromString(await response.text(),'text/html');
-      const seed=document.createElement('script');seed.textContent='window.ANIMUS_DOCUMENT_DATA='+JSON.stringify({dashboard:{dashboardFiles:[file]}}).replace(/</g,'\\u003c')+';';document.head.prepend(seed);
+      const seed=document.createElement('script');seed.textContent='window.ANIMUS_DOCUMENT_QUERY='+JSON.stringify(documentUrl.search)+';window.ANIMUS_DOCUMENT_DATA='+JSON.stringify({dashboard:{dashboardFiles:[file]}}).replace(/</g,'\\u003c')+';';document.head.prepend(seed);
       panel('Current estimate','<iframe id="nativeEstimateViewer" title="Current estimate" sandbox="allow-scripts allow-modals allow-downloads" style="width:100%;height:70dvh;border:0;background:white"></iframe>');
       $('nativeEstimateViewer').srcdoc='<!doctype html>'+document.documentElement.outerHTML;
     });

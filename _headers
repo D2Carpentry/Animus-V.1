@@ -49,6 +49,12 @@
   Cache-Control: no-store
   X-Content-Type-Options: nosniff
 
+/downloads/animus-android-live-0.4.0.apk
+  Content-Type: application/vnd.android.package-archive
+  Content-Disposition: attachment; filename="ANIMUS-0.4.0-Internal-Test.apk"
+  Cache-Control: no-store
+  X-Content-Type-Options: nosniff
+
 /auth-preview/*
   Cache-Control: no-store
   X-Content-Type-Options: nosniff

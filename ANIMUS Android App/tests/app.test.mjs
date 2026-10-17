@@ -50,7 +50,8 @@ test('packaging keeps desktop untouched and defaults to isolated mode',async()=>
   const packaged=JSON.parse(html.match(/window\.ANIMUS_APP_CONFIG=(.*?);<\/script>/)[1]);
   assert.ok(packaged.authUrl===''||packaged.authUrl==='https://animus-app-auth.d2carpentryanddesign.workers.dev');
   assert.match(build,/if \(live\)/);
-  assert.match(build,/Live builds remain disabled/);
+  assert.match(build,/ANIMUS_INTERNAL_LIVE_TEST/);
+  assert.match(build,/await verifyLiveAccess\(\)/);
   const config=JSON.parse(await readFile(new URL('../capacitor.config.json',import.meta.url),'utf8'));
   assert.equal(config.server.url,undefined);assert.equal(config.server.allowNavigation,undefined);
 });

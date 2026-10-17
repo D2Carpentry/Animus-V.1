@@ -1,8 +1,9 @@
-import { readFile, writeFile, mkdir, copyFile, access } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, copyFile, access, unlink } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { build } from 'esbuild';
 import { createRequire } from 'node:module';
+import {verifyLiveAccess} from './live-preflight.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const source = process.env.ANIMUS_SOURCE_DIR || path.resolve(root, '..');
@@ -10,8 +11,11 @@ const out = path.join(root, 'www');
 const live = process.env.ANIMUS_LIVE_CLOUD === '1';
 // A developer cannot accidentally ship a customer-data app by running the default build.
 if (live) {
-  // ANIMUS_SECURITY_REVIEWED is not evidence that the existing APIs enforce identity.
-  throw new Error('Live builds remain disabled until desktop and mobile cloud endpoints enforce authentication and device tests pass.');
+  // ANIMUS_SECURITY_REVIEWED alone is never evidence of deployed enforcement.
+  if(process.env.ANIMUS_INTERNAL_LIVE_TEST!=='1')throw Error('Live builds require explicit internal-device testing mode.');
+  const verification=await verifyLiveAccess();
+  await mkdir(path.join(root,'build'),{recursive:true});
+  await writeFile(path.join(root,'build/live-preflight.json'),JSON.stringify(verification,null,2));
 }
 const authUrl = process.env.ANIMUS_AUTH_URL ?? 'https://animus-app-auth.d2carpentryanddesign.workers.dev';
 if (authUrl && (new URL(authUrl).protocol !== 'https:' || new URL(authUrl).username || new URL(authUrl).password || new URL(authUrl).search || new URL(authUrl).hash)) throw new Error('Authentication service must use a plain HTTPS URL.');
@@ -24,6 +28,7 @@ for (const name of ['mobile-cloud.css', 'assets/animus-logo.svg', 'assets/animus
 }
 await copyFile(path.join(root, 'src/native.css'), path.join(out, 'native.css'));
 await copyFile(path.join(root, 'src/calendar.css'), path.join(out, 'calendar.css'));
+if(live)for(const type of ['estimate','invoice','supplement','workorder'])await unlink(path.join(out,`assets/demo-${type}.pdf`)).catch(error=>{if(error.code!=='ENOENT')throw error;});
 if (!live) {
   const {jsPDF}=createRequire(import.meta.url)(path.join(source,'vendor/jspdf.umd.min.js'));
   for (const type of ['estimate','invoice','supplement','workorder']) {
@@ -82,4 +87,4 @@ window.dispatchEvent(new Event("animus-mobile-ready"));
 await writeFile(path.join(out, 'mobile-cloud.js'), (await readFile(path.join(source, 'mobile-cloud.js'), 'utf8')) + adapter);
 await copyFile(path.join(source, 'mobile-document.html'), path.join(out, 'mobile-document.html'));
 await build({ entryPoints: [path.join(root, 'src/native.js')], bundle: true, format: 'iife', platform: 'browser', outfile: path.join(out, 'native.js'), target: 'chrome120' });
-console.log(`Built ANIMUS ${live ? 'LIVE (security review asserted)' : 'ISOLATED PREVIEW'} in ${out}`);
+console.log(`Built ANIMUS ${live ? 'LIVE INTERNAL TEST (deployed access checks passed; device verification required)' : 'ISOLATED PREVIEW'} in ${out}`);

@@ -1,6 +1,6 @@
 {
   "appId": "com.animuscrm.app",
-  "appName": "ANIMUS Preview",
+  "appName": "ANIMUS",
   "webDir": "www",
   "android": { "allowMixedContent": false, "backgroundColor": "#111418" },
   "server": { "androidScheme": "https" },

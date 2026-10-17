@@ -1,8 +1,14 @@
 # ANIMUS Android
 
-An isolated Android app project reusing the existing ANIMUS mobile interface and canonical cloud operations. The desktop website and customer data are not modified by this project.
+Android app reusing the existing ANIMUS mobile interface and canonical cloud operations. Default builds remain isolated previews. Version 0.4.0 adds an explicitly selected internal live test build; real-device verification is still required before general release.
 
 ## What exists
+
+- October 17: owner-only authentication is deployed over production CRM APIs and static documents. Browser sign-in uses an HttpOnly session; the scheduled backup service has signed backup-only access. See [the rollout record](security/LIVE-ROLLOUT-2026-10-17.md).
+- Version 0.4.0 internal live builds require both `ANIMUS_LIVE_CLOUD=1` and `ANIMUS_INTERNAL_LIVE_TEST=1`, then run network preflight against deployed access restrictions and backup connectivity. An environment assertion alone cannot enable them. The installed app verifies the owner before using the canonical cloud operations.
+- Remote push notifications are not connected yet. Local reminders remain available. Live calendar views read the current CRM schedule; preview-only appointment editing is not a live Google Calendar synchronization feature.
+
+The following entries describe earlier isolated preview versions:
 
 - The separate `/auth-preview/` page tests real Google sign-in in a browser and
   the same administrator verifier, without loading CRM data. Source is in
@@ -13,9 +19,7 @@ An isolated Android app project reusing the existing ANIMUS mobile interface and
   and adds Verify administrator access for an already-signed-in owner. No customer
   data is connected. The owner confirmed successful phone verification on
   October 16, 2026 after the server certificate-fetch compatibility fix.
-- `security/` contains a tested but unmounted API guard and the desktop/mobile
-  rollout inventory. It does not yet protect live CRM endpoints. See
-  [the rollout checklist](security/ROLLOUT.md) before enabling real records.
+- `security/` contains the API/static guards, session transport, tests, and rollout inventory. The October 17 record supersedes earlier staging-only checklist entries.
 - Version 0.3.0 adds Account and sign-in in App settings. Google authentication runs
   only in the configured installed Android app. Browser previews do not simulate
   sign-in. The separate `auth-worker` verifies server-side administrator identity
@@ -83,11 +87,7 @@ Dependency audit at creation: zero production dependency advisories. The Capacit
 
 ## Live release gate
 
-Live builds are disabled even with `ANIMUS_SECURITY_REVIEWED=YES`. Do not enable
-them until authenticated per-user API access covers every existing desktop/mobile
-route, document/image downloads and backups, and actual-device persistence is
-verified. An app-only login or an additional protected endpoint does not protect
-anonymous routes to the same customer records. See `auth-worker/README.md`.
+`ANIMUS_SECURITY_REVIEWED=YES` does not enable live builds. Internal live testing requires the explicit flags above and successful deployed preflight checks. General release still requires actual-device persistence, uploads, private document sharing, and account-switch tests. An app-only login does not protect anonymous alternate routes; production APIs, static documents, historical deployments and private bucket access were addressed together.
 
 No admin API key is shipped to the phone. Notifications do not modify workfiles. Adding automatic lead/payment/estimate-view notifications later must happen only after confirmed server-side events, not from client guesses. Store minimal notification text to avoid customer details on a locked phone.
 

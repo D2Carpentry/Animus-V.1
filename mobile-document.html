@@ -16,7 +16,7 @@
     const API="https://animus-v-1.pages.dev/api/dashboard";
     const esc=(value="")=>String(value).replace(/[&<>"']/g,(char)=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[char]));
     const money=(value)=>new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(Number(value)||0);
-    const params=new URLSearchParams(location.search);
+    const params=new URLSearchParams(window.ANIMUS_DOCUMENT_QUERY||location.search);
     async function load(){
       try{
         const response=window.ANIMUS_DOCUMENT_DATA?null:await fetch(`${API}?t=${Date.now()}`,{cache:"no-store"});
