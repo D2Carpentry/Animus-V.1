@@ -44,6 +44,20 @@ test('Cloudflare zero-length POST streams reach authentication but nonempty bodi
   const data=new Request('https://auth.test/session',{method:'POST',headers,body:new ReadableStream({start(c){c.enqueue(new Uint8Array([1]));c.close();}}),duplex:'half'});
   assert.equal((await handle(data,env)).status,400);
 });
+test('Google certificate fetch uses Workers-supported manual redirects and rejects redirects',async(t)=>{
+  let calls=0;
+  t.mock.method(globalThis,'fetch',async(url,init)=>{
+    calls++;
+    assert.equal(url,'https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com');
+    assert.equal(init.redirect,'manual');
+    return new Response(null,{status:302,headers:{Location:'https://untrusted.test/certificates'}});
+  });
+  const warnings=[];
+  t.mock.method(console,'warn',value=>warnings.push(JSON.parse(value)));
+  const response=await createAuthHandler()(await request(),env);
+  assert.equal(response.status,401);assert.equal(calls,1);
+  assert.deepEqual(warnings,[{event:'administrator_token_rejected',reason:'TOKEN_VERIFICATION_FAILED'}]);
+});
 function provider(){return {getCurrentUser:async()=>({user:{uid:'owner-uid',email:env.ADMIN_EMAIL,emailVerified:true}}),signInWithGoogle:async()=>({user:{uid:'owner-uid',email:env.ADMIN_EMAIL,emailVerified:true}}),getIdToken:async()=>({token:'native-token'}),signOut:async()=>{}};}
 test('native identity alone never implies administrator access or contacts CRM',async()=>{
   let calls=0;

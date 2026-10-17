@@ -7,7 +7,7 @@ async function firebaseKey(header) {
   if(header.alg!=='RS256'||typeof header.kid!=='string'||header.kid.length>200)throw new Error('Invalid token header.');
   if(!certificateCache||certificateCache.expires<=Date.now()){
     if(!pendingCertificates)pendingCertificates=(async()=>{
-      const response=await fetch(certificateUrl,{redirect:'error',signal:AbortSignal.timeout(5000)});
+      const response=await fetch(certificateUrl,{redirect:'manual',signal:AbortSignal.timeout(5000)});
       if(!response.ok)throw new Error('Identity verification unavailable.');
       const certificates=await response.json();
       const maxAge=Math.min(3600,Number(response.headers.get('cache-control')?.match(/max-age=(\d+)/)?.[1])||300);
@@ -37,7 +37,11 @@ export function createAdministratorVerifier(keyResolver=firebaseKey) {
       }));
       const now=Math.floor(Date.now()/1000);
       if(!Number.isInteger(payload.iat)||payload.iat>now||!Number.isInteger(payload.auth_time)||payload.auth_time>now||payload.auth_time<0||payload.auth_time>payload.iat||payload.iat<0||typeof payload.sub!=='string'||!payload.sub||payload.sub.length>128||Array.isArray(payload.aud)||payload.firebase?.tenant)throw new Error('Invalid identity.');
-    } catch {throw Object.assign(new Error('Sign-in expired or invalid.'),{status:401});}
+    } catch(error) {
+      const knownCodes=new Set(['ERR_JWT_EXPIRED','ERR_JWT_CLAIM_VALIDATION_FAILED','ERR_JWS_SIGNATURE_VERIFICATION_FAILED','ERR_JOSE_ALG_NOT_ALLOWED','ERR_JWS_INVALID','ERR_JWT_INVALID','ERR_JOSE_NOT_SUPPORTED']);
+      console.warn(JSON.stringify({event:'administrator_token_rejected',reason:knownCodes.has(error.code)?error.code:error instanceof TypeError?'TOKEN_TYPE_ERROR':'TOKEN_VERIFICATION_FAILED'}));
+      throw Object.assign(new Error('Sign-in expired or invalid.'),{status:401});
+    }
     if(payload.sub!==uid||payload.email_verified!==true||typeof payload.email!=='string'||payload.email.toLowerCase()!==email||payload.firebase?.sign_in_provider!=='google.com')throw Object.assign(new Error('Administrator access required.'),{status:403});
     return {uid:payload.sub,email:payload.email,role:'admin'};
   };

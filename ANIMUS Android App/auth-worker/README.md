@@ -13,6 +13,11 @@ here. No private signing keys are uploaded. Live smoke checks confirm anonymous
 and invalid-token requests are rejected, untrusted origins are denied and Android
 preflight works. A successful owner-token request still requires the phone test.
 
+Google certificate retrieval uses `redirect: 'manual'` and rejects non-success
+responses. Workers does not support the browser's `redirect: 'error'` mode.
+Token rejection logs contain only a fixed event name and allowlisted diagnostic
+code, never tokens, claims, account identifiers or exception messages.
+
 `ANIMUS_AUTH_URL` overrides the HTTPS service base URL when building the preview.
 Only the installed Android app supports sign-in. A browser preview never simulates
 a successful Google login. The native Firebase SDK manages its session; JS does
