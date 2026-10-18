@@ -74,13 +74,15 @@
     state.loading = true;
     render();
     try {
+      const loadedFileKeys=new Set();
       const [rows, companyRows] = await Promise.all([Promise.all(files().map(async (file) => {
-        try { return await apiGet(file); } catch (_) { return []; }
+        try { const entries=await apiGet(file);loadedFileKeys.add(fileKey(file));return entries; } catch (_) { return []; }
       })), apiGet(COMPANY_EXPENSE_FILE).catch(() => [])]);
       if (requestId !== state.requestId) return;
       state.entries = rows.flat().sort((a,b) => String(b.updatedAt || b.createdAt || "").localeCompare(String(a.updatedAt || a.createdAt || "")));
       state.companyEntries = companyRows.sort((a,b) => String(b.updatedAt || b.createdAt || "").localeCompare(String(a.updatedAt || a.createdAt || "")));
       state.loaded = true;
+      state.loadedFileKeys=loadedFileKeys;
       syncLoadedExpensesToRevenue();
     } finally {
       if (requestId === state.requestId) { state.loading = false; render(); }
@@ -329,23 +331,15 @@
       if (!row) continue;
       try {
         const payload = {
-            action:"mobileFilePatch",
-            source:"ANIMUS Expense Revenue Sync",
+            action:"reconcileFileExpenses",
             fileId:file.id || "",
-            fileNumber:file.fileNumber || "",
-            changes:{ expenseLines:Array.isArray(file.expenseLines) ? file.expenseLines : [] },
-            revenueRow:{
-              id:row.id || "",
-              dashboardFileId:row.dashboardFileId || file.id || "",
-              fileNumber:row.fileNumber || file.fileNumber || "",
-              expenses:Number(row.expenses) || 0,
-              profit:Number(row.profit) || 0,
-              expenseLines:Array.isArray(row.expenseLines) ? row.expenseLines : [],
-            },
         };
-        // Use the same ordered, bounded save path as Save All. Background
-        // expense updates must not overlap a full dashboard replacement.
-        await queueDashboardCloudSave(JSON.parse(JSON.stringify(payload)));
+        /* The server derives ledger mirrors and totals from actual receipt
+           objects, including a successful empty result. Never submit a stale
+           browser ledger as the authoritative expense list. */
+        const result=await queueDashboardCloudSave(payload);
+        if(result.file)for(const key of ["expenseLines","animusExpenseLedgerV4","animusManualExpenses","freshExpenseReceipts","expenseReceipts","receiptHistory","expenseLedgerSource","expenseLedgerSyncedAt"])file[key]=result.file[key];
+        for(const fresh of result.revenueRows||[]){const existing=typeof crmRevenueRows!=="undefined"?crmRevenueRows.find(row=>row.id===fresh.id):null;if(existing)for(const key of ["expenses","expenseLines","profit"])existing[key]=fresh[key];}
       } catch (error) {
         console.warn("ANIMUS could not patch this file's expense total to the cloud.", error);
       }
@@ -353,7 +347,7 @@
   }
 
   function syncLoadedExpensesToRevenue() {
-    const affectedFiles = files().filter((file) => state.entries.some((entry) => entryBelongsToFile(entry, file)));
+    const affectedFiles = files().filter((file) => state.loadedFileKeys?.has(fileKey(file))&&(state.entries.some((entry) => entryBelongsToFile(entry, file))||(file.expenseLines||[]).length||(file.animusExpenseLedgerV4||[]).length));
     if (!affectedFiles.length) return;
     affectedFiles.forEach((file) => updateRevenue(file, { persist:false }));
     if (typeof saveCrmFiles === "function") saveCrmFiles();

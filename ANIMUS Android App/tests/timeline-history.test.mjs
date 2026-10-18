@@ -1,8 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFile} from 'node:fs/promises';
-const source=await readFile(new URL('../../functions/api/dashboard.js',import.meta.url),'utf8');
-const {mergeTimeline}=await import('data:text/javascript;base64,'+Buffer.from(source+'\nexport {mergeTimeline};').toString('base64'));
+import {loadCloudHandler} from './load-cloud-handler.mjs';
+const {mergeTimeline}=await loadCloudHandler('dashboard','export {mergeTimeline};');
 test('timeline merge collapses identical deserialized objects, not distinct events or IDs',()=>{
   const event={at:'2026-10-17T10:00:00Z',text:'Synthetic update'};
   const differentTime={...event,at:'2026-10-17T10:00:01Z'};

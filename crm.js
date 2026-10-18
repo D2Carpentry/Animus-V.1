@@ -472,7 +472,7 @@ function mergeManualExpenseArrays(primary = [], secondary = []) {
 
 function mergeDashboardFileRecords(primaryFile = {}, secondaryFile = {}) {
   const deletedNoteIds = mergeDeletedNoteIds(primaryFile.deletedNoteIds, secondaryFile.deletedNoteIds);
-  return {
+  const next = {
     ...primaryFile,
     ...secondaryFile,
     deletedNoteIds,
@@ -485,6 +485,12 @@ function mergeDashboardFileRecords(primaryFile = {}, secondaryFile = {}) {
     animusManualExpenses: mergeManualExpenseArrays(primaryFile.animusManualExpenses, secondaryFile.animusManualExpenses),
     animusExpenseLedgerV4: mergeManualExpenseArrays(primaryFile.animusExpenseLedgerV4, secondaryFile.animusExpenseLedgerV4),
   };
+  const authoritative=[primaryFile,secondaryFile].filter(file=>file.expenseLedgerSource==="cloud-receipts-v5").sort((a,b)=>String(b.expenseLedgerSyncedAt||"").localeCompare(String(a.expenseLedgerSyncedAt||"")))[0];
+  if(authoritative){
+    for(const key of ["expenseLines","animusExpenseLedgerV4","animusManualExpenses","freshExpenseReceipts","expenseReceipts","receiptHistory"])next[key]=authoritative[key]||[];
+    next.expenseLedgerSource=authoritative.expenseLedgerSource;next.expenseLedgerSyncedAt=authoritative.expenseLedgerSyncedAt;
+  }
+  return next;
 }
 
 function mergeDeletedNoteIds(primary = [], secondary = []) {

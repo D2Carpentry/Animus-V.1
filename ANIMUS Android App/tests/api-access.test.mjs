@@ -73,7 +73,7 @@ test('guard has no pathname bypass and HEAD stays bodyless',async()=>{
   assert.equal(await response.text(),'');
 });
 test('guard wraps canonical dashboard and receipt media handlers using only synthetic storage',async()=>{
-  const importHandler=async name=>import('data:text/javascript;base64,'+Buffer.from(await readFile(new URL(`../../functions/api/${name}.js`,import.meta.url),'utf8')).toString('base64'));
+  const {loadCloudHandler:importHandler}=await import('./load-cloud-handler.mjs');
   const dashboard=await importHandler('dashboard');const expenses=await importHandler('expenses');
   const snapshot=JSON.stringify({dashboardFiles:[{id:'test-only',clientName:'Synthetic Customer'}],revenueRows:[]});
   let reads=0,writes=0;
@@ -90,8 +90,8 @@ test('guard wraps canonical dashboard and receipt media handlers using only synt
   assert.equal(writes,0);
 });
 test('authorized canonical note save updates only the synthetic target and refreshes from the saved data',async()=>{
-  const source=await readFile(new URL('../../functions/api/dashboard.js',import.meta.url),'utf8');
-  const dashboard=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
+  const {loadCloudHandler}=await import('./load-cloud-handler.mjs');
+  const dashboard=await loadCloudHandler('dashboard');
   const other={id:'other-file',fileNumber:'TEST-2',clientName:'Untouched Customer',notes:['Keep this'],estimateTotal:4590};
   let snapshot={dashboardFiles:[{id:'target-file',fileNumber:'TEST-1',clientName:'Test Customer',notes:[],estimateTotal:8000},other],revenueRows:[{id:'rev',gross:8000,labor:1000,expenses:500}]};
   const before=structuredClone(snapshot);let reads=0,writes=0;

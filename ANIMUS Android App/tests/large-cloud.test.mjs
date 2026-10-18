@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {createLiveApi} from '../security/live-api.mjs';
-const source=await readFile(new URL('../../functions/api/dashboard.js',import.meta.url),'utf8');
-const dashboard=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
+import {loadCloudHandler} from './load-cloud-handler.mjs';
+const dashboard=await loadCloudHandler('dashboard');
 const identity={uid:'synthetic',email:'owner@example.test',role:'admin'};
 test('authenticated 54 MB snapshot streams without choosing an older backup or rewriting data',async()=>{
   const bytes=54*1024*1024;let reads=0,writes=0,produced=0;

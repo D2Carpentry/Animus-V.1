@@ -1,3 +1,5 @@
+import {protectExpenseLedger,readFileReceipts,projectFileReceipts} from './_expense-ledger.js';
+import {onRequest as reconcileFileExpenses} from './expense-reconcile.js';
 const DASHBOARD_KEY = "dashboard/latest.json";
 const BACKUP_PREFIX = "dashboard/backups/";
 // Current receipt-rich snapshots exceed the former 8 MB guard. Keep a bounded
@@ -339,7 +341,7 @@ function mergeFiles(existing = [], incoming = []) {
       animusManualExpenses: mergeManualExpenses(prior.animusManualExpenses, file.animusManualExpenses),
       animusExpenseLedgerV4: mergeManualExpenses(prior.animusExpenseLedgerV4, file.animusExpenseLedgerV4),
     };
-    merged.set(canonicalKey, next);
+    merged.set(canonicalKey, protectExpenseLedger(prior,next));
     rememberAliases(canonicalKey, next);
   });
   return [...merged.values()];
@@ -447,6 +449,12 @@ function mergeDashboard(existing = {}, incoming = {}) {
   );
   const mergedRevenueRows = mergeRevenueRows(existing.revenueRows, incoming.revenueRows, confirmedRevenueRowIds)
     .filter((row) => !deletedRevenueKeys.has(rowMergeKey(row)));
+  if(incoming.action!=="revenueUpdate")for(const file of existing.dashboardFiles||[]){
+    if(file.expenseLedgerSource!=="cloud-receipts-v5")continue;
+    const prior=(existing.revenueRows||[]).find(row=>row.dashboardFileId===file.id);
+    const next=mergedRevenueRows.find(row=>row.dashboardFileId===file.id);
+    if(prior&&next){next.expenses=prior.expenses;next.expenseLines=prior.expenseLines||[];next.profit=(Number(next.gross)||0)-(Number(next.expenses)||0)-(Number(next.labor)||0);}
+  }
   if (incoming.action === "revenueUpdate") {
     const changedKeys = new Set((incoming.revenueRows || []).map(rowMergeKey));
     mergedRevenueRows.forEach((row) => {
@@ -466,7 +474,7 @@ function mergeDashboard(existing = {}, incoming = {}) {
   };
 }
 
-function applyMobileFilePatch(existing = {}, payload = {}) {
+async function applyMobileFilePatch(existing = {}, payload = {}, bucket) {
   const files = Array.isArray(existing.dashboardFiles) ? existing.dashboardFiles.map((file) => ({ ...file })) : [];
   const targetKeys = fileMergeKeys({ id: payload.fileId, fileNumber: payload.fileNumber, legacyFileNumber: payload.legacyFileNumber, clientName: payload.clientName });
   const fileIndex = files.findIndex((file) => fileMergeKeys(file).some((key) => targetKeys.includes(key)));
@@ -479,6 +487,11 @@ function applyMobileFilePatch(existing = {}, payload = {}) {
     if (Object.prototype.hasOwnProperty.call(requestedChanges, field)) changes[field] = requestedChanges[field];
   });
   files[fileIndex] = { ...files[fileIndex], ...changes, updatedAt:new Date().toISOString() };
+  const hasExpensePatch=Object.prototype.hasOwnProperty.call(changes,"expenseLines");
+  if(hasExpensePatch&&bucket){
+    const receipts=await readFileReceipts(bucket,files[fileIndex]);
+    files[fileIndex]=projectFileReceipts(files[fileIndex],receipts);
+  }
 
   const revenueRows = Array.isArray(existing.revenueRows) ? existing.revenueRows.map((row) => ({ ...row })) : [];
   const revenuePatch = payload.revenueRow && typeof payload.revenueRow === "object" ? payload.revenueRow : null;
@@ -491,6 +504,9 @@ function applyMobileFilePatch(existing = {}, payload = {}) {
       if (Object.prototype.hasOwnProperty.call(revenuePatch, field)) safeRevenuePatch[field] = revenuePatch[field];
     });
     if (revenueIndex >= 0) revenueRows[revenueIndex] = { ...revenueRows[revenueIndex], ...safeRevenuePatch, updatedAt:new Date().toISOString() };
+  }
+  if(hasExpensePatch&&bucket)for(const row of revenueRows.filter(row=>row.dashboardFileId===files[fileIndex].id)){
+    row.expenseLines=files[fileIndex].expenseLines;row.expenses=row.expenseLines.reduce((sum,line)=>sum+line.amount,0);row.profit=(Number(row.gross)||0)-row.expenses-(Number(row.labor)||0);
   }
 
   return {
@@ -635,6 +651,7 @@ async function handlePost(context) {
   }
 
   const url = new URL(request.url);
+  if(payload.action==="reconcileFileExpenses")return reconcileFileExpenses({...context,request:new Request(request.url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)})});
   if (payload.action === "createCurrentCloudBackup") {
     return jsonResponse(await createVerifiedCloudBackup(env, "current-weekly"));
   }
@@ -643,7 +660,7 @@ async function handlePost(context) {
   const replaceLatest = url.searchParams.get("replaceLatest") === "1";
   const existing = (isBackupOnly || isTestSnapshot || replaceLatest) ? null : await readExistingDashboard(env);
   const isMobileFilePatch = payload.action === "mobileFilePatch";
-  const mobilePatch = isMobileFilePatch ? applyMobileFilePatch(existing || {}, payload) : null;
+  const mobilePatch = isMobileFilePatch ? await applyMobileFilePatch(existing || {}, payload,env.ANIMUS_BUCKET) : null;
   if (mobilePatch?.error) return jsonResponse({ ok:false, error:mobilePatch.error }, 409);
   const dashboard = isMobileFilePatch ? mobilePatch.dashboard : (isBackupOnly || isTestSnapshot || replaceLatest) ? {
     ...payload,
