@@ -1,7 +1,8 @@
+import {applyMobileWorkspace} from '../../functions/api/_mobile-workspace.js';
 export function createDemoTransport() {
   const today = new Date().toLocaleDateString('en-CA');
   const documentUrl = type => new URL(`assets/demo-${type}.pdf`,typeof location==='undefined'?'https://localhost/':location.href).href;
-  const dashboard = {
+  let dashboard = {
     dashboardFiles: [
       { id:'demo-work-1', fileNumber:'DEMO-0001', clientName:'Preview Customer', clientPhone:'(239) 555-0100', clientEmail:'preview@example.com', projectAddress:'Sample project address', fileStatus:'In Progress', projectType:'Refacing', estimateTotal:8450, totalPaidOverride:2000, startDate:today, notes:[], timeline:[], expenseLines:[], workPhotos:[] },
       { id:'demo-work-2', fileNumber:'DEMO-0002', clientName:'Sample Interior Project', fileStatus:'In Negotiation', projectType:'Other', estimateTotal:4590, totalPaidOverride:0, notes:[], timeline:[], expenseLines:[], workPhotos:[] }
@@ -18,6 +19,10 @@ export function createDemoTransport() {
     const url = new URL(typeof input === 'string' ? input : input.url, 'https://localhost');
     const method = (init.method || input?.method || 'GET').toUpperCase();
     if (url.origin !== 'https://animus-v-1.pages.dev') throw new Error('Preview cannot contact external services.');
+    if(url.pathname==='/api/mobile-workspace'){
+      if(method!=='POST')return json({ok:false},405);
+      try{const payload=JSON.parse(init.body||'{}');if(payload.action==='saveDocument'){payload.pdfUrl=documentUrl(payload.mode);const file=dashboard.dashboardFiles.find(file=>file.id===payload.id);payload.verifiedReceiptTotal=[...receipts.values()].filter(r=>[file?.id,file?.fileNumber].includes(r.fileId)).reduce((sum,r)=>sum+Number(r.amount||0),0);}const result=applyMobileWorkspace(dashboard,payload);dashboard=result.dashboard;return json({ok:true,...result});}catch(error){return json({ok:false,error:error.message},error.status||400);}
+    }
     if (url.pathname === '/api/dashboard') {
       if (method === 'GET') return json({ok:true, dashboard});
       const payload = JSON.parse(init.body || '{}');

@@ -9,6 +9,7 @@
   <title>ANIMUS Mobile</title>
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="mobile-cloud.css?v=20261015-completed-pending-payment">
+  <link rel="stylesheet" href="mobile-workspace.css?v=20261019">
 </head>
 <body>
   <main class="app-shell">
@@ -40,15 +41,18 @@
         <div class="calendar-filter-row" id="calendarFilters"><button type="button" data-calendar-filter="today">Today</button><button type="button" data-calendar-filter="upcoming" class="selected">Upcoming</button><button type="button" data-calendar-filter="week">7 Days</button><button type="button" data-calendar-filter="all">All</button></div>
         <section class="panel calendar-agenda-panel"><div class="panel-heading"><div><p class="eyebrow" id="calendarRangeLabel">Today</p><h2>Mobile agenda</h2></div><strong id="calendarCount">0</strong></div><div id="calendarAgenda" class="calendar-agenda"></div></section>
       </section>
-      <section id="revenueView" class="view"><div class="page-heading"><div><p class="eyebrow">Business</p><h1>Revenue</h1></div><button type="button" data-open-desktop="revenue">Open desktop</button></div><div id="revenueStats" class="summary-grid"></div><div id="revenueList" class="file-list"></div></section>
-      <section id="moreView" class="view"><div class="page-heading"><div><p class="eyebrow">ANIMUS</p><h1>More</h1></div></div><div class="tool-list"><button type="button" data-open-desktop="googleCalendar">Calendar <span>›</span></button><button type="button" data-open-desktop="estimate">Estimator <span>›</span></button><button type="button" data-open-desktop="prices">Price Database <span>›</span></button><button type="button" data-open-desktop="crm">Desktop Command Center <span>›</span></button></div></section>
+      <section id="revenueView" class="view"><div class="page-heading"><div><p class="eyebrow">Business</p><h1>Revenue</h1></div></div><div id="revenueStats" class="summary-grid"></div><div id="revenueList" class="file-list"></div></section>
+      <section id="pricesView" class="view"><div class="page-heading"><div><p class="eyebrow">Materials &amp; supplies</p><h1>Price Database</h1></div><button id="mobileAddPrice" type="button" class="icon-button">+ Add</button></div><div class="search-field"><input id="mobilePriceSearch" type="search" placeholder="Search prices, category, vendor" aria-label="Search prices"></div><p id="mobilePriceCount" class="subcopy"></p><div id="mobilePriceList"></div></section>
+      <section id="estimatorView" class="view"><div class="mobile-editor-heading"><button type="button" id="mobileEditorBack">Back</button><span id="mobileEditorFile"></span><select id="mobileEditorMode" aria-label="Document type"><option value="estimate">Estimate</option><option value="invoice">Invoice</option><option value="supplement">Supplement</option><option value="workorder">Work Order</option></select></div><iframe id="mobileEditorFrame" title="Mobile document editor"></iframe></section>
+      <section id="moreView" class="view"><div class="page-heading"><div><p class="eyebrow">ANIMUS</p><h1>More</h1></div></div><div class="tool-list"><button type="button" data-view="calendar">Calendar <span>›</span></button><button type="button" id="mobileEstimatorButton">Estimator <span>›</span></button><button type="button" data-view="prices">Price Database <span>›</span></button></div></section>
     </section>
-    <nav class="bottom-nav"><button class="active" type="button" data-view="files">Files</button><button type="button" data-open-desktop="googleCalendar">Calendar</button><button type="button" data-view="expenses">Expenses</button><button type="button" data-view="revenue">Revenue</button><button type="button" data-view="more">More</button></nav>
+    <nav class="bottom-nav"><button class="active" type="button" data-view="files">Files</button><button type="button" data-view="calendar">Calendar</button><button type="button" data-view="expenses">Expenses</button><button type="button" data-view="revenue">Revenue</button><button type="button" data-view="more">More</button></nav>
   </main>
   <input id="cameraInput" type="file" accept="image/*" capture="environment" hidden><input id="uploadInput" type="file" accept="image/*,application/pdf" hidden>
   <input id="workPhotoCameraInput" type="file" accept="image/*" capture="environment" hidden><input id="workPhotoUploadInput" type="file" accept="image/*" multiple hidden>
   <div id="busyOverlay" class="busy-overlay" hidden><div class="busy-card"><i></i><p class="eyebrow">ANIMUS Receipt Reader</p><h2 id="busyTitle">Reading receipt...</h2><p id="busyMessage">Preparing your receipt for review.</p><button id="cancelBusy" type="button">Cancel receipt read</button></div></div>
   <div id="sheetBackdrop" class="sheet-backdrop" hidden></div><section id="sheet" class="bottom-sheet" hidden></section>
   <script src="mobile-cloud.js?v=20261015-completed-pending-payment"></script>
+  <script src="mobile-workspace.js?v=20261019-mobile-workspace"></script>
 </body>
 </html>

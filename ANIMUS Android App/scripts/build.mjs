@@ -4,6 +4,7 @@ import path from 'node:path';
 import { build } from 'esbuild';
 import { createRequire } from 'node:module';
 import {verifyLiveAccess} from './live-preflight.mjs';
+import '../../scripts/build-mobile-estimator.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const source = process.env.ANIMUS_SOURCE_DIR || path.resolve(root, '..');
@@ -22,7 +23,8 @@ if (authUrl && (new URL(authUrl).protocol !== 'https:' || new URL(authUrl).usern
 const pushUrl = process.env.ANIMUS_PUSH_URL || '';
 if (pushUrl && new URL(pushUrl).protocol !== 'https:') throw new Error('Push service must use HTTPS.');
 await mkdir(path.join(out, 'assets'), { recursive: true });
-for (const name of ['mobile-cloud.css', 'assets/animus-logo.svg', 'assets/animus-sidebar-logo.png', 'icon.svg']) {
+await mkdir(path.join(out,'vendor'),{recursive:true});
+for (const name of ['mobile-cloud.css','mobile-workspace.js','mobile-workspace.css','mobile-estimator.html','mobile-estimator.css','materials-database.js','animus-document-export.js','vendor/jspdf.umd.min.js','vendor/html2canvas.min.js','assets/d2-logo.png', 'assets/animus-logo.svg', 'assets/animus-sidebar-logo.png', 'icon.svg']) {
   await access(path.join(source, name));
   await copyFile(path.join(source, name), path.join(out, name));
 }
@@ -55,7 +57,7 @@ const adapter = `
 // Packaging adapter: call the existing mobile operations, never a second persistence layer.
 window.AnimusMobile = {
   get view() { return activeView; },
-  get hasDraft() { return Boolean(window.AnimusCalendar?.hasDraft() || receiptDraft || workPhotoDrafts.length || (!$("sheet").hidden && $("sheet").querySelector("input,textarea"))); },
+  get hasDraft() { return Boolean(window.AnimusMobileEditor?.hasDraft || window.AnimusCalendar?.hasDraft() || receiptDraft || workPhotoDrafts.length || (!$("sheet").hidden && $("sheet").querySelector("input,textarea"))); },
   get calendarData() { return structuredClone({files:state.files,events:[...(state.calendarEvents||[]),...(state.externalCalendarEvents||[]),...(state.calendar||[])]}); },
   closeSheet,
   openView,
@@ -68,20 +70,12 @@ window.AnimusMobile = {
   },
   get selectedFileId() { return activeFileId; }
   ,documentData(id) { const file=state.files.find(file=>file.id===id); return file?structuredClone(file):null; }
-  ,clearCloud() { state={files:[],revenue:[],prices:[],payroll:[],deletedFileKeys:[],deletedPriceIds:[]}; activeFileId=""; receipts=[]; receiptDraft=null; workPhotoDrafts=[]; closeSheet(); renderAll(); }
+  ,clearCloud() { window.AnimusMobileEditor?.clear(); state={files:[],revenue:[],prices:[],payroll:[],deletedFileKeys:[],deletedPriceIds:[]}; activeFileId=""; receipts=[]; receiptDraft=null; workPhotoDrafts=[]; closeSheet(); renderAll(); }
 };
 const canonicalNotify = notify;
 const canonicalCalendarRender = renderCalendar;
 renderCalendar = function() { return window.AnimusCalendar ? window.AnimusCalendar.render() : canonicalCalendarRender(); };
 notify = function(text, error) { return canonicalNotify(window.ANIMUS_APP_CONFIG.demo ? String(text).replace(/cloud/gi, "preview") : text, error); };
-openDesktop = function(route) {
-  if (route === "googleCalendar" || route === "calendar") { openView("calendar"); return; }
-  if (window.ANIMUS_APP_CONFIG.demo && route !== "googleCalendar") { window.alert("Desktop tools are not connected in this isolated preview. Your live CRM has not been changed."); return; }
-  const url = new URL("https://animus-v-1.pages.dev/crm");
-  if (route === "googleCalendar") return window.AnimusNative.openExternal("https://calendar.google.com/calendar/u/0/r?authuser=" + encodeURIComponent(D2_GOOGLE_CALENDAR_ACCOUNT));
-  url.searchParams.set("view", ({estimate:"estimator",workorder:"estimator",crm:"dashboard"})[route] || route);
-  return window.AnimusNative.openExternal(url.href);
-};
 window.dispatchEvent(new Event("animus-mobile-ready"));
 `;
 await writeFile(path.join(out, 'mobile-cloud.js'), (await readFile(path.join(source, 'mobile-cloud.js'), 'utf8')) + adapter);

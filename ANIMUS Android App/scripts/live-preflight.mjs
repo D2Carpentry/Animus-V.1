@@ -2,7 +2,7 @@ import {pathToFileURL} from 'node:url';
 const origin='https://animus-v-1.pages.dev';
 export async function verifyLiveAccess({fetcher=fetch}={}){
   const checks=[];
-  for(const path of ['/api/dashboard','/api/expenses','/api/receipt','/api/v2/workfiles','/api/v2/health','/api/session','/crm.js','/mobile-cloud.js','/mobile-document.html']){
+  for(const path of ['/api/dashboard','/api/expenses','/api/receipt','/api/v2/workfiles','/api/v2/health','/api/session','/crm.js','/mobile-cloud.js','/mobile-document.html','/api/mobile-workspace','/mobile-estimator.html','/mobile-workspace.js']){
     const response=await fetcher(origin+path,{cache:'no-store',redirect:'manual',signal:AbortSignal.timeout(15000)});
     await response.body?.cancel();
     if(response.status!==401)throw Error('Live build blocked: anonymous denial failed for '+path+' ('+response.status+').');

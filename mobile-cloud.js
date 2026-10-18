@@ -20,7 +20,7 @@ let workPhotoDrafts = [];
 function escapeHtml(value = "") { return String(value).replace(/[&<>'"]/g, (char) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", "'":"&#039;", '"':"&quot;" }[char])); }
 function uid(prefix) { return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`; }
 function parseMoney(value) { const result = Number.parseFloat(String(value ?? "").replace(/[^0-9.-]/g, "")); return Number.isFinite(result) ? result : 0; }
-function dateToday() { return new Date().toISOString().slice(0, 10); }
+function dateToday() { const date=new Date(); date.setMinutes(date.getMinutes()-date.getTimezoneOffset()); return date.toISOString().slice(0, 10); }
 function formatDate(value) { return value ? new Date(`${value}T12:00:00`).toLocaleDateString("en-US", { month:"short", day:"numeric", year:"numeric" }) : "No date"; }
 function fileKey(file = {}) { return String(file.fileNumber || file.id || "").trim().toLowerCase(); }
 function fileIdentityKeys(file = {}) { const keys = [file.id, file.fileNumber, file.legacyFileNumber].map((value) => String(value || "").trim().toLowerCase()).filter(Boolean); return keys.length ? keys : [String(file.clientName || "").trim().toLowerCase()].filter(Boolean); }
@@ -51,7 +51,7 @@ function fileCategory(file = {}) {
   const detail = String(file.statusDetail || "").trim();
   const estimateStatus = String(file.estimateStatus || "").trim();
   if (["Closed / Paid", "Job Lost / Closed"].includes(status)) return "closed";
-  if (["In Progress", "Completed-Pending Payment"].includes(status)) return "active";
+  if (["In Progress", "Pending Start", "Completed-Pending Payment"].includes(status)) return "active";
   if (status === "In Negotiation") return "negotiation";
   if (status === "Inspection Completed" || ["Inspection Pending", "Inspection Date Set", "Estimate Attached", "Estimate Pending", "Estimate Sent"].includes(detail) || ["Pending", "Sent"].includes(estimateStatus)) return "estimate";
   if (["Contact Established", "Contact Attempted"].includes(status)) return "contact";
@@ -553,7 +553,7 @@ function openGoogleCalendar() {
   }
   window.location.href = webUrl;
 }
-function openDesktop(route) { if (route === "googleCalendar") { openGoogleCalendar(); return; } const url = new URL("crm.html", window.location.href); if (route === "calendar") url.searchParams.set("view","calendar"); if (route === "prices") url.searchParams.set("view","prices"); if (route === "revenue") url.searchParams.set("view","revenue"); if (route === "invoice") url.searchParams.set("view","invoice"); if (route === "workorder") { url.searchParams.set("view","estimator"); url.hash = "assignment"; } if (route === "estimate") url.searchParams.set("view","estimator"); window.location.href=url.toString(); }
+function openDesktop(route) { if(route==='googleCalendar'){openGoogleCalendar();return;} if(['estimate','invoice','workorder'].includes(route)){openMobileEstimator(activeFile());return;} openView(({crm:'files',calendar:'calendar',prices:'prices',revenue:'revenue'})[route]||'files'); }
 
 async function fetchReceipts() { const file = activeFile(); if (!file) { receipts=[]; return; } const ids = [...new Set([file.fileNumber, file.id].filter(Boolean))]; const results = await Promise.all(ids.map(async (fileId) => { const response = await fetch(`${EXPENSE_API}?fileId=${encodeURIComponent(fileId)}&t=${Date.now()}`, { cache:"no-store" }); const result = await response.json().catch(() => ({})); return response.ok && result.ok !== false ? result.expenses || [] : []; })); const merged = new Map(); results.flat().forEach((entry) => { if (entry?.id) merged.set(entry.id, entry); }); receipts = [...merged.values()].sort((a,b) => String(b.updatedAt || b.createdAt || "").localeCompare(String(a.updatedAt || a.createdAt || ""))); }
 function applyCloudDashboard(cloud = {}) { state = { files:(cloud.dashboardFiles || []).map(normalizeFile).filter((file) => fileKey(file) !== "26-a1006"), revenue:cloud.revenueRows || [], prices:cloud.priceRows || [], payroll:cloud.payrollRows || [], calendarEvents:cloud.calendarEvents || [], externalCalendarEvents:cloud.externalCalendarEvents || [], calendar:cloud.calendar || [], deletedFileKeys:cloud.deletedFileKeys || [], deletedPriceIds:cloud.deletedPriceIds || [] }; activeFileId = state.files.find((file) => file.id === activeFileId)?.id || state.files.find(isOpenFile)?.id || state.files[0]?.id || ""; }
@@ -571,7 +571,6 @@ $("workPhotoCameraInput").addEventListener("change", (event) => { reviewWorkPhot
 $("workPhotoUploadInput").addEventListener("change", (event) => { reviewWorkPhotos(event.target.files); event.target.value=""; });
 $("cancelBusy").addEventListener("click", () => { receiptDraft = null; resetReceiptReaderState("Receipt read cancelled"); renderExpenses(); });
 $("saveButton").addEventListener("click", async () => { const button=$("saveButton"); button.disabled=true; button.textContent="Refreshing"; try { await loadCloud(); notify("Live cloud data refreshed"); } catch (error) { notify("Refresh failed",true); window.alert(error.message); } finally { button.disabled=false; button.textContent="Refresh"; } });
-$("newFileButton").addEventListener("click", () => { window.alert("Use the desktop Command Center to create a full work file. The mobile app is optimized for reviewing files and capturing expenses on the go."); });
 window.addEventListener("pageshow", () => resetReceiptReaderState());
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible" && $("busyOverlay") && !$("busyOverlay").hidden && !receiptAbortController) resetReceiptReaderState();

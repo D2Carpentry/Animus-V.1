@@ -1,0 +1,13 @@
+import {readFile,writeFile} from 'node:fs/promises';
+import {fileURLToPath} from 'node:url';
+const root=new URL('../',import.meta.url);
+let html=await readFile(new URL('animus-estimate-demo.html',root),'utf8');
+const bridge=await readFile(new URL('mobile-estimator-bridge.js',root),'utf8');
+html=html.replaceAll('localStorage','mobileStorage');
+html=html.replace('<head>','<head><script>window.mobileStorage=(()=>{const values=new Map([["animus-ui-theme","dark"]]);return {getItem:key=>values.get(key)||null,setItem:(key,value)=>values.set(key,String(value)),removeItem:key=>values.delete(key)};})();</script>');
+html=html.replace('</head>','<link rel="stylesheet" href="mobile-estimator.css"></head>');
+const marker="if(window.parent!==window)window.parent.postMessage({type:'animus-estimator-ready',requestId:params.get('open')},window.location.origin);";
+if(!html.includes(marker))throw Error('Shared estimator initialization changed. Review mobile adapter.');
+html=html.replace(marker,bridge);
+await writeFile(new URL('mobile-estimator.html',root),'<!-- Generated from the canonical estimator. Run scripts/build-mobile-estimator.mjs after editor changes. -->\n'+html);
+console.log('Generated mobile estimator from '+fileURLToPath(new URL('animus-estimate-demo.html',root)));
