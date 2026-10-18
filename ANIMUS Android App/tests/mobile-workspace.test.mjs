@@ -75,3 +75,9 @@ test('mobile bundle has no desktop navigation and generated editor never reads b
   const js=await readFile(new URL('../../mobile-cloud.js',import.meta.url),'utf8');const mobile=await readFile(new URL('../../mobile-cloud.html',import.meta.url),'utf8');const editor=await readFile(new URL('../../mobile-estimator.html',import.meta.url),'utf8');
   assert.ok(!js.includes('new URL("crm.html"'));assert.ok(!mobile.includes('Open desktop'));assert.ok(!mobile.includes('Desktop Command Center'));assert.ok(!editor.includes('localStorage'));assert.ok(editor.includes('const phoneHost=window.parent.AnimusMobileEditor'));
 });
+test('mobile writes cannot grow a snapshot beyond the existing dashboard reader safety limit',async()=>{
+  const dashboard=source();dashboard.testPadding='x'.repeat(32*1024*1024);let writes=0;
+  const bucket={async get(){return {etag:'one',text:async()=>JSON.stringify(dashboard)};},async put(){writes++;throw Error('Must not write oversized data.');}};
+  const response=await onRequest({request:new Request('https://animus-v-1.pages.dev/api/mobile-workspace',{method:'POST',body:JSON.stringify({action:'editRevenue',id:'r1',values:{labor:30},expected:{labor:20}})}),env:{ANIMUS_BUCKET:bucket},data:{animusIdentity:{role:'admin'}}});
+  assert.equal(response.status,413);assert.equal(writes,0);
+});

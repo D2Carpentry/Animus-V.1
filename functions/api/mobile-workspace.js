@@ -33,8 +33,10 @@ export async function onRequest({request,env,data}){
       }
       const result=applyMobileWorkspace(current,payload);
       if(result.replayed)return reply({ok:true,...result});
+      const body=JSON.stringify(result.dashboard);
+      if(new TextEncoder().encode(body).byteLength>32*1024*1024)return reply({ok:false,error:'The cloud snapshot is at its safe size limit. Your entries remain open. Export this document before closing and reduce its attached photos.'},413);
       if(pdf)await bucket.put(`documents/mobile/${payload.saveId}.pdf`,pdf,{httpMetadata:{contentType:'application/pdf'}});
-      const saved=await bucket.put(key,JSON.stringify(result.dashboard),{onlyIf:{etagMatches:original.etag},httpMetadata:{contentType:'application/json; charset=utf-8'}});
+      const saved=await bucket.put(key,body,{onlyIf:{etagMatches:original.etag},httpMetadata:{contentType:'application/json; charset=utf-8'}});
       if(saved)return reply({ok:true,...result});
     }
     return reply({ok:false,error:'Another device is saving. Your entries remain open; retry shortly.'},409);

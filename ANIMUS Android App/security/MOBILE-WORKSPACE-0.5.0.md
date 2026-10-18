@@ -18,7 +18,7 @@ The shared editor uses session memory instead of browser localStorage. It suppor
 
 ## Verification
 
-- 110 automated tests pass, including 11 new targeted-operation, stale-edit, retry, document, and privacy checks.
+- 111 automated tests pass, including 12 new targeted-operation, stale-edit, retry, document, snapshot-size, and privacy checks.
 - Synthetic browser workflows: new workfile, estimate save and linked revenue creation, invoice prefill, paid/balance calculation, work-order save, price add, revenue labor edit and net recalculation.
 - No page-level overflow observed for revenue at 320, 360, 390, 430, and 768 pixels; estimator and work-order controls checked at 320 and 390 pixels.
 - A real generated invoice PDF was rendered and visually inspected; $1,200 total less $200 paid produced $1,000 balance.
