@@ -34,7 +34,7 @@ export async function onRequest({request,env,data}){
       const original=await bucket.get(key);if(!original)return reply({ok:false,error:'Current cloud dashboard unavailable.'},503);
       const current=JSON.parse(await original.text());
       delete payload.verifiedReceiptTotal;
-      if(payload.action==='saveDocument'&&(payload.mode==='estimate'||payload.makeCurrent===true)&&!current.revenueRows?.some(row=>row.dashboardFileId===payload.id)){
+      if(payload.action==='saveDocument'&&payload.retainPrevious!==true&&(payload.mode==='estimate'||payload.makeCurrent===true)&&!current.revenueRows?.some(row=>row.dashboardFileId===payload.id)){
         const file=current.dashboardFiles?.find(file=>file.id===payload.id);
         if(file)payload.verifiedReceiptTotal=(await readFileReceipts(bucket,file)).reduce((sum,entry)=>sum+entry.amount,0);
       }

@@ -78,7 +78,7 @@ export function applyMobileWorkspace(dashboard,payload,now=new Date().toISOStrin
       record.editableEstimate=document;record.estimateTotal=amount(document.totals.total);record.estimateStatus='Estimate Completed';record.estimatePdfUrl=payload.pdfUrl;
       record.currentEstimateSavedAt=now;
       const linked=next.revenueRows.filter(row=>row.dashboardFileId===record.id||(!row.dashboardFileId&&row.fileNumber===record.fileNumber));
-      if(!linked.length){const expenses=amount(payload.verifiedReceiptTotal);const row={id:`revenue-${record.id}`,dashboardFileId:record.id,fileNumber:record.fileNumber,clientJob:record.clientName,date:document.estimateDate||document.date||now.slice(0,10),gross:record.estimateTotal,expenses,labor:0,profit:record.estimateTotal-expenses};next.revenueRows.push(row);}
+      if(!linked.length&&payload.retainPrevious!==true&&!record.revenueExcluded){const expenses=amount(payload.verifiedReceiptTotal);const row={id:`revenue-${record.id}`,dashboardFileId:record.id,fileNumber:record.fileNumber,clientJob:record.clientName,date:document.estimateDate||document.date||now.slice(0,10),gross:record.estimateTotal,expenses,labor:0,profit:record.estimateTotal-expenses};next.revenueRows.push(row);}
       for(const row of linked){row.gross=record.estimateTotal;row.profit=row.gross-(Number(row.expenses)||0)-(Number(row.labor)||0);row.attachedEstimate=document;}
     }
     if(mode==='invoice'){

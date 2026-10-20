@@ -24,6 +24,11 @@ test('normal revision can preserve its prior version without creating a suppleme
   const before=fixture(),request={...payload(before),mode:'estimate',makeCurrent:false},result=apply(before,request);
   assert.equal(result.record.estimateTotal,300);assert.equal(result.record.supplements,undefined);assert.equal(result.record.estimateHistory.length,1);
 });
+test('desktop revision does not create a revenue row or resurrect excluded revenue',()=>{
+  const before=fixture();before.revenueRows=[];before.dashboardFiles[0].revenueExcluded=true;
+  const result=apply(before,payload(before));assert.equal(result.record.estimateTotal,300);assert.equal(result.dashboard.revenueRows.length,0);
+  delete before.dashboardFiles[0].revenueExcluded;assert.equal(apply(before,payload(before)).dashboard.revenueRows.length,0);
+});
 test('line note centers in the visible embedded viewport without moving either document scroll',async()=>{
   const html=await readFile(new URL('../../animus-estimate-demo.html',import.meta.url),'utf8');const code=html.slice(html.indexOf('function positionNoteEditor(){'),html.indexOf('function closeNoteEditor(){'));
   const textarea={style:{}},panel={style:{}},modal={hidden:false,style:{},querySelector:()=>panel};
