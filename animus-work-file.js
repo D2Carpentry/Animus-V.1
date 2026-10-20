@@ -182,6 +182,9 @@
   }
 
   function latestEstimateDocument(file) {
+    if(file?.currentEstimateSavedAt&&file.editableEstimate){
+      return {kind:(file.editableEstimate.documentMode||file.editableEstimate.mode)==='supplement'?'Supplement':'Estimate',source:file,data:file.editableEstimate};
+    }
     const supplements = Array.isArray(file?.supplements) ? file.supplements : [];
     const latestSupplement = supplements
       .map((entry) => ({ entry, time: Date.parse(entry?.updatedAt || entry?.createdAt || "") || 0 }))

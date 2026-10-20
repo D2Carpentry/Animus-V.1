@@ -553,9 +553,43 @@
       function addScopeSection(){ state.scope.push({type:'section',description:''}); renderLines(); }
       let activeNoteIndex = -1;
       function restoreEstimatorScroll(y){ requestAnimationFrame(()=>{ window.scrollTo({ top:y, left:0, behavior:'auto' }); notifyParentHeight(); }); }
-      function closeNoteEditor(){ activeNoteIndex=-1; const modal=$('noteEditorModal'); modal.hidden=true; }
-      function openNoteEditor(index, preserveY = window.scrollY){ activeNoteIndex=Number(index); const line=state.scope[activeNoteIndex]; if(!line || line.type!=='note') return; const modal=$('noteEditorModal'); $('noteEditorText').value=line.description||''; modal.hidden=false; restoreEstimatorScroll(preserveY); setTimeout(()=>{try{$('noteEditorText').focus({preventScroll:true});}catch(error){}},0); }
+      let noteScrollHost=null,noteReturnFocus=null;
+      function positionNoteEditor(){
+        const modal=$('noteEditorModal');if(modal.hidden)return;
+        let top=window.visualViewport?.offsetTop||0,height=window.visualViewport?.height||innerHeight;
+        try{if(window.frameElement){const frame=window.frameElement.getBoundingClientRect(),viewport=window.parent.visualViewport;const start=viewport?.offsetTop||0,end=start+(viewport?.height||window.parent.innerHeight);top=Math.max(0,start-frame.top);height=Math.max(0,Math.min(innerHeight,end-frame.top)-top);}}catch(_){}
+        modal.style.inset='auto 0 auto 0';modal.style.top=top+'px';modal.style.height=height+'px';modal.style.padding='12px';
+        modal.querySelector('.note-editor-modal').style.maxHeight=Math.max(100,height-24)+'px';
+        $('noteEditorText').style.minHeight=Math.max(80,Math.min(260,height-210))+'px';
+      }
+      function closeNoteEditor(){ activeNoteIndex=-1;$('noteEditorModal').hidden=true;noteScrollHost?.removeEventListener('scroll',positionNoteEditor);noteScrollHost?.removeEventListener('resize',positionNoteEditor);window.visualViewport?.removeEventListener('resize',positionNoteEditor);noteReturnFocus?.focus({preventScroll:true}); }
+      function openNoteEditor(index){ activeNoteIndex=Number(index);const line=state.scope[activeNoteIndex];if(!line||line.type!=='note')return;noteReturnFocus=document.activeElement;$('noteEditorText').value=line.description||'';$('noteEditorModal').hidden=false;positionNoteEditor();try{noteScrollHost=window.parent;noteScrollHost.addEventListener('scroll',positionNoteEditor,{passive:true});noteScrollHost.addEventListener('resize',positionNoteEditor);}catch(_){noteScrollHost=window;}window.visualViewport?.addEventListener('resize',positionNoteEditor);$('noteEditorText').focus({preventScroll:true}); }
+      window.addEventListener('pagehide',()=>{noteScrollHost?.removeEventListener('scroll',positionNoteEditor);noteScrollHost?.removeEventListener('resize',positionNoteEditor);});
       function saveNoteEditor(){ const line=state.scope[activeNoteIndex]; if(!line || line.type!=='note') return closeNoteEditor(); line.description=$('noteEditorText').value; closeNoteEditor(); renderLines(); }
+      let revisionContext=null,revisionCache=null,revisionSaving=false,revisionReply=null;
+      function syncRevisionButtons(){const available=Boolean(state.dashboardFileId&&window.parent!==window&&!window.parent.AnimusMobileEditor&&['estimate','supplement'].includes(state.mode));for(const id of ['saveCurrentEstimate','saveCurrentSupplement'])if($(id))$(id).hidden=!available;}
+      function revisionStatus(text){$('saveNote').textContent=text;if($('currentEstimateSaveStatus'))$('currentEstimateSaveStatus').textContent=text;}
+      const revisionReadBlob=blob=>new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(Error('The PDF could not be prepared.'));reader.readAsDataURL(blob);});
+      async function saveCurrentRevision(asSupplement=false){
+        if(revisionSaving)return;
+        if(!revisionContext||!state.dashboardFileId){revisionStatus('Reopen this estimate from its workfile before saving. Your changes remain here.');return;}
+        if(!confirm(asSupplement?'Save this full revised document as a supplement and make it the current estimate? Its total replaces the current total; it is not added again. The previous version will be preserved.':'Update the current estimate on this workfile? The previous version will be preserved.'))return;
+        revisionSaving=true;closeEstimateMenu();document.body.inert=true;
+        try{
+          dataFromForm();
+          if(asSupplement&&(state.mode!=='supplement'||state.manualEstimateNumber!==revisionContext.nextSupplementNumber)){state.mode='supplement';state.title='Supplement';state.manualEstimateNumber=revisionContext.nextSupplementNumber;state.estimateNumber=state.manualEstimateNumber;state.date=today();fillForm();syncModeUI();}
+          const data=currentEstimateData();const key=JSON.stringify({asSupplement,data});
+          revisionStatus('Preparing the current estimate PDF...');
+          if(!revisionCache||revisionCache.key!==key){
+            const photos=[...document.querySelectorAll('#photoList .photo')];if(photos.length)data.mobilePhotos=await Promise.all(photos.map(async image=>({name:image.alt,dataUrl:await revisionReadBlob(await (await fetch(image.src)).blob())})));
+            revisionCache={key,saveId:crypto.randomUUID(),data,pdf:await revisionReadBlob(await window.AnimusDocumentExport.createPdf($('estimateSheet')))};
+          }
+          revisionStatus('Saving to the live workfile...');
+          const saved=await new Promise((resolve,reject)=>{const timer=setTimeout(()=>{revisionReply=null;reject(Error('Cloud confirmation timed out. Your changes remain here. Retry this save before closing.'));},160000);revisionReply={saveId:revisionCache.saveId,finish:result=>{clearTimeout(timer);result.ok?resolve(result):reject(Error(result.error||'The cloud did not confirm this save.'));}};window.parent.postMessage({type:'animus-save-current-estimate',requestId:params.get('open'),fileId:state.dashboardFileId,asSupplement,saveId:revisionCache.saveId,document:revisionCache.data,pdf:revisionCache.pdf},window.location.origin);});
+          revisionContext=saved.revisionContext;revisionCache=null;delete state.supplementFor;delete state.supplementId;revisionStatus(asSupplement?'Supplement saved as the current estimate.':'Current estimate saved to the workfile.');
+        }catch(error){revisionStatus(error.message||'Save failed. Your changes remain open.');}
+        finally{revisionSaving=false;document.body.inert=false;}
+      }
       function sectionInsertIndex(index){
         let start = Number(index);
         while(start > 0 && state.scope[start]?.type !== 'section') start--;
@@ -565,6 +599,11 @@
         return end;
       }
       function bind(){
+        const saveCurrent=document.createElement('button');saveCurrent.id='saveCurrentEstimate';saveCurrent.type='button';saveCurrent.className='btn primary';saveCurrent.textContent='Save to Workfile';saveCurrent.onclick=()=>saveCurrentRevision(state.mode==='supplement');$('saveSide').before(saveCurrent);$('saveSide').parentElement.style.flexWrap='wrap';
+        const saveSupplement=document.createElement('button');saveSupplement.id='saveCurrentSupplement';saveSupplement.type='button';saveSupplement.className='btn';saveSupplement.textContent='Save as Supplement & Make Current';saveSupplement.style.whiteSpace='normal';saveSupplement.style.textAlign='left';saveSupplement.onclick=()=>saveCurrentRevision(true);$('estimateMenu').append(saveSupplement);
+        const revisionOutput=document.createElement('p');revisionOutput.id='currentEstimateSaveStatus';revisionOutput.setAttribute('role','status');revisionOutput.className='subtle';$('saveSide').parentElement.after(revisionOutput);
+        window.addEventListener('message',event=>{if(event.origin!==location.origin||event.source!==window.parent)return;if(event.data?.type==='animus-open-estimate'&&event.data.requestId===params.get('open'))revisionContext=event.data.revisionContext||null;if(event.data?.type==='animus-current-estimate-result'&&event.data.requestId===params.get('open')&&event.data.saveId===revisionReply?.saveId){const pending=revisionReply;revisionReply=null;pending.finish(event.data);}});
+        const previousSyncMode=syncModeUI;syncModeUI=function(){previousSyncMode();syncRevisionButtons();};
         const openShareMenu=()=>{const menu=$('shareMenu'); if(menu) menu.hidden=!menu.hidden;};
         const closeShareMenu=()=>{const menu=$('shareMenu'); if(menu) menu.hidden=true;};
         const setMode=mode=>{

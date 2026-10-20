@@ -61,21 +61,31 @@ export function applyMobileWorkspace(dashboard,payload,now=new Date().toISOStrin
   }else if(action==='saveDocument'){
     record=next.dashboardFiles.find(f=>f.id===payload.id);if(!record)fail('Select an existing workfile before saving.',404);
     const mode=payload.mode;if(!['estimate','invoice','supplement','workorder'].includes(mode))fail('Invalid document type.');
+    if(payload.makeCurrent&&mode!=='supplement')fail('Only a supplement can be promoted.');
+    const replacesEstimate=mode==='estimate'||(mode==='supplement'&&payload.makeCurrent===true);
     const field={estimate:'editableEstimate',invoice:'invoice',supplement:'supplements',workorder:'workOrder'}[mode];
     if(record.mobileDocumentSaveId===payload.saveId){if(!same(record.mobileDocumentSaveHash,payload.saveHash))fail('A prior save completed with different content. Refresh the saved document before retrying.',409);return {dashboard:next,record,replayed:true};}
     check(record,payload.expected,[field]);
+    if(payload.makeCurrent===true||payload.retainPrevious===true)check(record,payload.expected,['editableEstimate','estimatePdfUrl','estimateTotal']);
     const document=copy(payload.document||{});if(!Array.isArray(document.lineItems)||!document.totals)fail('The document is incomplete.');
     amount(document.totals.total);document.dashboardFileId=record.id;document.fileNumber=record.fileNumber;document.workFileNumber=record.fileNumber;
-    if(mode==='estimate'){
+    document.documentMode=mode;document.mode=mode;
+    if(payload.retainPrevious===true||payload.makeCurrent===true){delete document.supplementFor;delete document.supplementId;}
+    if(replacesEstimate){
+      if((payload.retainPrevious===true||payload.makeCurrent===true)&&record.editableEstimate){
+        record.estimateHistory=[...(record.estimateHistory||[]),{id:`previous-${payload.saveId}`,data:copy(record.editableEstimate),pdfUrl:record.estimatePdfUrl||record.estimateUrl||'',replacedAt:now}];
+      }
       record.editableEstimate=document;record.estimateTotal=amount(document.totals.total);record.estimateStatus='Estimate Completed';record.estimatePdfUrl=payload.pdfUrl;
+      record.currentEstimateSavedAt=now;
       const linked=next.revenueRows.filter(row=>row.dashboardFileId===record.id||(!row.dashboardFileId&&row.fileNumber===record.fileNumber));
       if(!linked.length){const expenses=amount(payload.verifiedReceiptTotal);const row={id:`revenue-${record.id}`,dashboardFileId:record.id,fileNumber:record.fileNumber,clientJob:record.clientName,date:document.estimateDate||document.date||now.slice(0,10),gross:record.estimateTotal,expenses,labor:0,profit:record.estimateTotal-expenses};next.revenueRows.push(row);}
-      for(const row of linked){row.gross=record.estimateTotal;row.profit=row.gross-(Number(row.expenses)||0)-(Number(row.labor)||0);}
-    }else if(mode==='invoice'){
+      for(const row of linked){row.gross=record.estimateTotal;row.profit=row.gross-(Number(row.expenses)||0)-(Number(row.labor)||0);row.attachedEstimate=document;}
+    }
+    if(mode==='invoice'){
       record.invoice={...(record.invoice||{}),date:document.estimateDate||document.date,title:'Invoice',billTo:document.clientName,phone:document.clientPhone,email:document.clientEmail,address:document.projectAddress,projectNumber:record.fileNumber,notes:document.notes,rows:document.lineItems.map(row=>({description:row.description,qty:row.qty,total:row.total})),total:document.totals.total,editableEstimate:document,pdfUrl:payload.pdfUrl};record.invoicePdfUrl=payload.pdfUrl;record.invoiceStatus='Draft';
     }else if(mode==='supplement'){
       record.supplements=[...(record.supplements||[]),{id:payload.saveId,title:`Supplement ${(record.supplements||[]).length+1}`,estimateNumber:document.estimateNumber,data:document,pdfUrl:payload.pdfUrl,createdAt:now,updatedAt:now}];
-    }else{record.workOrder={...(record.workOrder||{}),data:document,pdfUrl:payload.pdfUrl};record.workOrderPdfUrl=payload.pdfUrl;}
+    }else if(mode==='workorder'){record.workOrder={...(record.workOrder||{}),data:document,pdfUrl:payload.pdfUrl};record.workOrderPdfUrl=payload.pdfUrl;}
     record.mobileDocumentSaveId=payload.saveId;record.mobileDocumentSaveHash=payload.saveHash||null;record.updatedAt=now;record.timeline=[...(record.timeline||[]),`${mode==='workorder'?'Work order':mode[0].toUpperCase()+mode.slice(1)} saved. ${now}`];
   }else fail('Unsupported mobile operation.');
   next.syncedAt=now;return {dashboard:next,record};

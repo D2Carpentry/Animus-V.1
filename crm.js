@@ -3270,7 +3270,11 @@ function openEstimatorInCommandCenter(url, estimateData = null) {
   estimatorUrl.searchParams.set("v", "20261015-invoice-pdf");
   const requestId = makeCrmId("estimate-open");
   estimatorUrl.searchParams.set("open", requestId);
-  pendingEstimatorOpen = estimateData ? { requestId, estimate: estimateData } : null;
+  const sourceFile=crmFiles.find(file=>file.id===estimateData?.dashboardFileId);
+  pendingEstimatorOpen = estimateData ? { requestId, estimate: estimateData,
+    revisionExpected:sourceFile?JSON.parse(JSON.stringify({editableEstimate:sourceFile.editableEstimate??null,supplements:sourceFile.supplements??null,estimatePdfUrl:sourceFile.estimatePdfUrl??null,estimateTotal:sourceFile.estimateTotal??null})):null,
+    revisionContext:sourceFile?{nextSupplementNumber:`${sourceFile.fileNumber}-S${(sourceFile.supplements?.length||0)+1}`} : null,
+  } : null;
   frame.onload = () => deliverPendingEstimatorEstimate(frame);
   frame.src = estimatorUrl.toString();
   switchCrmView("estimator");
