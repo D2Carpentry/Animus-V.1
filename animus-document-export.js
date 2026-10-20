@@ -15,14 +15,25 @@
     return slices;
   }
 
-  async function createPdf(source) {
+  async function createPdf(source, options = {}) {
+    const progress = message => options.onProgress?.(message);
+    const bounded = (promise, message, milliseconds = 20000) => {
+      let timer;
+      return Promise.race([promise, new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(message)), milliseconds); })]).finally(() => clearTimeout(timer));
+    };
     if (!source || !window.jspdf?.jsPDF || !window.html2canvas) throw new Error('PDF tools could not load. Check your connection and try again.');
     const frame = document.createElement('iframe');
     frame.title = 'PDF render copy';
     frame.setAttribute('aria-hidden', 'true');
     frame.style.cssText = 'position:fixed;left:-10000px;top:0;width:900px;height:1200px;border:0;pointer-events:none;';
+    const loaded = new Promise((resolve, reject) => {
+      frame.onload = resolve;
+      frame.onerror = () => reject(new Error('The PDF document could not initialize. Retry the export.'));
+    });
+    frame.srcdoc = '<!doctype html><html><head></head><body></body></html>';
     document.body.append(frame);
     try {
+      await bounded(loaded, 'The PDF document took too long to initialize. Retry the export.');
       const output = frame.contentDocument;
       const base = output.createElement('base');
       base.href = document.baseURI;
@@ -52,14 +63,16 @@
         output.body.append(wrapper);
         sections.push(wrapper);
       });
-      await output.fonts.ready;
-      await Promise.all([...output.images].map(async image => {
+      progress('Loading document fonts...');
+      await bounded(output.fonts.ready, 'Document fonts could not load. Retry the PDF export.');
+      progress('Loading document images...');
+      await bounded(Promise.all([...output.images].map(async image => {
         if (!image.complete) await new Promise((resolve, reject) => {
           image.onload = resolve;
           image.onerror = () => reject(new Error('A document image could not load. Retry the PDF export.'));
         });
         if (!image.naturalWidth) throw new Error('A document image could not load. Retry the PDF export.');
-      }));
+      })), 'Document images took too long to load. Retry the PDF export.');
       const doc = new window.jspdf.jsPDF({unit:'mm', format:'letter', compress:true});
       const margin = 8.9;
       const width = doc.internal.pageSize.getWidth() - margin * 2;
@@ -68,22 +81,25 @@
       for (const section of sections) {
         section.dataset.pdfSection = String(sections.indexOf(section));
         let rect, measuredBlocks, links;
-        const canvas = await window.html2canvas(section, {
-          backgroundColor:'#fff', scale:2, useCORS:true, logging:false, windowWidth:900, windowHeight:Math.ceil(section.scrollHeight), scrollX:0, scrollY:0,
+        progress('Rendering estimate pages...');
+        const canvas = await bounded(window.html2canvas(section, {
+          backgroundColor:'#fff', scale:2, useCORS:true, logging:Boolean(options.debug), windowWidth:900, windowHeight:Math.ceil(section.scrollHeight), scrollX:0, scrollY:0,
           onclone(clonedDocument) {
             const rendered = clonedDocument.querySelector(`[data-pdf-section="${section.dataset.pdfSection}"]`);
             rect = rendered.getBoundingClientRect();
+            progress('Composing estimate pages...');
             measuredBlocks = [...rendered.querySelectorAll('tr,p,li,h2,h3,.totals,figure,.warranty-summary,.estimate-footer,.warranty-section,.warranty-doc-header,.warranty-intro,.warranty-commitment')].map(node => {
               const bounds = node.getBoundingClientRect();
               return [bounds.top - rect.top, bounds.bottom - rect.top];
             });
             links = [...rendered.querySelectorAll('a[href]')].map(anchor => ({url:anchor.href,rect:anchor.getBoundingClientRect()}));
           },
-        });
+        }), 'Document rendering took too long. Retry the PDF export.', 45000);
         if (!canvas.width || !canvas.height) throw new Error('The document could not be rendered. Your invoice is unchanged.');
         const ratio = canvas.width / rect.width;
         const blocks = measuredBlocks.map(([top,bottom]) => [top * ratio,bottom * ratio]);
         for (const [top, bottom] of pageSlices(canvas.height, Math.floor(height * canvas.width / width), blocks)) {
+          progress('Assembling the PDF...');
           if (page++) doc.addPage('letter');
           const slice = output.createElement('canvas');
           slice.width = canvas.width;
@@ -97,6 +113,7 @@
         }
         canvas.width = canvas.height = 0;
       }
+      progress('Finishing the PDF...');
       return doc.output('blob');
     } finally {
       frame.remove();

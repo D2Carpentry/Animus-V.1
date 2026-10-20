@@ -617,7 +617,9 @@
         $('reviewPrintBtn').onclick=printCustomerReview;
         $('shareSide').onclick=event=>{event.stopPropagation();openShareMenu();};
         $('sharePdf').onclick=()=>{closeShareMenu();printCustomerReview();};
-        $('shareEmail').onclick=()=>{closeShareMenu();printCustomerReview('email');};
+        const shareCustomerPortal=()=>{closeShareMenu();if(!state.dashboardFileId||window.parent===window){$('saveNote').textContent='Open this estimate from its workfile to share a private portal link.';return;}window.parent.postMessage({type:'animus-open-customer-portal',fileId:state.dashboardFileId},window.location.origin);};
+        const portalShareButton=document.createElement('button');portalShareButton.type='button';portalShareButton.className='btn';portalShareButton.textContent='Customer Portal';portalShareButton.onclick=shareCustomerPortal;$('shareMenu').append(portalShareButton);
+        $('shareEmail').onclick=()=>{if(state.mode==='estimate'&&window.parent!==window){shareCustomerPortal();return;}closeShareMenu();printCustomerReview('email');};
         $('shareDownload').onclick=()=>{closeShareMenu();printCustomerReview();};
         $('photoPreviewClose').onclick=()=>$('photoPreview').hidden=true;
         $('addWarrantyBtn').onclick=addSelectedWarranty;
@@ -699,6 +701,8 @@ $('priceDatabaseEditor').addEventListener('click',event=>{if(event.target.closes
 window.AnimusDocumentExport.download=(blob,name)=>{phoneHost.share(blob,name).catch(error=>{$('saveNote').textContent=error.message;});};
 const phonePrint=printCustomerReview;
 printCustomerReview=async function(action){if(state.mode!=='workorder')return phonePrint(action);try{dataFromForm();syncModeUI();await phoneHost.share(await window.AnimusDocumentExport.createPdf($('workOrderPreview')),`${safeFileName(state.clientName||'Work Order')}-work-order.pdf`);}catch(error){$('saveNote').textContent=error.message;}};
+$('shareMenu').querySelectorAll('button').forEach(button=>{if(button.textContent==='Customer Portal')button.remove();});
+$('shareEmail').onclick=()=>{ $('shareMenu').hidden=true; printCustomerReview('email'); };
 window.document.querySelector('.crumb').onclick=event=>{event.preventDefault();phoneHost.back();};
 
     })();

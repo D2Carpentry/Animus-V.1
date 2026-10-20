@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <title>D2 | Your Private Client Portal</title>
+  <link rel="icon" href="/client/d2-logo.png">
+  <link rel="stylesheet" href="/client/portal.css">
+  <script src="/client/portal.bundle.js" type="module"></script>
+</head>
+<body>
+  <header class="company-header"><img src="/client/d2-logo.png" alt="D2 Carpentry &amp; Design" width="112" height="82"></header>
+  <main>
+    <section class="welcome" aria-labelledby="welcomeTitle">
+      <p class="eyebrow">YOUR PRIVATE CLIENT PORTAL</p>
+      <h1 id="welcomeTitle">Welcome.</h1>
+      <p id="welcomeCopy" class="introduction">Preparing your private estimate...</p>
+      <p id="accessError" class="error" role="alert" hidden></p>
+      <button id="viewEstimate" class="primary" type="button" disabled><i data-lucide="file-text" aria-hidden="true"></i><span>View My Estimate</span><i data-lucide="arrow-right" aria-hidden="true"></i></button>
+      <button id="retryAccess" class="text-button" type="button" hidden>Try again</button>
+      <span id="welcomeBusy" class="loading-line" role="status">Loading your information</span>
+    </section>
+  </main>
+  <footer><i data-lucide="lock-keyhole" aria-hidden="true"></i>Private &amp; Secure Client Access</footer>
+  <dialog id="pdfViewer" aria-labelledby="viewerTitle">
+    <header class="viewer-header"><h2 id="viewerTitle">Your Estimate</h2><div class="viewer-actions"><button id="downloadPdf" type="button" disabled><i data-lucide="download" aria-hidden="true"></i><span>Download PDF</span></button><button id="closeViewer" class="icon-button" aria-label="Close viewer" type="button"><i data-lucide="x" aria-hidden="true"></i></button></div></header>
+    <div id="pdfStatus" class="pdf-status" role="status"><span class="spinner"></span><p>Preparing your estimate...</p></div>
+    <div id="pdfError" class="pdf-error" role="alert" hidden><h3>Your estimate could not be displayed.</h3><p id="pdfErrorText"></p><button id="retryPdf" type="button">Try again</button></div>
+    <div id="zoomBar" class="zoom-bar" hidden><button id="zoomOut" type="button" aria-label="Zoom out"><i data-lucide="minus" aria-hidden="true"></i></button><output id="zoomLevel" aria-label="Zoom level">Fit width</output><button id="zoomIn" type="button" aria-label="Zoom in"><i data-lucide="plus" aria-hidden="true"></i></button><button id="fitWidth" type="button">Fit width</button><span id="pageCount"></span></div>
+    <div id="pdfScroll" class="pdf-scroll" tabindex="0" aria-label="Estimate PDF pages"><div id="pdfPages" class="pdf-pages"></div></div>
+    <p id="downloadError" class="download-error" role="alert" hidden></p>
+  </dialog>
+</body>
+</html>

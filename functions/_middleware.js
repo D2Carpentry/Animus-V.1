@@ -920,8 +920,9 @@ function browserIdentityRequest(request) {
 
 // security/pages-html.mjs
 var publicFiles = /* @__PURE__ */ new Set(["/signin", "/signin/", "/signin/index.html", "/signin/sign-in.js", "/signin/sign-in.css", "/auth-preview", "/auth-preview/", "/auth-preview/index.html", "/auth-preview/sign-in.js", "/auth-preview/sign-in.css", "/auth-preview/build-info.json", "/crm-access.js", "/assets/animus-sidebar-logo.png", "/assets/animus-logo.svg", "/icon.svg", "/service-worker.js"]);
+var portalFiles = /* @__PURE__ */ new Set(["/client", "/client/", "/client/index.html", "/client/portal.css", "/client/portal.bundle.js", "/client/d2-logo.png", "/client/pdf.mjs", "/client/pdf.worker.mjs", "/client-access"]);
 function publicAsset(path) {
-  return publicFiles.has(path) || /^\/downloads\/animus-android-(?:preview|live)-\d+\.\d+\.\d+\.apk$/.test(path);
+  return publicFiles.has(path) || portalFiles.has(path) || /^\/downloads\/animus-android-(?:preview|live)-\d+\.\d+\.\d+\.apk$/.test(path);
 }
 function createPagesAccess({ verify = createLiveAdministratorVerifier(), rewrite = (response) => new HTMLRewriter().on("head", { element(element) {
   element.prepend('<script src="/crm-access.js?v=20261017-secure"><\/script>', { html: true });
@@ -930,6 +931,17 @@ function createPagesAccess({ verify = createLiveAdministratorVerifier(), rewrite
     const { request } = context;
     const url = new URL(request.url);
     const path = url.pathname;
+    if (portalFiles.has(path)) {
+      const response2 = await context.next();
+      const headers2 = new Headers(response2.headers);
+      headers2.set("Cache-Control", "private, no-store");
+      headers2.set("Referrer-Policy", "no-referrer");
+      headers2.set("X-Content-Type-Options", "nosniff");
+      headers2.set("X-Frame-Options", "DENY");
+      headers2.set("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self' blob:; font-src 'self' blob: data:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'");
+      headers2.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+      return new Response(response2.body, { status: response2.status, headers: headers2 });
+    }
     if (path === "/api" || path.startsWith("/api/") || publicAsset(path)) return context.next();
     try {
       await verify(browserIdentityRequest(request), context.env);

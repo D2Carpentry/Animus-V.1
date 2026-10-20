@@ -35,10 +35,13 @@
     "@fullcalendar/timegrid": "6.1.22",
     "firebase": "12.19.0",
     "jose": "6.2.12",
-    "lucide": "^0.468.0"
+    "lucide": "^0.468.0",
+    "pdfjs-dist": "6.4.299"
   },
   "overrides": {
-    "@firebase/firestore": { "@grpc/grpc-js": "1.13.6" }
+    "@firebase/firestore": {
+      "@grpc/grpc-js": "1.13.6"
+    }
   },
   "devDependencies": {
     "@capacitor/cli": "^8.0.0",

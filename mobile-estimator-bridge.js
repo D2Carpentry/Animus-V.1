@@ -53,4 +53,6 @@ $('priceDatabaseEditor').addEventListener('click',event=>{if(event.target.closes
 window.AnimusDocumentExport.download=(blob,name)=>{phoneHost.share(blob,name).catch(error=>{$('saveNote').textContent=error.message;});};
 const phonePrint=printCustomerReview;
 printCustomerReview=async function(action){if(state.mode!=='workorder')return phonePrint(action);try{dataFromForm();syncModeUI();await phoneHost.share(await window.AnimusDocumentExport.createPdf($('workOrderPreview')),`${safeFileName(state.clientName||'Work Order')}-work-order.pdf`);}catch(error){$('saveNote').textContent=error.message;}};
+$('shareMenu').querySelectorAll('button').forEach(button=>{if(button.textContent==='Customer Portal')button.remove();});
+$('shareEmail').onclick=()=>{ $('shareMenu').hidden=true; printCustomerReview('email'); };
 window.document.querySelector('.crumb').onclick=event=>{event.preventDefault();phoneHost.back();};
