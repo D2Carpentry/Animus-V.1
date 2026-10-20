@@ -23,4 +23,10 @@ await build({entryPoints:[fileURLToPath(new URL('portal.js',client))],outfile:fi
 const adminHtml=(await readFile(new URL('index.html',client),'utf8')).replace('/client/portal.bundle.js','/client/admin-preview.bundle.js').replace('</head>','<script src="/portal-pdf-renderer-client.js"></script></head>');
 await writeFile(new URL('portal-admin-preview.html',root),adminHtml);
 await build({entryPoints:[fileURLToPath(new URL('playground-admin.js',root))],outfile:fileURLToPath(new URL('playground-admin.bundle.js',root)),bundle:true,format:'iife',platform:'browser',target:'es2022'});
+const crmPath=new URL('crm.html',root);
+const crm=await readFile(crmPath,'utf8');
+const styleBlock=/<!-- playground-admin-style:start -->[\s\S]*?<!-- playground-admin-style:end -->/;
+if(!styleBlock.test(crm))throw Error('CRM Playground style anchor is missing.');
+const playgroundCSS=await readFile(new URL('playground-admin.css',root),'utf8');
+await writeFile(crmPath,crm.replace(styleBlock,`<!-- playground-admin-style:start -->\n    <style id="playgroundAdminStyles">\n${playgroundCSS}\n    </style>\n    <!-- playground-admin-style:end -->`));
 console.log('Built customer portal and private administrator preview.');

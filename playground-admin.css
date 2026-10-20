@@ -1,4 +1,4 @@
-#crmPlaygroundView{--pg-bg:#f5f6f8;--pg-surface:#fff;--pg-text:#20252e;--pg-muted:#687281;--pg-border:#d8dde4;color:var(--pg-text);background:var(--pg-bg);padding:24px;min-width:0}
+#crmPlaygroundView{--pg-bg:#f5f6f8;--pg-surface:#fff;--pg-text:#20252e;--pg-muted:#687281;--pg-border:#d8dde4;display:block;color:var(--pg-text);background:var(--pg-bg);padding:16px;min-width:0}
 .animus-dark-theme #crmPlaygroundView{--pg-bg:#14171c;--pg-surface:#1c2128;--pg-text:#eef1f5;--pg-muted:#a2adba;--pg-border:#353d47}
 #crmPlaygroundView [hidden]{display:none!important}
 #crmPlaygroundView *{box-sizing:border-box;letter-spacing:0}

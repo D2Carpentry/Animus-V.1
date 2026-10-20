@@ -14,6 +14,26 @@
     <link rel="stylesheet" href="animus-work-file.css?v=20261013-desktop-controls">
     <link rel="stylesheet" href="animus-operations.css?v=20260822-operations-layout">
     <link rel="stylesheet" href="animus-contacts.css?v=20261013-desktop-controls">
+    <!-- playground-admin-style:start -->
+    <style id="playgroundAdminStyles">
+#crmPlaygroundView{--pg-bg:#f5f6f8;--pg-surface:#fff;--pg-text:#20252e;--pg-muted:#687281;--pg-border:#d8dde4;display:block;color:var(--pg-text);background:var(--pg-bg);padding:16px;min-width:0}
+.animus-dark-theme #crmPlaygroundView{--pg-bg:#14171c;--pg-surface:#1c2128;--pg-text:#eef1f5;--pg-muted:#a2adba;--pg-border:#353d47}
+#crmPlaygroundView [hidden]{display:none!important}
+#crmPlaygroundView *{box-sizing:border-box;letter-spacing:0}
+#crmPlaygroundView h2{font-size:24px;margin:0 0 8px}#crmPlaygroundView h3{font-size:17px;margin:0}
+#crmPlaygroundView button,#crmPlaygroundView select{font:inherit;font-size:14px;min-height:44px;border:1px solid var(--pg-border);border-radius:6px;background:var(--pg-surface);color:var(--pg-text);padding:10px 12px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;max-width:100%}
+#crmPlaygroundView button:disabled{opacity:.45;cursor:default}#crmPlaygroundView button:focus-visible,#crmPlaygroundView select:focus-visible{outline:3px solid #77aaf6;outline-offset:2px}
+#crmPlaygroundView svg{width:18px;height:18px;flex:none}
+#crmPlaygroundView .pg-primary{background:#185fbd;color:#fff;border-color:#185fbd;width:100%}
+.pg-heading,.pg-preview-toolbar,.pg-activity header{display:flex;justify-content:space-between;align-items:center;gap:12px}.pg-heading{padding-bottom:22px;border-bottom:1px solid var(--pg-border)}
+.pg-badge{color:var(--pg-muted);font-size:13px}.pg-workspace{display:grid;grid-template-columns:300px minmax(0,1fr);gap:28px;padding-top:24px}.pg-controls,.pg-preview{min-width:0}.pg-controls>label{display:block;font-size:14px;margin:20px 0 8px}.pg-controls>select{width:100%;font-size:16px!important}.pg-controls>#pgUseOpen{width:100%;margin-top:10px}.pg-details{margin:24px 0;display:grid;gap:16px}.pg-details div{display:grid;grid-template-columns:105px minmax(0,1fr);gap:8px}.pg-details dt{color:var(--pg-muted);font-size:14px}.pg-details dd{margin:0;font-size:14px;overflow-wrap:anywhere}.pg-details #pgTotal{font-weight:700;font-size:19px}
+#pgStatus{font-size:13px;color:var(--pg-muted);line-height:1.5}.pg-activity{margin-top:24px;padding-top:24px;border-top:1px solid var(--pg-border)}#pgViewCount{font-size:12px;color:var(--pg-muted)}#pgEvents{list-style:none;padding:0;margin:16px 0}#pgEvents li{font-size:14px;padding:12px 0;border-bottom:1px solid var(--pg-border)}#pgEvents time{display:block;color:var(--pg-muted);font-size:12px;margin-top:6px}.pg-empty{color:var(--pg-muted)}.pg-test-controls{border-top:1px solid var(--pg-border);padding-top:16px}.pg-test-controls summary{min-height:44px;cursor:pointer;font-size:14px}.pg-modes{display:flex;gap:4px}#crmPlaygroundView .pg-modes button[aria-pressed=true]{background:#185fbd;color:white;border-color:#185fbd}.pg-preview-toolbar{margin-bottom:16px;flex-wrap:wrap}.pg-preview-stage{background:var(--pg-surface);border:1px solid var(--pg-border);padding:20px;min-height:550px;display:flex;justify-content:center;align-items:flex-start}.pg-device{width:390px;max-width:100%;height:760px;border:1px solid var(--pg-border);border-radius:8px;overflow:hidden;background:white}.pg-device[data-mode=desktop]{width:100%;height:760px}.pg-device iframe{width:100%;height:100%;border:0;display:block}
+#pgPreviewDialog{width:calc(100% - 32px);max-width:1250px;height:calc(100dvh - 32px);max-height:none;padding:0;border:1px solid var(--pg-border);border-radius:8px;background:var(--pg-surface);color:var(--pg-text)}#pgPreviewDialog::backdrop{background:#000b}#pgPreviewDialog>header{height:68px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--pg-border)}#pgPreviewDialog iframe{width:100%;height:calc(100% - 68px);border:0;display:block}
+@media(max-width:950px){.pg-workspace{grid-template-columns:1fr}.pg-controls{max-width:none}.pg-details{grid-template-columns:1fr 1fr}.pg-preview-stage{min-height:0}}
+@media(max-width:540px){#crmPlaygroundView{padding:14px}.pg-heading{align-items:flex-start}.pg-heading>button{font-size:12px!important}.pg-details{grid-template-columns:1fr}.pg-preview-stage{padding:0;border:0}.pg-device{height:740px}.pg-preview-toolbar{gap:12px}.pg-modes button{padding:8px!important}#pgPreviewDialog{width:100%;height:100dvh;border:0;border-radius:0}}
+
+    </style>
+    <!-- playground-admin-style:end -->
     <style>
       body.crm-booting .crm-shell,
       body.crm-booting .animus-global-sidebar { visibility: hidden; }
@@ -1094,8 +1114,7 @@
     <script src="portal-pdf-renderer-client.js?v=20261018"></script>
     <script src="customer-portal-admin.js?v=20261018"></script>
     <script src="estimator-revisions.js?v=20261019"></script>
-    <link rel="stylesheet" href="playground-admin.css?v=20261019">
-    <script src="playground-admin.bundle.js?v=20261019"></script>
+    <script src="playground-admin.bundle.js?v=20261019-layout2"></script>
     <script src="calendar-upgrade.js?v=20260808-calendar-popups"></script>
   <script src="animus-shell.js?v=20261013-desktop-controls"></script>
     <script src="animus-dashboard.js?v=20261015-completed-pending-payment"></script>
