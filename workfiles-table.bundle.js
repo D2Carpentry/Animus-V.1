@@ -189,7 +189,7 @@
     if (tab === "open") return !closed;
     if (tab === "progress") return status === "In Progress";
     if (tab === "awaiting") return status === "In Negotiation";
-    if (tab === "review") return status === "Inspection Completed";
+    if (tab === "review") return file.category === "estimate" || status === "Inspection Completed";
     if (tab === "completed") return ["Completed-Pending Payment", "Closed / Paid"].includes(status);
     if (tab === "closed") return closed;
     return true;
@@ -276,6 +276,8 @@
   <footer class="wf-pagination"><span>${rows.length ? `${(page - 1) * size + 1}\u2013${Math.min(page * size, rows.length)}` : "0"} of ${rows.length} workfiles</span><label>Rows per page<select id="wfPageSize">${[10, 25, 50, 100].map((n) => `<option${size === n ? " selected" : ""}>${n}</option>`).join("")}</select></label><button type="button" data-page="-1" aria-label="Previous page"${page === 1 ? " disabled" : ""}>${icon("chevron-left")}</button><span>Page ${page} of ${pages}</span><button type="button" data-page="1" aria-label="Next page"${page === pages ? " disabled" : ""}>${icon("chevron-right")}</button></footer>`;
     const all = root.querySelector("#wfSelectAll");
     all.indeterminate = shown.some((f) => selected.has(String(f.id))) && !shown.every((f) => selected.has(String(f.id)));
+    const apply = root.querySelector('[data-bulk="assign"]');
+    if (apply) apply.disabled = busy || !root.querySelector("#wfBulkAssignee")?.value;
     createIcons({ icons: { Plus, Search, MoreHorizontal: Ellipsis, ArrowUpDown, ChevronLeft, ChevronRight, X }, root });
     if (focusKey) root.querySelector(`[${focusKey[0]}="${CSS.escape(focusKey[1])}"]`)?.focus({ preventScroll: true });
   }

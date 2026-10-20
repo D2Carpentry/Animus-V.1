@@ -9,7 +9,7 @@ export function inTab(file,tab,me=''){
   if(tab==='open')return !closed;
   if(tab==='progress')return status==='In Progress';
   if(tab==='awaiting')return status==='In Negotiation';
-  if(tab==='review')return status==='Inspection Completed';
+  if(tab==='review')return file.category==='estimate'||status==='Inspection Completed';
   if(tab==='completed')return ['Completed-Pending Payment','Closed / Paid'].includes(status);
   if(tab==='closed')return closed;
   return true;
