@@ -18,4 +18,9 @@ html=html.replace(marker,await readFile(new URL('portal-estimate-renderer-bridge
 await writeFile(new URL('portal-estimate-renderer.html',root),'<!-- Generated from canonical estimator; private administrator asset. -->\n'+html);
 const previewPlugin={name:'local-portal-preview',setup(api){api.onResolve({filter:/portal-source\.js$/},()=>({path:'preview-source',namespace:'preview'}));api.onLoad({filter:/.*/,namespace:'preview'},()=>({contents:`const data=JSON.parse(document.getElementById('previewData').textContent);export async function loadCustomer(){return {firstName:data.firstName};}export async function loadPdf(){return (await window.AnimusPortalPdf.create(data.estimate)).arrayBuffer();}`,loader:'js'}));}};
 await build({entryPoints:[fileURLToPath(new URL('portal.js',client))],outfile:fileURLToPath(new URL('preview.bundle.js',client)),bundle:true,format:'esm',platform:'browser',target:'es2022',external:['./pdf.mjs'],plugins:[previewPlugin]});
-console.log('Built customer portal, PDF.js assets, and private canonical PDF renderer.');
+const adminPlugin={name:'administrator-preview',setup(api){api.onResolve({filter:/portal-source\.js$/},()=>({path:fileURLToPath(new URL('admin-preview-source.js',client))}));}};
+await build({entryPoints:[fileURLToPath(new URL('portal.js',client))],outfile:fileURLToPath(new URL('admin-preview.bundle.js',client)),bundle:true,format:'esm',platform:'browser',target:'es2022',external:['./pdf.mjs'],plugins:[adminPlugin]});
+const adminHtml=(await readFile(new URL('index.html',client),'utf8')).replace('/client/portal.bundle.js','/client/admin-preview.bundle.js').replace('</head>','<script src="/portal-pdf-renderer-client.js"></script></head>');
+await writeFile(new URL('portal-admin-preview.html',root),adminHtml);
+await build({entryPoints:[fileURLToPath(new URL('playground-admin.js',root))],outfile:fileURLToPath(new URL('playground-admin.bundle.js',root)),bundle:true,format:'iife',platform:'browser',target:'es2022'});
+console.log('Built customer portal and private administrator preview.');

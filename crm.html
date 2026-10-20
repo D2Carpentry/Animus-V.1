@@ -483,130 +483,21 @@
         </section>
 
         <section class="crm-revenue-view animus-playground-view" id="crmPlaygroundView" hidden>
-          <section class="crm-command-panel crm-revenue-hero animus-playground-hero">
-            <div class="crm-command-copy">
-              <p class="eyebrow">Draft Lab</p>
-              <h2>Playground Zone</h2>
-              <p>Prototype customer-facing portal features here without touching live CRM files, estimates, revenue, or cloud save data.</p>
-            </div>
-            <div class="crm-calendar-actions">
-              <button type="button" id="animusPortalCopyLink">Copy Demo Link</button>
-              <button type="button" class="primary-action" id="animusPortalSimulateOpen">Simulate Customer Open</button>
-            </div>
-          </section>
-
-          <section class="animus-playground-grid">
-            <article class="panel crm-detail-card animus-portal-card animus-portal-builder">
-              <div class="panel-header">
-                <div>
-                  <p class="eyebrow">Customer Portal Concept</p>
-                  <h2>Estimate Share Link</h2>
-                </div>
-                <span class="animus-portal-pill">Draft only</span>
-              </div>
-              <div class="animus-portal-test-actions">
-                <button type="button" class="primary-action" id="animusPortalDuplicateCurrent">Use Current Workfile As Test Customer</button>
-                <button type="button" id="animusPortalClearTest">Clear Test Customer</button>
-              </div>
-              <div class="animus-portal-link-box">
-                <span id="animusPortalTestLink">portal.d2carpentry.com/e/demo-26-a1024</span>
-                <button type="button" id="animusPortalCopyLinkInline">Copy</button>
-              </div>
-              <div class="animus-portal-fields">
-                <label>
-                  Customer
-                  <input id="animusPortalCustomerName" value="Demo Customer" readonly>
-                </label>
-                <label>
-                  File / Estimate
-                  <input id="animusPortalCustomerFile" value="26-A1024" readonly>
-                </label>
-                <label>
-                  Status
-                  <select id="animusPortalCustomerStatus">
-                    <option>Sent - Awaiting Review</option>
-                    <option>Viewed</option>
-                    <option>Approved</option>
-                  </select>
-                </label>
-              </div>
-              <div class="animus-portal-send-box">
-                <label>
-                  Send test to phone
-                  <input id="animusPortalPhoneNumber" type="tel" inputmode="tel" placeholder="(xxx) xxx-xxxx">
-                </label>
-                <div class="animus-portal-test-actions">
-                  <button type="button" class="primary-action" id="animusPortalOpenSmsDraft">Open Text Draft</button>
-                  <button type="button" id="animusPortalCopySmsDraft">Copy Text</button>
-                </div>
-                <textarea id="animusPortalSmsPreview" readonly rows="4" aria-label="Portal test text preview"></textarea>
-              </div>
-              <div class="animus-portal-note">
-                This page is a design/testing sandbox. Later, this button can create a secure token, publish a portal link, and log opens back into ANIMUS.
-              </div>
-            </article>
-
-            <article class="panel crm-detail-card animus-portal-card">
-              <div class="panel-header">
-                <div>
-                  <p class="eyebrow">Tracking Preview</p>
-                  <h2>Customer Opens</h2>
-                </div>
-              </div>
-              <div class="animus-portal-stats">
-                <div><span>First Opened</span><strong id="animusPortalFirstOpen">Not yet</strong></div>
-                <div><span>Total Opens</span><strong id="animusPortalOpenCount">0</strong></div>
-                <div><span>Last Opened</span><strong id="animusPortalLastOpen">Not yet</strong></div>
-              </div>
-              <div class="animus-portal-feed" id="animusPortalFeed">
-                <p>No portal activity yet. Use “Simulate Customer Open” to test the flow.</p>
-              </div>
-            </article>
-
-            <article class="panel crm-detail-card animus-portal-card animus-customer-preview">
-              <div class="panel-header">
-                <div>
-                  <p class="eyebrow">Customer View</p>
-                  <h2>Estimate Portal</h2>
-                </div>
-                <span class="animus-portal-pill approved">Secure link preview</span>
-              </div>
-              <div class="animus-customer-portal-shell">
-                <header>
-                  <div>
-                    <strong>D2 Carpentry &amp; Design</strong>
-                    <span id="animusPortalPreviewSubtitle">Custom Cabinet Refacing Estimate</span>
-                  </div>
-                  <b id="animusPortalPreviewTotal">$12,480.00</b>
-                </header>
-                <section>
-                  <h3 id="animusPortalPreviewTitle">Review Your Estimate</h3>
-                  <p id="animusPortalPreviewCopy">Your estimate, warranty documents, care guide, photos, and approval options would live here.</p>
-                  <div class="animus-portal-actions">
-                    <button type="button" class="primary-action">Approve Work</button>
-                    <button type="button">Ask a Question</button>
-                    <button type="button">Download PDF</button>
-                  </div>
-                </section>
-              </div>
-            </article>
-
-            <article class="panel crm-detail-card animus-portal-card">
-              <div class="panel-header">
-                <div>
-                  <p class="eyebrow">Future Build</p>
-                  <h2>Safe Connection Plan</h2>
-                </div>
-              </div>
-              <ul class="animus-portal-roadmap">
-                <li>Create secure portal links from estimates.</li>
-                <li>Track first open, last open, and total views.</li>
-                <li>Notify D2 by phone/email when an estimate is opened.</li>
-                <li>Let the customer approve, ask questions, and see updates.</li>
-                <li>Keep customer-facing portal data separate from internal CRM data until approved.</li>
-              </ul>
-            </article>
-          </section>
+          <header class="pg-heading"><div><h2>Playground Zone</h2><span class="pg-badge">Sandbox · Not sent</span></div><button type="button" id="pgReset"><i data-lucide="rotate-ccw" aria-hidden="true"></i>Reset Test</button></header>
+          <div class="pg-workspace">
+            <section class="pg-controls" aria-labelledby="pgEstimateHeading">
+              <h3 id="pgEstimateHeading">Test Estimate</h3>
+              <label for="pgWorkfile">Workfile</label><select id="pgWorkfile"><option value="sample">Sample Customer</option></select>
+              <button type="button" id="pgUseOpen">Use Open Workfile</button>
+              <dl class="pg-details"><div><dt>Customer</dt><dd id="pgCustomer">Sample Customer</dd></div><div><dt>File</dt><dd id="pgFile">SAMPLE</dd></div><div><dt>Estimate Total</dt><dd id="pgTotal">$100.00</dd></div><div><dt>Delivery</dt><dd>Not sent</dd></div></dl>
+              <button type="button" id="pgExpand" class="pg-primary"><i data-lucide="maximize-2" aria-hidden="true"></i>Open Customer Preview</button>
+              <p id="pgStatus" role="status"></p>
+              <section class="pg-activity" aria-labelledby="pgActivityHeading"><header><h3 id="pgActivityHeading">Activity</h3><span id="pgViewCount">0 test views</span></header><ol id="pgEvents"><li class="pg-empty">No test activity yet.</li></ol></section>
+              <details class="pg-test-controls"><summary>Test Controls</summary><button type="button" id="pgSimulate"><i data-lucide="eye" aria-hidden="true"></i>Simulate a View</button></details>
+            </section>
+            <section class="pg-preview" aria-labelledby="pgPreviewHeading"><header class="pg-preview-toolbar"><h3 id="pgPreviewHeading">Customer Preview</h3><div class="pg-modes" role="group" aria-label="Preview size"><button type="button" data-pg-mode="phone" aria-pressed="true"><i data-lucide="smartphone" aria-hidden="true"></i>Phone</button><button type="button" data-pg-mode="desktop" aria-pressed="false"><i data-lucide="monitor" aria-hidden="true"></i>Desktop</button></div></header><div class="pg-preview-stage"><div id="pgDevice" class="pg-device" data-mode="phone"><iframe id="pgPreviewFrame" title="Customer portal preview" referrerpolicy="no-referrer"></iframe></div><p id="pgPreviewEmpty" hidden>No saved estimate on this workfile.</p></div></section>
+          </div>
+          <dialog id="pgPreviewDialog"><header><h3>Customer Preview</h3><button type="button" id="pgClosePreview" aria-label="Close preview"><i data-lucide="x" aria-hidden="true"></i></button></header><iframe id="pgExpandedFrame" title="Expanded customer portal preview" referrerpolicy="no-referrer"></iframe></dialog>
         </section>
 
         <section class="crm-revenue-view" id="crmCalendarView" hidden>
@@ -1203,6 +1094,8 @@
     <script src="portal-pdf-renderer-client.js?v=20261018"></script>
     <script src="customer-portal-admin.js?v=20261018"></script>
     <script src="estimator-revisions.js?v=20261019"></script>
+    <link rel="stylesheet" href="playground-admin.css?v=20261019">
+    <script src="playground-admin.bundle.js?v=20261019"></script>
     <script src="calendar-upgrade.js?v=20260808-calendar-popups"></script>
   <script src="animus-shell.js?v=20261013-desktop-controls"></script>
     <script src="animus-dashboard.js?v=20261015-completed-pending-payment"></script>

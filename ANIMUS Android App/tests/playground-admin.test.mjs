@@ -1,0 +1,10 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {sample,project} from '../../playground-model.mjs';
+import {publicAsset} from '../security/pages-html.mjs';
+test('Playground starts with a separate synthetic customer',()=>{assert.equal(sample().clientName,'Sample Customer');assert.equal(sample().total,100);});
+test('customer preview is cloned and excludes internal financial and workfile data',()=>{const file={id:'test',fileNumber:'A-0003',clientName:'Test Customer',notes:['internal'],expenseLines:[1],editableEstimate:{clientName:'Test Customer',lineItems:[{description:'Scope',price:100}],materials:[{cost:90}],totals:{total:100}}};const copy=project(file);copy.estimate.lineItems[0].price=250;assert.equal(file.editableEstimate.lineItems[0].price,100);assert.equal(copy.estimate.materials,undefined);assert.equal(copy.notes,undefined);assert.equal(copy.fileNumber,'A-0003');});
+test('unsupported attachments never silently substitute a generated estimate',()=>{assert.equal(project({estimateUrl:'https://example.com/private.pdf',editableEstimate:{}}).unavailable,true);assert.equal(project({estimateUrl:'/api/mobile-workspace?document=550e8400-e29b-41d4-a716-446655440000'}).documentPath,'/api/mobile-workspace?document=550e8400-e29b-41d4-a716-446655440000');});
+test('admin preview assets remain outside public allowlist',()=>{for(const path of ['/portal-admin-preview.html','/playground-admin.bundle.js','/client/admin-preview.bundle.js'])assert.equal(publicAsset(path),false);});
+test('Playground has no persistence or send operations',async()=>{const source=await readFile(new URL('../../playground-admin.js',import.meta.url),'utf8');for(const forbidden of ['localStorage','saveCrmFiles','queueCloud','fetch(','sms:','mailto:'])assert.equal(source.includes(forbidden),false);});

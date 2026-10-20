@@ -3598,6 +3598,7 @@ function renderCrm() {
   renderRevenue();
   renderPayroll();
   if (!$("crmExpensesView")?.hidden) renderFileExpenses();
+  if (!$("crmPlaygroundView")?.hidden) window.AnimusPlayground?.render();
   if (document.body.dataset.animusView === "dashboard" && typeof window.animusDashboardRender === "function") {
     window.animusDashboardRender();
   }
@@ -10167,6 +10168,7 @@ function clearPlaygroundTestCustomer() {
 }
 
 function renderPlaygroundPortal() {
+  if(window.AnimusPlayground){window.AnimusPlayground.render();return;}
   const customer = animusPortalTestCustomer || {
     clientName: "Demo Customer",
     fileNumber: "26-A1024",
