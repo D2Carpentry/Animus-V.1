@@ -47,7 +47,7 @@
       .slice(0, 5);
   }
   function futureEvents() { return (typeof allCrmCalendarEvents === "function" ? allCrmCalendarEvents() : []).filter((event) => String(event.date || "") >= dayKey()).slice(0, 5); }
-  function openFile(fileId) { const file = crmFiles.find((item) => item.id === fileId); if (!file) return; activeFileId = file.id; activateCrmFilter(filterForCrmFile(file)); switchCrmView("files"); renderCrm(); }
+  function openFile(fileId) { if(window.AnimusWorkfiles){window.AnimusWorkfiles.open(fileId);return;}const file = crmFiles.find((item) => item.id === fileId); if (!file) return; activeFileId = file.id; activateCrmFilter(filterForCrmFile(file)); switchCrmView("files"); renderCrm(); }
   function openView(view) {
     const route = String(view || "");
     if (route.startsWith("files:")) {

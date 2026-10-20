@@ -660,6 +660,7 @@
   });
 
   const originalRenderCrm = window.renderCrm;
+  window.openAnimusWorkfileSection = function(tab) { state.tab=['overview','financials','estimate','expenses','documents','details'].includes(tab)?tab:'overview';state.editor='';renderWorkFile(); };
   if (typeof originalRenderCrm === "function") {
     window.renderCrm = function animusWorkFileRenderCrm() {
       const result = originalRenderCrm.apply(this, arguments);
