@@ -10,6 +10,14 @@
 .receipt-total-review button{justify-self:start;min-height:44px;padding:0 12px;border:1px solid var(--line);border-radius:8px;color:#174b9b;background:var(--paper);font-weight:800}
 .receipt-total-error{margin:0;color:#dc2626;font-size:14px}
 
+:root{--expense-gold:#946b22}
+.app-shell .expense-total-card strong,
+.app-shell .expense-total strong,
+.app-shell .receipt-row .money,
+.app-shell .receipt-total-heading strong,
+.app-shell .expense-value,
+.bottom-sheet .expense-value{color:var(--expense-gold)}
+
 /* Mobile-only polish matching the desktop work-file status colors. */
 .badge.status-new-lead{background:#16a34a;color:#fff}
 .badge.status-contact-established{background:#fee2e2;color:#c2410c}

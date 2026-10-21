@@ -51,10 +51,13 @@ function editMobilePrice(row=null){
 const renderRevenueCards=renderRevenue;
 renderRevenue=function(){
   renderRevenueCards();
+  $('revenueStats').querySelectorAll('.stat').forEach(card=>{
+    if(card.querySelector('span')?.textContent==='Expenses')card.classList.add('expense-total-card');
+  });
   $('revenueList').innerHTML=state.revenue.map(row=>`<button class="mobile-revenue-row" type="button" data-revenue-id="${escapeHtml(row.id)}"><strong>${escapeHtml(row.clientJob||row.fileNumber||'Revenue')}</strong><small>${escapeHtml(row.date||'No date')}</small><dl><div><dt>Gross</dt><dd>${money.format(parseMoney(row.gross))}</dd></div><div><dt>Expenses</dt><dd class="expense-value">${money.format(parseMoney(row.expenses))}</dd></div><div><dt>Labor</dt><dd class="labor-value">${money.format(parseMoney(row.labor))}</dd></div><div><dt>Net</dt><dd>${money.format(parseMoney(row.gross)-parseMoney(row.expenses)-parseMoney(row.labor))}</dd></div></dl></button>`).join('')||'<p class="subcopy">No revenue records.</p>';
   $('revenueList').querySelectorAll('[data-revenue-id]').forEach(button=>button.onclick=()=>{
     const row=structuredClone(state.revenue.find(r=>r.id===button.dataset.revenueId));
-    workspaceForm(row.clientJob||'Revenue',formField('date','Date',row.date||dateToday(),'date')+formField('gross','Gross revenue',row.gross,'number')+formField('labor','Labor',row.labor,'number')+`<p>Receipt expenses: <strong>${money.format(parseMoney(row.expenses))}</strong></p><button type="button" id="revenueExpenses">Expenses</button>`,async values=>{
+    workspaceForm(row.clientJob||'Revenue',formField('date','Date',row.date||dateToday(),'date')+formField('gross','Gross revenue',row.gross,'number')+formField('labor','Labor',row.labor,'number')+`<p>Receipt expenses: <strong class="expense-value">${money.format(parseMoney(row.expenses))}</strong></p><button type="button" id="revenueExpenses">Expenses</button>`,async values=>{
       const changed=Object.fromEntries(Object.entries(values).filter(([key,value])=>key==='date'?value!==row[key]:Number(value)!==Number(row[key])));
       if(Object.keys(changed).length)await workspaceSave({action:'editRevenue',id:row.id,values:changed,expected:expectedFields(row,Object.keys(changed))});
     });

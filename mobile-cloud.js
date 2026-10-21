@@ -180,6 +180,7 @@ function renderDetail() {
   bindMobileSummaryCard(summaryCards[1], openMobileFinancials, "Edit paid amount");
   bindMobileSummaryCard(summaryCards[2], openMobileFinancials, "Edit work-file financials");
   bindMobileSummaryCard(summaryCards[3], openMobileFileExpenses, "Open file expenses and receipt capture");
+  summaryCards[3].classList.add("expense-total-card");
   $("addMobileNote").addEventListener("click", openMobileNoteSheet);
   $("addPhoneContact").addEventListener("click", addToPhoneContacts);
   document.querySelectorAll("[data-photo]").forEach((button) => button.addEventListener("click", () => openMobilePhotoPreview(button.dataset.photo)));
