@@ -69,7 +69,7 @@
     return [...byId.values()];
   }
 
-  async function loadExpenses() {
+  async function loadExpenses({ readOnlyReport = false } = {}) {
     const requestId = ++state.requestId;
     state.loading = true;
     render();
@@ -83,13 +83,40 @@
       state.companyEntries = companyRows.sort((a,b) => String(b.updatedAt || b.createdAt || "").localeCompare(String(a.updatedAt || a.createdAt || "")));
       state.loaded = true;
       state.loadedFileKeys=loadedFileKeys;
-      syncLoadedExpensesToRevenue();
+      if (!readOnlyReport) syncLoadedExpensesToRevenue();
     } finally {
-      if (requestId === state.requestId) { state.loading = false; render(); }
+      if (requestId === state.requestId) {
+        state.loading = false; render();
+        if (!document.getElementById('crmBusinessView')?.hidden) window.renderBusinessPerformance?.();
+      }
     }
   }
 
   function expenseEntries() { return state.companyMode ? state.companyEntries : state.entries; }
+  // Read-only projection uses the same receipt aliases and existing-row lookup
+  // as Revenue, without creating rows, mirroring ledgers, or saving anything.
+  window.animusExpenseReportSnapshot = () => {
+    const adjustments = new Map();
+    if (state.loaded && typeof revenueRowForDashboardFile === 'function') {
+      for (const file of files()) {
+        if (!state.loadedFileKeys?.has(fileKey(file))) continue;
+        const entries = state.entries.filter(entry => entryBelongsToFile(entry,file));
+        if (!entries.length && !(file.expenseLines||[]).length && !(file.animusExpenseLedgerV4||[]).length) continue;
+        const row = revenueRowForDashboardFile(file);
+        if (row) adjustments.set(row.id,entries.reduce((sum,entry)=>sum+amount(entry.amount),0));
+      }
+    }
+    return {
+      loaded:state.loaded, loading:state.loading,
+      unavailableFiles:state.loaded ? files().filter(file=>!state.loadedFileKeys?.has(fileKey(file))).length : 0,
+      rows:(typeof crmRevenueRows !== 'undefined' ? crmRevenueRows : []).map(row=>adjustments.has(row.id)?{...row,expenses:adjustments.get(row.id)}:row),
+    };
+  };
+  window.animusRefreshBusinessExpenseReport = () => {
+    if (typeof crmCloudAuthoritativeLoaded !== 'undefined' && !crmCloudAuthoritativeLoaded) return;
+    if (!state.loading) loadExpenses({readOnlyReport:true});
+    window.renderBusinessPerformance?.();
+  };
   function selectedEntry() { return expenseEntries().find((entry) => entry.id === state.selectedId) || null; }
   function visibleEntries() {
     const query = String(state.filters.query || "").trim().toLowerCase();
@@ -574,6 +601,7 @@
       }
       const result = legacySwitchCrmView(view);
       if (view === "revenue" && !state.loading) loadExpenses();
+      if (view === "business") window.animusRefreshBusinessExpenseReport();
       return result;
     };
     window.switchCrmView = switchCrmView;

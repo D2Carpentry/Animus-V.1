@@ -7,14 +7,16 @@
   const percent = value => value == null ? 'Not available' : `${value.toFixed(1)}%`;
   const icon = name => `<i data-business-icon="${name}" aria-hidden="true"></i>`;
   const files = () => typeof crmFiles !== 'undefined' && Array.isArray(crmFiles) ? crmFiles : [];
-  const rows = () => typeof crmRevenueRows !== 'undefined' && Array.isArray(crmRevenueRows) ? crmRevenueRows : [];
+  let expenseReport = null;
+  const rows = () => expenseReport?.rows || (typeof crmRevenueRows !== 'undefined' && Array.isArray(crmRevenueRows) ? crmRevenueRows : []);
   const profit = row => typeof revenueProfit === 'function' ? revenueProfit(row) : M.number(row.gross)-M.number(row.expenses)-M.number(row.labor);
   function linkedFile(row) {
     // An explicit relationship must never silently resolve to a similarly named customer.
     const id = row.dashboardFileId || row.fileId || row.attachedEstimate?.dashboardFileId;
-    if (id) return files().find(file => String(file.id) === String(id)) || null;
+    if (id) { const file=files().find(file => String(file.id) === String(id)); if(file)return file; }
     const number = row.fileNumber || row.projectNumber || row.attachedEstimate?.fileNumber;
     if (number) return files().find(file => String(file.fileNumber) === String(number)) || null;
+    if (id) return null;
     return typeof findFileForRevenue === 'function' ? findFileForRevenue(row) : null;
   }
   function aggregate(range) {
@@ -68,19 +70,23 @@
   }
   function render() {
     const root=document.getElementById('animusBusinessPerformance');if(!root||!M)return;
+    expenseReport=window.animusExpenseReportSnapshot?.() || null;
     const range=M.range(state.preset,new Date(),state.from,state.to);
     const data=aggregate(range),previous=range.previous?aggregate(range.previous):null;
     const best=[...data.types].filter(t=>t.revenue>0&&t.margin!=null).sort((a,b)=>b.margin-a.margin)[0];
     const expense=[...data.types].filter(t=>t.expenses>0).sort((a,b)=>b.expenses-a.expenses)[0];
     const labor=[...data.types].filter(t=>t.labor>0).sort((a,b)=>b.labor-a.labor)[0],month=data.months[0];
-    const loading=typeof crmCloudAuthoritativeLoaded!=='undefined'&&!crmCloudAuthoritativeLoaded;
+    const cloudLoading=typeof crmCloudAuthoritativeLoaded!=='undefined'&&!crmCloudAuthoritativeLoaded;
+    const loading=cloudLoading||!!expenseReport&&(!expenseReport.loaded||expenseReport.loading);
+    if(!cloudLoading&&expenseReport&&!expenseReport.loaded&&!expenseReport.loading)window.setTimeout(()=>window.animusRefreshBusinessExpenseReport?.(),0);
     const loadError=document.getElementById('crmCloudLoadNotice');
     const kpis=[['profit','Net Revenue','dollar-sign',data.total.margin==null?'Revenue required for margin':`${percent(data.total.margin)} of gross revenue`],['gross','Gross Revenue','chart-no-axes-combined','Recorded revenue, not payments'],['expenses','Expenses','package','Recorded job expenses'],['profit','Profit','chart-no-axes-combined','Same net measure as Net Revenue'],['labor','Labor','layers','Recorded workfile labor, counted once'],['count','Revenue Rows','layers','Tracked financial records']];
     root.innerHTML=`<section class="business-dashboard"><header class="bp-header"><div><h1>Business Performance</h1><p>Pipeline, revenue, profit, expenses, and work-type performance from existing ANIMUS records.</p></div><div class="bp-tools"><select id="bpRange" aria-label="Reporting period">${[['all','All dates'],['month','Current month'],['previousMonth','Previous month'],['quarter','Current quarter'],['ytd','Year to date'],['previousYear','Previous year'],['custom','Custom range']].map(([key,label])=>`<option value="${key}" ${state.preset===key?'selected':''}>${label}</option>`).join('')}</select><button id="bpFilters" aria-expanded="${state.filterOpen}">${icon('sliders-horizontal')}Filters</button><button id="bpExport">${icon('download')}Export</button><button class="bp-primary" id="bpRevenue">Open Revenue</button></div></header>
       ${state.preset==='custom'?`<div class="bp-custom"><label>From<input id="bpFrom" type="date" value="${safe(state.from)}"></label><label>Through<input id="bpTo" type="date" value="${safe(state.to)}"></label></div>`:''}
       ${state.filterOpen?`<div class="bp-filters"><label>Project type<select data-bp-filter="type">${options([...files(),...rows()].map(M.fileType),state.filters.type,'All project types')}</select></label><label>Current status<select data-bp-filter="status">${options(files().map(f=>f.fileStatus),state.filters.status,'All statuses')}</select></label><label>Lead source<select data-bp-filter="source">${options(files().map(f=>f.leadSource),state.filters.source,'All sources')}</select></label></div>`:''}
       ${Object.values(state.filters).some(Boolean)||state.preset!=='all'?`<p class="bp-scope">${range.error?safe(range.error):range.from?`${safe(range.from)} through ${safe(range.to)}`:'All dates'}${Object.values(state.filters).filter(Boolean).map(v=>` · ${safe(v)}`).join('')} <button id="bpClear">Clear filters</button></p>`:''}
-      ${loading?`<div class="bp-empty" role="status">${loadError&&!loadError.hidden?safe(loadError.textContent):'Loading verified cloud records…'}</div>`:range.error?'':`
+      ${loading?`<div class="bp-empty" role="status">${loadError&&!loadError.hidden?safe(loadError.textContent):cloudLoading?'Loading verified cloud records…':'Refreshing recorded receipt costs…'}</div>`:range.error?'':`
+      ${expenseReport?.unavailableFiles?`<p class="bp-scope" role="alert">Receipt refresh unavailable for ${expenseReport.unavailableFiles} files. Their saved Revenue costs are retained. <button id="bpRetryReceipts">Retry receipt refresh</button></p>`:''}
       <section class="bp-kpis">${kpis.map(([key,label,glyph,note])=>`<article><span>${icon(glyph)}${label}</span><strong class="${data.total[key]<0?'bp-negative':key==='expenses'?'bp-expense-text':key==='labor'?'bp-labor-text':key==='profit'?'bp-positive':''}">${key==='count'?data.total.count:money(data.total[key])}</strong><small>${note}</small>${comparison(key,data.total,previous)}</article>`).join('')}</section>
       <div class="bp-analytics"><section class="bp-panel"><header><h2>Revenue vs Expenses</h2><select id="bpPeriod" aria-label="Chart grouping">${['monthly','quarterly','yearly'].map(p=>`<option value="${p}" ${p===state.period?'selected':''}>${p[0].toUpperCase()+p.slice(1)}</option>`).join('')}</select></header><div class="bp-legend">${[['revenue','Gross Revenue'],['expenses','Expenses'],['profit','Net Profit']].map(([key,label])=>`<button data-bp-series="${key}" aria-pressed="${state.series[key]}"><i class="bp-dot bp-${key}"></i>${label}</button>`).join('')}</div>${chart(data)}<p class="bp-footnote">Revenue dates. Profit = gross − job expenses − labor. Company overhead is not added to job costs.</p></section>
       <section class="bp-panel"><header><h2>Sales Pipeline</h2><small>${data.files.length} files</small></header><div class="bp-funnel" aria-hidden="true">${data.stages.map((s,i)=>`<i style="width:${100-i*11}%;--stage:${['#5b8def','#b694ef','#d9af5e','#66b8c5','#7abb94','#8594aa'][i]}"></i>`).join('')}</div><div class="bp-stages">${data.stages.map((s,i)=>`<button data-bp-stage="${i}" ${s.files.length?'':'disabled'}><span>${safe(s.name)}<small>${s.files.length} files</small></span><b>${s.valued?money(s.value):'No estimate value'}</b></button>`).join('')}</div><p class="bp-footnote">Current stages of files created in the reporting period, not historical stage snapshots.${range.from&&data.undatedFiles?` ${data.undatedFiles} files without a creation date excluded.`:''}</p><p class="bp-muted">Won this period: ${data.wins.length?`<button id="bpWins">${data.wins.length} recorded wins</button>`:'Not available — no recorded won dates in period.'}${data.unknownWinDates?` ${data.unknownWinDates} landed files have no recorded won date.`:''}</p></section>
@@ -92,6 +98,7 @@
     bind('#bpPeriod','change',el=>{state.period=el.value;render();});
     bind('#bpFrom,#bpTo','change',el=>{state[el.id==='bpFrom'?'from':'to']=el.value;render();});
     bind('#bpFilters','click',()=>{state.filterOpen=!state.filterOpen;render();});
+    bind('#bpRetryReceipts','click',()=>window.animusRefreshBusinessExpenseReport?.());
     bind('[data-bp-filter]','change',el=>{state.filters[el.dataset.bpFilter]=el.value;state.tableType='';render();});
     bind('#bpClear','click',()=>{state.filters={};state.preset='all';state.tableType='';render();});
     bind('[data-bp-series]','click',el=>{const key=el.dataset.bpSeries;if(state.series[key]&&Object.values(state.series).filter(Boolean).length===1)return;state.series[key]=!state.series[key];render();});

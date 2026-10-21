@@ -6,6 +6,7 @@ const modelSource=await readFile(new URL('../../business-performance-model.js',i
 const ui=await readFile(new URL('../../animus-business-performance.js',import.meta.url),'utf8');
 const crm=await readFile(new URL('../../crm.js',import.meta.url),'utf8');
 const revenue=await readFile(new URL('../../animus-revenue.js',import.meta.url),'utf8');
+const expenseUi=await readFile(new URL('../../expenses-v6.js',import.meta.url),'utf8');
 const context={};vm.runInNewContext(modelSource,context);const M=context.AnimusBusinessModel;
 const files=[
   {id:'1',fileNumber:'A-0001',clientName:'Same Name',projectType:'Cabinetry',fileStatus:'Pending Start',createdAt:'2026-10-02',estimateTotal:1000,leadSource:'Angi'},
@@ -35,4 +36,19 @@ test('CSV retains all ten columns and actual values without rounding away cents'
 function renderContext(){const root={innerHTML:'',querySelectorAll:()=>[]};const c={...context,Intl,Date,crmFiles:files,crmRevenueRows:rows,document:{getElementById:id=>id==='animusBusinessPerformance'?root:null,addEventListener(){}},window:{},setTimeout,URL,Blob};vm.runInNewContext(ui,c);return {c,root};}
 test('renderer loads all six KPIs, keeps same-name explicit file relationships separate and retains all fields',()=>{const {c,root}=renderContext();c.window.renderBusinessPerformance();assert.ok(root.innerHTML.includes('Business Performance'));for(const name of ['Net Revenue','Gross Revenue','Expenses','Profit','Labor','Revenue Rows','Pipeline','Landed','Margin'])assert.ok(root.innerHTML.includes(name));assert.ok(root.innerHTML.includes('$1,670.00'));assert.ok(root.innerHTML.includes('unlinked financial rows retained'));assert.ok(root.innerHTML.includes('Won this period'));});
 test('loading and failure states do not present partial or stale totals as current financials',()=>{const {c,root}=renderContext();c.crmCloudAuthoritativeLoaded=false;c.window.renderBusinessPerformance();assert.ok(root.innerHTML.includes('Loading verified cloud records'));assert.equal(root.innerHTML.includes('bp-kpis'),false);c.document.getElementById=id=>id==='animusBusinessPerformance'?root:id==='crmCloudLoadNotice'?{hidden:false,textContent:'Cloud failed, retry'}:null;c.window.renderBusinessPerformance();assert.ok(root.innerHTML.includes('Cloud failed, retry'));});
-test('read-only report bridges never write records or invoke payroll-creation helpers',()=>{assert.equal(/fetch\(|localStorage\.setItem|crmFiles\s*=|crmRevenueRows\s*=|openRevenuePayroll\(/.test(ui),false);assert.ok(crm.includes('reportIds.has(String(file.id))'));assert.ok(revenue.includes('state.reportIds.has(String(row.id))'));assert.ok(revenue.includes('window.animusOpenRevenueReportScope'));assert.ok(ui.includes('Clear report filter'));assert.ok(ui.includes("if (id) return files().find"));});
+test('read-only report bridges never write records or invoke payroll-creation helpers',()=>{assert.equal(/fetch\(|localStorage\.setItem|crmFiles\s*=|crmRevenueRows\s*=|openRevenuePayroll\(/.test(ui),false);assert.ok(crm.includes('reportIds.has(String(file.id))'));assert.ok(revenue.includes('state.reportIds.has(String(row.id))'));assert.ok(revenue.includes('window.animusOpenRevenueReportScope'));assert.ok(ui.includes('Clear report filter'));assert.ok(ui.includes('if (id) return null;'));});
+test('receipt report projection matches canonical existing-row associations without modifying files or financials',()=>{
+  const currentFiles=[{id:'a',expenseLines:[{amount:999}]},{id:'b',expenseLines:[{amount:22}]},{id:'c'}];
+  const currentRows=[{id:'r1',gross:100,expenses:999},{id:'r2',gross:300,expenses:22}];
+  const c={window:{},state:{loaded:true,loading:false,loadedFileKeys:new Set(['a','b']),entries:[{fileId:'a',amount:12},{fileId:'a',amount:3}]},files:()=>currentFiles,fileKey:f=>f.id,entryBelongsToFile:(entry,file)=>entry.fileId===file.id,revenueRowForDashboardFile:file=>currentRows.find(row=>row.id===`r${file.id==='a'?1:2}`),amount:Number,crmRevenueRows:currentRows};
+  vm.runInNewContext(expenseUi.slice(expenseUi.indexOf('  window.animusExpenseReportSnapshot ='),expenseUi.indexOf('  window.animusRefreshBusinessExpenseReport =')),c);
+  const before=JSON.stringify({currentFiles,currentRows}),snapshot=c.window.animusExpenseReportSnapshot();
+  assert.equal(snapshot.rows[0].expenses,15);assert.equal(snapshot.rows[1].expenses,0);assert.equal(snapshot.unavailableFiles,1);assert.equal(snapshot.rows.length,2);assert.equal(JSON.stringify({currentFiles,currentRows}),before);
+});
+test('report-only receipt loading never reconciles or creates financial rows, normal expense loading still does',async()=>{
+  let reconciles=0;
+  const c={state:{requestId:0},render(){},files:()=>[{id:'a'}],fileKey:f=>f.id,COMPANY_EXPENSE_FILE:{id:'company'},apiGet:async()=>[],syncLoadedExpensesToRevenue(){reconciles++;},document:{getElementById:()=>({hidden:true})},window:{}};
+  vm.runInNewContext(expenseUi.slice(expenseUi.indexOf('  async function loadExpenses('),expenseUi.indexOf('  function expenseEntries(')),c);
+  await c.loadExpenses({readOnlyReport:true});assert.equal(reconciles,0);assert.equal(c.state.loaded,true);assert.equal(c.state.loading,false);
+  await c.loadExpenses();assert.equal(reconciles,1);
+});
