@@ -92,6 +92,7 @@
       if (requestId === state.requestId) {
         state.loading = false; render();
         if (!document.getElementById('crmBusinessView')?.hidden) window.renderBusinessPerformance?.();
+        if (document.body?.dataset.animusView === 'dashboard') window.animusDashboardRender?.();
       }
     }
   }
