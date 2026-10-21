@@ -22,6 +22,9 @@
   function filterMarkup(all){return `<div class="pd-filter-panel"><label>Category<select id="pdFilterCategory">${options(all,'category',state.category,'All categories')}</select></label><label>Vendor<select id="pdVendor">${options(all,'vendor',state.vendor,'All vendors')}</select></label><label>Unit<select id="pdUnit">${options(all,'unit',state.unit,'All units')}</select></label><label>Minimum price<input id="pdMin" inputmode="decimal" type="number" min="0" step="0.01" value="${esc(state.min)}"></label><label>Maximum price<input id="pdMax" inputmode="decimal" type="number" min="0" step="0.01" value="${esc(state.max)}"></label><label>Updated / checked<select id="pdRecent"><option value="">Any time</option>${[7,30,90].map(days=>`<option value="${days}" ${String(days)===String(state.recent)?'selected':''}>Last ${days} days</option>`).join('')}</select></label><label>Price direction<select disabled aria-label="Price direction"><option>History not recorded</option></select></label><button id="pdClearFilters">Clear filters</button></div>`;}
   function render(){
     const view=document.getElementById('crmPriceView');if(!view||!model())return;
+    const scrollPositions=[];
+    for(let parent=view;parent;parent=parent.parentElement)if(parent.scrollTop||parent.scrollLeft)scrollPositions.push([parent,parent.scrollTop,parent.scrollLeft]);
+    const pagePosition={top:window.scrollY,left:window.scrollX,behavior:'instant'};
     const focused=document.activeElement,focusId=focused?.id,cursor=focused?.selectionStart;
     const all=records(),rows=filtered(),data=model().summarize(rows),pages=Math.max(1,Math.ceil(rows.length/state.size));state.page=Math.min(state.page,pages);
     const start=(state.page-1)*state.size,page=rows.slice(start,start+state.size),selected=rows.filter(row=>state.selected.has(row.id));
@@ -31,6 +34,8 @@
     view.querySelectorAll('col').forEach((col,index)=>col.classList.toggle('hidden',state.columns[['select','name','category','vendor','unit','price','updated','actions'][index]]===false));
     bind();saveStatus();window.renderAnimusPriceIcons?.();
     if(focusId&&focused?.tagName==='INPUT'){const input=document.getElementById(focusId);input?.focus({preventScroll:true});if(input&&typeof cursor==='number'&&['text','search'].includes(input.type))input.setSelectionRange(cursor,cursor);}
+    for(const [parent,top,left] of scrollPositions){parent.scrollTop=top;parent.scrollLeft=left;}
+    window.scrollTo(pagePosition);
   }
   function saveStatus(){const node=document.getElementById('pdSaveStatus');if(!node)return;node.className='pd-save-status'+(state.error?' error':'');node.innerHTML=state.saving?'Saving through Save All…':state.error?`${esc(state.error)} <button id="pdSaveRetry">Retry Save All</button>`:state.dirty?'Price changes are ready. <button id="pdSaveRetry">Save All to cloud</button>':'Current price records. Use Save All after making changes.';node.querySelector('button')?.addEventListener('click',sync);}
   function changed(){state.dirty=true;state.error='';saveStatus();}
@@ -66,13 +71,12 @@
   function edit(id){
     const row=records().find(row=>row.id===id);if(!row)return;
     document.getElementById('pdEditDialog')?.close();state.menu='';editingPriceId=id;
-    const previous=document.activeElement;
     document.body.insertAdjacentHTML('beforeend',`<dialog class="pd-dialog" id="pdEditDialog" data-price-id="${esc(id)}" aria-labelledby="pdEditTitle"><header><h2 id="pdEditTitle">Edit Price</h2><button id="pdEditClose" aria-label="Close edit price">${icon('x')}</button></header>${renderEditablePriceRow(row)}${row.description?`<p class="pd-editor-description">${esc(row.description)}</p>`:''}<p class="pd-editor-note">Changes apply to the price database, not to previously saved estimate prices.</p></dialog>`);
     const dialog=document.getElementById('pdEditDialog');
     for(const input of dialog.querySelectorAll('[data-price-field]')){const field=input.dataset.priceField,label={product:'Item Name',defaultPrice:'Price',unit:'Unit',category:'Category',vendor:'Source / Vendor'}[field];input.setAttribute('aria-label',label);const wrapper=document.createElement('label');wrapper.textContent=label;input.before(wrapper);wrapper.append(input);if(field==='defaultPrice'){input.required=true;input.min='0.01';input.inputMode='decimal';}}
     dialog.querySelector('[data-price-save]')?.addEventListener('click',commitEditor);
     dialog.querySelector('[data-price-cancel]')?.addEventListener('click',()=>dialog.close());dialog.querySelector('#pdEditClose').addEventListener('click',()=>dialog.close());
-    dialog.addEventListener('close',()=>{editingPriceId='';dialog.remove();previous?.focus({preventScroll:true});render();});
+    dialog.addEventListener('close',()=>{editingPriceId='';dialog.remove();render();const target=records().find(row=>row.id===id||row.sourceId===id);[...document.querySelectorAll('[data-pd-edit]')].find(button=>button.dataset.pdEdit===target?.id)?.focus({preventScroll:true});});
     dialog.addEventListener('keydown',event=>{if((event.ctrlKey||event.metaKey)&&event.key==='Enter'){event.preventDefault();commitEditor();}});
     dialog.showModal();dialog.querySelector('input')?.focus({preventScroll:true});window.renderAnimusPriceIcons?.();
   }
