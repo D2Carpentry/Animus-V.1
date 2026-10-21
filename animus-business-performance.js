@@ -87,6 +87,7 @@
       <section class="bp-panel bp-insights"><header><h2>Key Insights</h2></header>${insight('Best Performing Type',best?.type,best?percent(best.margin):'',best?'best':'')}${insight('Highest Revenue Month',month?periodLabel(month.key):'',month?money(month.revenue):'',month?'month':'')}${insight('Most Expenses',expense?.type,expense?money(expense.expenses):'',expense?'expenses':'')}${insight('Most Labor Cost',labor?.type,labor?money(labor.labor):'',labor?'labor':'')}<p class="bp-footnote">Best type is ranked by aggregate margin, not average job percentages.</p></section></div>
       ${table(data)}<p class="bp-method">Financials use revenue dates; file counts and pipeline use creation dates. Status and lead source filters use current workfile attributes.${data.unlinked?` ${data.unlinked} unlinked financial rows retained.`:''} Net Revenue and Profit intentionally share the existing ANIMUS calculation.</p>`}</section>`;
     const bind=(selector,event,fn)=>root.querySelectorAll(selector).forEach(el=>el.addEventListener(event,e=>fn(el,e)));
+    root.querySelectorAll('#bpRevenue,#bpExport').forEach(button=>{button.disabled=loading||!!range.error;});
     bind('#bpRange','change',el=>{state.preset=el.value;render();});
     bind('#bpPeriod','change',el=>{state.period=el.value;render();});
     bind('#bpFrom,#bpTo','change',el=>{state[el.id==='bpFrom'?'from':'to']=el.value;render();});
