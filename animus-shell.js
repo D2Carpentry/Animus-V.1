@@ -36,6 +36,14 @@
   function writeProfile(profile) {
     try { localStorage.setItem(PROFILE_KEY, JSON.stringify({ ...DEFAULT_PROFILE, ...profile })); } catch (error) {}
   }
+  window.animusReadCompanyPreferences = readProfile;
+  window.animusSetMarginGoal = (value) => {
+    const goal = Number(value);
+    if (!Number.isFinite(goal) || goal < 0 || goal > 100) throw new Error("Enter a margin goal from 0 to 100.");
+    const profile = {...readProfile(), marginGoal:goal};
+    // Unlike branding's legacy best-effort write, report a failed goal save.
+    localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+  };
   function syncProfileUI() {
     const profile = readProfile();
     const name = profile.companyName || DEFAULT_PROFILE.companyName;
