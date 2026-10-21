@@ -1728,7 +1728,7 @@ function applyDashboardBackup(dashboard = {}, options = {}) {
   crmPayrollRows = payrollRows.map((row) => normalizePayrollRow(row));
   crmPriceRows = priceRows.map((row) => normalizedPriceRow(row));
   crmDeletedPriceIds = deletedPriceIds;
-  activeFileId = crmFiles[0] ? crmFiles[0].id : null;
+  activeFileId = crmFiles.some(file => file.id === activeFileId) ? activeFileId : null;
   activeRevenueId = crmRevenueRows[0] ? crmRevenueRows[0].id : null;
   activePayrollId = crmPayrollRows[0] ? crmPayrollRows[0].id : null;
   saveCrmFiles();
@@ -1876,6 +1876,15 @@ function activeFile() {
   return crmFiles.find((file) => file.id === activeFileId) || null;
 }
 
+// Presentation-only selection for workfile URLs and browser history.
+window.selectAnimusWorkfile = function selectAnimusWorkfile(id) {
+  if (id === null) { activeFileId = null; return true; }
+  const file = crmFiles.find(entry => String(entry.id) === String(id));
+  if (!file) return false;
+  activeFileId = file.id;
+  return true;
+};
+
 // Used by the Work File back control to return to the list without changing any file data.
 window.clearActiveCrmFileSelection = function clearActiveCrmFileSelection() {
   activeFileId = null;
@@ -1986,9 +1995,10 @@ function visibleFiles() {
   const filter = $("crmFileFilter").value;
   const search = String($("animusWorkFileSearch")?.value || "").trim().toLowerCase();
   const sort = $("animusWorkFileSort")?.value || "updated";
-  let files = search
-    ? [...crmFiles]
-    : filter === "all" ? [...crmFiles] : CRM_FILE_CATEGORY_RULES[filter] ? filesInCategory(filter) : crmFiles.filter(isOpenCrmFile);
+  const listTab = document.querySelector('[data-workfile-list-tab][aria-pressed="true"]')?.dataset.workfileListTab || "all";
+  let files = filter === "all" ? [...crmFiles] : CRM_FILE_CATEGORY_RULES[filter] ? filesInCategory(filter) : crmFiles.filter(isOpenCrmFile);
+  if (listTab === "open") files = files.filter(isOpenCrmFile);
+  if (listTab === "my") files = files.filter(file => window.AnimusWorkfileDetail?.isAssignedToCurrentUser(file));
   if (search) {
     files = files.filter((file) => [file.clientName, file.fileNumber, file.projectAddress, file.clientPhone, file.clientEmail, file.fileStatus, file.projectType, file.leadSource]
       .some((value) => String(value || "").toLowerCase().includes(search)));
@@ -2053,7 +2063,9 @@ function renderFileList() {
       <span class="animus-file-card-copy">
         <strong>${escapeHtml(file.clientName || "Unnamed Client")}</strong>
         <small>${escapeHtml(file.fileNumber || "No file number")}</small>
+        <small class="wf-list-project">${escapeHtml(file.projectType || "Other")}</small>
         <span class="animus-file-status-inline ${statusTone(file)}">${escapeHtml(file.fileStatus || "New Lead")}</span>
+        <span class="wf-list-value">${file.estimateTotal !== "" && file.estimateTotal !== undefined ? crmCurrency.format(Number(file.estimateTotal) || 0) : "No estimate"}${file.nextActionDate || file.followUpDate ? `<time>Due ${escapeHtml(displayDate(file.nextActionDate || file.followUpDate))}</time>` : ""}</span>
       </span>
       <span class="animus-file-chevron" aria-hidden="true">›</span>
     </button>
@@ -2066,6 +2078,7 @@ function renderFileList() {
       saveActiveFile();
       activeFileId = file.id;
       renderCrm();
+      window.AnimusWorkfileDetail?.selected(file.id);
     });
   });
   document.querySelectorAll("[data-animus-file-filter]").forEach((button) => {

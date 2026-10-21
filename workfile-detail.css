@@ -1,0 +1,143 @@
+/* Workfile workspace only; the global sidebar and estimator remain unchanged. */
+.animus-work-files-layout{--wf-surface:#fff;--wf-inset:#f7f9fc;--wf-line:#e1e6ee;--wf-text:#1b293c;--wf-muted:#657287;--wf-accent:#2563eb;--wf-gold:#946b22}
+body:not(.crm-estimator-active) .crm-file-workspace:has(#animusWorkFile)>.crm-file-header,body:not(.crm-estimator-active) .crm-file-workspace:has(#animusWorkFile)>.crm-file-grid{display:none!important}
+body[data-animus-view="files"]:not(.crm-estimator-active) .crm-command-panel{display:none!important}
+body.animus-dark-theme .animus-work-files-layout{--wf-surface:#141e2c;--wf-inset:#101925;--wf-line:#2c394b;--wf-text:#edf2f8;--wf-muted:#a0afc1;--wf-accent:#8db7ff;--wf-gold:#d4af64}
+body.animus-unified-ui:not(.crm-estimator-active) .animus-work-files-layout{grid-template-columns:300px minmax(0,1fr);gap:12px;min-width:0;min-height:0;transition:grid-template-columns 280ms ease,gap 280ms ease}
+body.animus-unified-ui:not(.crm-estimator-active) .animus-work-files-layout.animus-work-files-collapsed{grid-template-columns:36px minmax(0,1fr)}
+body.animus-unified-ui:not(.crm-estimator-active) .animus-work-files-layout .crm-file-list-panel{position:sticky;top:88px;height:calc(100dvh - 112px);min-width:0;padding:16px 12px;border-radius:8px;overflow:visible;align-self:start}
+body.animus-unified-ui:not(.crm-estimator-active) .animus-work-files-layout .crm-file-workspace{display:block;container-type:inline-size;min-width:0;max-height:calc(100dvh - 112px);overflow:auto;overscroll-behavior:contain;padding:20px;border-radius:8px;scroll-padding:16px}
+.animus-work-files-layout .crm-file-list-panel>:not(.animus-work-files-collapse){transition:opacity 160ms ease,transform 280ms ease;min-width:0}
+.animus-work-files-layout .wf-list-contents{display:flex;flex-direction:column;flex:1;min-height:0;min-width:0;overflow:hidden;visibility:visible;transition:opacity 180ms ease,transform 280ms ease,visibility 0s}
+.animus-work-files-layout.animus-work-files-collapsed .crm-file-list-panel>.wf-list-contents{display:flex;opacity:0;transform:translateX(-24px);visibility:hidden;transition:opacity 180ms ease,transform 280ms ease,visibility 0s 280ms}
+.animus-work-files-layout .animus-work-files-collapse{width:32px;height:44px;right:-16px;top:12px;border-radius:6px;box-shadow:none;font-size:24px}
+.animus-work-files-layout.animus-work-files-collapsed .animus-work-files-collapse{right:1px;top:12px}
+.wf-list-tabs{display:flex;gap:4px;margin:0 0 12px;border-bottom:1px solid var(--wf-line)}
+.wf-list-tabs button{min-height:38px;padding:6px 12px;border:0;border-bottom:2px solid transparent;background:transparent;color:var(--wf-muted);font:inherit;font-size:12px;font-weight:650;cursor:pointer}
+.wf-list-tabs [aria-pressed=true]{color:var(--wf-accent);border-bottom-color:var(--wf-accent)}
+.animus-work-files-layout .animus-work-file-tools{grid-template-columns:minmax(0,1fr) 88px}
+.animus-work-files-layout .animus-work-file-tools input,.animus-work-files-layout .animus-work-file-tools select{min-height:40px;font-size:12px}
+.animus-work-files-layout .crm-file-card{width:100%;margin-bottom:6px!important;border-radius:6px!important;min-height:100px;padding:12px!important}
+.animus-work-files-layout .animus-file-card-copy strong{font-size:14px;line-height:1.35;white-space:normal}
+.animus-work-files-layout .wf-list-project{font-size:11px!important;color:var(--wf-muted)!important;font-weight:500}
+.animus-work-files-layout .animus-file-status-inline{font-size:10px;white-space:normal;line-height:1.35;border-radius:4px}
+.wf-list-value{display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-top:8px;color:var(--wf-text);font-size:12px;font-weight:650}
+.wf-list-value time{color:var(--wf-muted);font-size:10px;font-weight:500}
+#animusWorkFile{min-width:0;color:var(--wf-text);letter-spacing:0}
+#animusWorkFile .animus-record-back{font-size:12px;min-height:30px;margin:0 0 12px;color:var(--wf-muted)}
+#animusWorkFile .animus-record-header{gap:16px;padding:0 0 18px;border:0;background:transparent!important;box-shadow:none!important}
+#animusWorkFile .animus-record-person{align-items:flex-start;gap:12px;min-width:0}
+#animusWorkFile .animus-record-avatar{width:44px;height:44px;flex:0 0 44px;border-radius:8px;background:var(--wf-inset);color:var(--wf-accent);font-size:16px}
+#animusWorkFile .animus-record-title{min-width:0}
+#animusWorkFile .animus-record-title h2{font-size:21px;line-height:1.25;overflow-wrap:anywhere;margin:0 0 4px;color:var(--wf-text)!important}
+#animusWorkFile .animus-record-subtitle,.wf-header-location{margin:4px 0;color:var(--wf-muted);font-size:12px;line-height:1.5;overflow-wrap:anywhere}
+.wf-header-status{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px}
+.wf-header-status>span{color:var(--wf-muted);font-size:11px}
+.wf-header-status .animus-status-badge{border:0;cursor:pointer;max-width:100%;white-space:normal;border-radius:4px;font-size:11px;line-height:1.4;padding:4px 8px}
+.wf-header-metadata{margin:8px 0 0;color:var(--wf-muted);font-size:10px;line-height:1.5}
+#animusWorkFile .animus-record-actions{flex-wrap:wrap;gap:6px;flex-shrink:0}
+#animusWorkFile .animus-record-actions .animus-record-button{display:inline-flex;align-items:center;justify-content:center;gap:6px}
+#animusWorkFile [data-wf-icon]{width:15px;height:15px;flex-shrink:0}
+#animusWorkFile .animus-record-button{min-height:34px;padding:7px 10px;border-radius:6px;font-size:12px;line-height:1.35;white-space:normal;letter-spacing:0;cursor:pointer}
+#animusWorkFile .animus-record-button.primary{color:white!important;background:#2563eb!important;border-color:#2563eb!important}
+#animusWorkFile .animus-record-button.danger{color:#ef7f86!important}
+#animusWorkFile .animus-record-button.small{min-height:30px;padding:5px 8px;font-size:11px}
+#animusWorkFile .wf-more-trigger{min-width:34px;display:grid;place-items:center;font-size:22px;padding:0;list-style:none}
+#animusWorkFile .wf-more-trigger::-webkit-details-marker{display:none}
+#animusWorkFile .animus-more-menu-panel{z-index:30;background:var(--wf-surface);border:1px solid var(--wf-line);width:180px;max-width:calc(100vw - 40px);border-radius:6px}
+#animusWorkFile .animus-summary-strip{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:0 0 16px;border:0;background:transparent!important;box-shadow:none!important;overflow:visible}
+#animusWorkFile .animus-summary-cell{min-width:0;min-height:82px;padding:12px;border:1px solid var(--wf-line)!important;border-radius:6px;background:var(--wf-inset)!important;box-shadow:none;align-items:center;text-align:left}
+#animusWorkFile .animus-summary-copy{min-width:0}
+#animusWorkFile .animus-summary-copy>span{font-size:11px;color:var(--wf-muted)!important;text-transform:none}
+#animusWorkFile .animus-summary-copy strong{display:block;margin-top:6px;color:var(--wf-text)!important;font-size:20px;line-height:1.25;overflow-wrap:anywhere}
+#animusWorkFile .animus-summary-copy small{display:block;margin-top:4px;color:var(--wf-muted);font-size:10px;overflow-wrap:anywhere}
+#animusWorkFile .animus-summary-cell.expenses strong{color:var(--wf-gold)!important}
+#animusWorkFile .animus-summary-cell.start-date strong{font-size:15px}
+#animusWorkFile .animus-record-tabs{display:flex;flex-wrap:wrap;gap:0;margin:0 0 18px;padding:0;border:0;border-bottom:1px solid var(--wf-line)!important;border-radius:0;background:transparent!important;box-shadow:none!important}
+#animusWorkFile .animus-record-tab{flex:0 0 auto;min-height:42px;padding:10px 12px;border:0;border-bottom:2px solid transparent!important;color:var(--wf-muted)!important;background:transparent!important;font-size:12px;line-height:1.3;white-space:normal}
+#animusWorkFile .animus-record-tab.active{color:var(--wf-accent)!important;border-bottom-color:var(--wf-accent)!important}
+#animusWorkFile .animus-tab-panel{min-width:0;padding:0}
+.wf-overview{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:16px;align-items:start}
+.wf-overview-main,.wf-overview-side{display:grid;gap:16px;min-width:0;align-content:start}
+.wf-overview-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start;min-width:0}
+#animusWorkFile .animus-info-card{min-width:0;overflow:hidden;border:1px solid var(--wf-line)!important;border-radius:6px;background:var(--wf-surface)!important;color:var(--wf-text)!important;box-shadow:none!important}
+#animusWorkFile .animus-card-head{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:48px;padding:12px 14px;border-bottom:1px solid var(--wf-line);background:transparent}
+#animusWorkFile .animus-card-head h3{font-size:13px;line-height:1.4;color:var(--wf-text)!important;margin:0;font-weight:650;overflow-wrap:anywhere}
+#animusWorkFile .card-mark{display:none}
+#animusWorkFile .animus-next-inner{padding:14px;margin:0;border:0;border-radius:0;background:transparent!important}
+#animusWorkFile .animus-next-inner>strong{font-size:13px;line-height:1.5;display:block;overflow-wrap:anywhere}
+#animusWorkFile .animus-next-meta{gap:14px;margin:14px 0;font-size:12px}
+#animusWorkFile .animus-next-meta span{font-size:10px;color:var(--wf-muted)}
+#animusWorkFile .animus-next-meta strong{font-size:12px;color:var(--wf-text)!important;overflow-wrap:anywhere}
+#animusWorkFile .animus-next-empty{padding:16px 14px;margin:0;color:var(--wf-muted);font-size:12px;line-height:1.6}
+#animusWorkFile .wf-overdue{border-left:3px solid #e8757d!important}
+#animusWorkFile .wf-overdue .animus-next-meta>div:first-child strong{color:#e8757d!important}
+#animusWorkFile .animus-progress-line{grid-template-columns:repeat(7,minmax(58px,1fr));margin:0;padding:20px 14px 16px;gap:4px;overflow-x:auto}
+#animusWorkFile .animus-progress-line::before{top:28px;background:var(--wf-line);height:2px}
+#animusWorkFile .animus-progress-step{min-width:0;font-size:10px;line-height:1.35;overflow-wrap:normal;color:var(--wf-muted)}
+#animusWorkFile .animus-progress-dot{width:18px;height:18px;border-width:2px;font-size:10px;box-shadow:none}
+#animusWorkFile .animus-status-details{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:12px 14px;margin:0;border:0;border-top:1px solid var(--wf-line);border-radius:0;background:transparent!important}
+#animusWorkFile .animus-status-details>div{padding:0;border:0}
+#animusWorkFile .animus-status-details span{font-size:10px;color:var(--wf-muted)}
+#animusWorkFile .animus-status-details strong{font-size:12px;color:var(--wf-text)!important;overflow-wrap:anywhere}
+#animusWorkFile .animus-assigned-person{width:100%;padding:14px;margin:0;border:0;border-radius:0;background:transparent!important;gap:10px}
+#animusWorkFile .animus-assigned-icon{width:32px;height:32px;border-radius:6px;font-size:15px;background:var(--wf-inset);color:var(--wf-muted)}
+#animusWorkFile .animus-assigned-person strong{font-size:13px;color:var(--wf-text)!important;white-space:normal;overflow-wrap:anywhere}
+#animusWorkFile .animus-file-note-list{padding:0 14px;margin:0;max-height:280px;overflow:auto}
+#animusWorkFile .animus-file-note-entry{padding:12px 0;border:0;border-bottom:1px solid var(--wf-line);border-radius:0;background:transparent!important}
+#animusWorkFile .animus-file-note-entry p{font-size:13px;line-height:1.6;color:var(--wf-text)!important;overflow-wrap:anywhere}
+#animusWorkFile .animus-file-note-entry small{font-size:10px;color:var(--wf-muted)!important}
+#animusWorkFile .animus-activity{padding:0 14px}
+#animusWorkFile .animus-activity-row{display:grid;grid-template-columns:26px minmax(0,1fr) auto;gap:10px;padding:12px 0;border-color:var(--wf-line);background:transparent}
+#animusWorkFile .animus-activity-main strong{font-size:12px;color:var(--wf-text)!important}
+#animusWorkFile .animus-activity-main p{font-size:12px;line-height:1.55;color:var(--wf-muted)!important;white-space:pre-wrap;overflow-wrap:anywhere;max-height:90px;overflow:auto}
+#animusWorkFile .animus-activity-icon{width:26px;height:26px;border-radius:6px;font-size:11px}
+#animusWorkFile .animus-activity-time,#animusWorkFile .animus-activity-main small{font-size:10px;color:var(--wf-muted)!important;max-width:100px;line-height:1.5}
+.wf-key-values{display:grid;gap:12px;margin:0;padding:14px}
+.wf-key-values>div{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:12px;align-items:start}
+.wf-key-values dt{font-size:11px;line-height:1.5;color:var(--wf-muted);font-weight:500}
+.wf-key-values dd{margin:0;font-size:12px;line-height:1.5;color:var(--wf-text);overflow-wrap:anywhere}
+.wf-key-values a{color:var(--wf-accent);text-decoration:none;overflow-wrap:anywhere}
+.wf-customer-name{display:block;margin:16px 14px 0;font-size:14px}
+.wf-customer-card .wf-key-values>div{grid-template-columns:1fr;gap:3px}
+#animusWorkFile .wf-full-button{width:calc(100% - 28px);margin:0 14px 14px}
+.wf-quick-actions{display:grid;padding:6px}
+.wf-quick-actions button{min-height:38px;padding:8px 10px;border:0;border-radius:4px;background:transparent;color:var(--wf-text);text-align:left;font:inherit;font-size:12px;cursor:pointer}
+.wf-quick-actions button:hover{background:var(--wf-inset);color:var(--wf-accent)}
+.wf-quick-actions summary{min-height:38px;padding:8px 10px;color:var(--wf-muted);font-size:12px;cursor:pointer}
+.wf-quick-actions details>div{display:grid;padding-left:8px;border-left:1px solid var(--wf-line);margin-left:10px}
+.wf-quick-actions .danger{color:#e8757d}
+.wf-expense-breakdown{display:block;width:100%;border:0;background:transparent;color:inherit;padding:0;text-align:left;cursor:pointer}
+.wf-expense-breakdown dd{text-align:right;font-weight:650}
+.wf-expense-total{padding-top:12px;border-top:1px solid var(--wf-line)}
+.wf-expense-total dd{color:var(--wf-gold);font-size:16px}
+.wf-count{font-size:11px;color:var(--wf-muted);font-weight:500;margin-left:5px}
+.wf-document-preview{padding:0 14px}
+.wf-document-preview button{display:grid;gap:4px;width:100%;min-height:56px;padding:12px 0;border:0;border-bottom:1px solid var(--wf-line);background:transparent;text-align:left;color:var(--wf-text);cursor:pointer}
+.wf-document-preview strong{font-size:12px;font-weight:600;overflow-wrap:anywhere}
+.wf-document-preview small{font-size:10px;color:var(--wf-muted);overflow-wrap:anywhere}
+.wf-photo-preview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:14px}
+.wf-photo-preview button{min-width:0;min-height:44px;padding:0;border:1px solid var(--wf-line);border-radius:4px;background:var(--wf-inset);color:var(--wf-text);overflow:hidden;cursor:pointer}
+.wf-photo-preview img{display:block;width:100%;height:72px;object-fit:cover}
+#animusWorkFile .wf-card-footer{margin:10px 14px 14px}
+.wf-communication-actions{display:flex;flex-wrap:wrap;gap:8px;padding:14px}
+.wf-communication-actions a{text-decoration:none;display:inline-flex;align-items:center}
+.wf-communication-history{padding:0 14px}
+.wf-communication-history article{padding:14px 0;border-bottom:1px solid var(--wf-line)}
+.wf-communication-history strong{font-size:13px}.wf-communication-history p{font-size:13px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}.wf-communication-history time{font-size:11px;color:var(--wf-muted)}
+#animusWorkFile .animus-financial-value,#animusWorkFile .animus-detail-card,#animusWorkFile .animus-document-box,#animusWorkFile .animus-document-box-head,#animusWorkFile .animus-document-actions{background:var(--wf-inset)!important;border-color:var(--wf-line)!important;border-radius:6px;color:var(--wf-text)!important}
+#animusWorkFile .animus-financial-value strong,#animusWorkFile .animus-detail-card h4,#animusWorkFile .animus-detail-pair dd,#animusWorkFile .animus-document-box h4,#animusWorkFile .animus-document-row strong,#animusWorkFile .animus-document-row b{color:var(--wf-text)!important}
+#animusWorkFile .animus-document-row{background:transparent!important;border-color:var(--wf-line)!important}
+#animusWorkFile .animus-financial-value.clickable strong{color:var(--wf-gold)!important}
+#animusWorkFile .animus-financial-value.danger strong,#animusWorkFile .closed-value{color:#e8757d!important}
+#animusWorkFile :is(button,a,summary,input,select):focus-visible,.wf-list-tabs button:focus-visible{outline:2px solid var(--wf-accent);outline-offset:2px}
+@media(min-width:1600px){.wf-overview{grid-template-columns:minmax(0,1fr) 300px}}
+@media(max-width:1200px){.wf-overview{grid-template-columns:minmax(0,1fr) 240px}.wf-overview-pair{grid-template-columns:1fr}.wf-overview-side{gap:12px}#animusWorkFile .animus-record-header{flex-wrap:wrap}#animusWorkFile .animus-summary-copy strong{font-size:17px}}
+@media(max-width:900px){body.animus-unified-ui:not(.crm-estimator-active) .animus-work-files-layout{grid-template-columns:minmax(0,1fr);position:relative}body.animus-unified-ui:not(.crm-estimator-active) .animus-work-files-layout.animus-work-files-collapsed{grid-template-columns:36px minmax(0,1fr)}body.animus-unified-ui:not(.crm-estimator-active) .animus-work-files-layout .crm-file-list-panel{position:relative;top:0;height:calc(100dvh - 130px);max-height:none;grid-column:1;grid-row:1;z-index:25;width:min(300px,calc(100vw - 50px));box-shadow:8px 0 28px #0003!important}body.animus-unified-ui:not(.crm-estimator-active) .animus-work-files-layout .crm-file-workspace{grid-column:1;grid-row:1;max-height:none;overflow:visible;padding:16px 12px}.animus-work-files-layout:not(.animus-work-files-collapsed) .crm-file-workspace{pointer-events:none;opacity:.35}body.animus-unified-ui:not(.crm-estimator-active) .animus-work-files-layout.animus-work-files-collapsed .crm-file-list-panel{width:36px;height:54px;box-shadow:none!important}body.animus-unified-ui:not(.crm-estimator-active) .animus-work-files-layout.animus-work-files-collapsed .crm-file-workspace{grid-column:2}.wf-overview{grid-template-columns:1fr}.wf-overview-side{grid-template-columns:repeat(2,minmax(0,1fr))}.wf-overview-pair{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.wf-overview-side,.wf-overview-pair{grid-template-columns:1fr}#animusWorkFile .animus-summary-strip{grid-template-columns:repeat(2,minmax(0,1fr))}#animusWorkFile .animus-summary-cell:last-child{grid-column:1/-1}#animusWorkFile .animus-summary-cell{min-height:76px}#animusWorkFile .animus-record-title h2{font-size:19px}#animusWorkFile .animus-record-avatar{width:34px;height:34px;flex-basis:34px;font-size:13px}#animusWorkFile .animus-record-header{display:flex}#animusWorkFile .animus-record-actions{width:100%}#animusWorkFile .animus-record-tab{padding:9px 8px;min-height:44px;font-size:11px}#animusWorkFile .animus-record-button,#animusWorkFile .animus-record-button.small,.wf-quick-actions button{min-height:44px}#animusWorkFile .animus-inline-editor-grid{grid-template-columns:1fr}#animusWorkFile .animus-inline-editor input,#animusWorkFile .animus-inline-editor select{font-size:16px;min-height:44px}#animusWorkFile .animus-activity-row{grid-template-columns:24px minmax(0,1fr)}#animusWorkFile .animus-activity-time{grid-column:2;max-width:none}.wf-header-location{font-size:11px}.wf-header-metadata{font-size:10px}.wf-photo-preview{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(prefers-reduced-motion:reduce){.animus-work-files-layout,.animus-work-files-layout .crm-file-list-panel>*{transition:none!important}}
+@container(max-width:1000px){.wf-overview-pair{grid-template-columns:1fr}}
+@container(max-width:720px){.wf-overview{grid-template-columns:1fr}.wf-overview-side{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@container(max-width:480px){.wf-overview-side{grid-template-columns:1fr}}
+@media(max-width:900px){body.animus-unified-ui:not(.crm-estimator-active) .animus-work-files-layout.animus-work-files-collapsed{grid-template-columns:minmax(0,1fr)}body.animus-unified-ui:not(.crm-estimator-active) .animus-work-files-layout .crm-file-list-panel{position:absolute;left:0;top:0}body.animus-unified-ui:not(.crm-estimator-active) .animus-work-files-layout.animus-work-files-collapsed .crm-file-list-panel{height:44px;padding:0;border:0!important;background:transparent!important}body.animus-unified-ui:not(.crm-estimator-active) .animus-work-files-layout.animus-work-files-collapsed .crm-file-workspace{grid-column:1}.animus-work-files-layout.animus-work-files-collapsed .animus-work-files-collapse{top:0}#animusWorkFile .animus-record-back{margin-left:36px;min-height:32px}}
+@media(max-width:600px){.wf-list-tabs button,.wf-quick-actions summary{min-height:44px}#animusWorkFile .wf-header-status button{min-height:44px}#animusWorkFile .animus-record-tab{font-size:12px}.wf-customer-card a{display:inline-flex;align-items:center;min-height:44px}.animus-work-files-layout .animus-work-file-tools input,.animus-work-files-layout .animus-work-file-tools select{font-size:16px;min-height:44px}#animusWorkFile .animus-financial-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}

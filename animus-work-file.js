@@ -2,7 +2,8 @@
 (function () {
   "use strict";
 
-  const state = { tab: "overview", editor: "" };
+  const state = { tab: "overview", editor: "", fileId: "", tabs: new Map(), activityLimit:50 };
+  const tabIds = ["overview", "estimate", "financials", "expenses", "documents", "communication", "tasks", "details", "history"];
   const byId = (id) => document.getElementById(id);
   const money = (value) => {
     const amount = Number(value) || 0;
@@ -33,12 +34,15 @@
   }
 
   function assignment(file) {
-    return field(file, "assignedTo") || field(file, "assignedEmployee") || field(file, "employee") || field(file, "team") || "Unassigned";
+    const value = file?.assignedTo || file?.assignedEmployee || file?.employee || file?.team;
+    const names = (Array.isArray(value) ? value : [value]).map(entry => typeof entry === "object" && entry ? entry.name || entry.displayName || entry.email : entry).filter(Boolean);
+    return names.join(", ") || "Unassigned";
   }
 
   function paidTotal(file) {
+    if (typeof window.totalPaidForFile === "function") return window.totalPaidForFile(file);
     const manualTotal = Number(file?.totalPaidOverride);
-    if (file?.totalPaidOverride !== "" && file?.totalPaidOverride !== undefined && Number.isFinite(manualTotal)) return manualTotal;
+    if (file?.totalPaidOverride !== "" && file?.totalPaidOverride !== undefined && Number.isFinite(manualTotal)) return Math.max(manualTotal,0);
     return 0;
   }
 
@@ -64,18 +68,24 @@
       id: `note-${index}`,
       kind: "note",
       title: "Note added",
-      detail: field(note, "text") || "Note recorded",
+      detail: typeof note === "string" ? note : field(note, "text") || "Note recorded",
       at: note?.editedAt || note?.at || "",
+      actor: field(note, "updatedBy") || field(note, "createdBy") || field(note, "author"),
     }));
     const timelineRows = timeline.map((entry, index) => {
-      if (typeof entry === "string") return { id: `timeline-${index}`, kind: "system", title: "System activity", detail: entry, at: "" };
+      if (typeof entry === "string") {
+        // Older canonical activity stores its timestamp at the end of the text.
+        const stamp = entry.match(/([A-Z][a-z]{2} \d{1,2}, \d{4},? \d{1,2}:\d{2}\s*[AP]M)$/)?.[1];
+        const at = stamp && Number.isFinite(Date.parse(stamp)) ? new Date(stamp).toISOString() : "";
+        return { id: `timeline-${index}`, kind: "system", title: "System activity", detail: at ? entry.slice(0,-stamp.length).trim() : entry, at };
+      }
       if (entry && typeof entry === "object") {
         const detail = field(entry, "text") || field(entry, "message") || field(entry, "description") || field(entry, "title") || field(entry, "action") || "System activity recorded";
-        return { id: `timeline-${index}`, kind: field(entry, "type") || "system", title: field(entry, "title") || "System activity", detail, at: entry.at || entry.createdAt || entry.updatedAt || "" };
+        return { id: `timeline-${index}`, kind: field(entry, "type") || "system", title: field(entry, "title") || "System activity", detail, at: entry.at || entry.createdAt || entry.updatedAt || "", actor: field(entry, "updatedBy") || field(entry, "createdBy") || field(entry, "actor") || field(entry, "author") };
       }
       return { id: `timeline-${index}`, kind: "system", title: "System activity", detail: "System activity recorded", at: "" };
     });
-    return [...noteRows, ...timelineRows].sort((a, b) => (Date.parse(b.at || "") || 0) - (Date.parse(a.at || "") || 0));
+    return [...noteRows.reverse(), ...timelineRows.reverse()].sort((a, b) => (Date.parse(b.at || "") || 0) - (Date.parse(a.at || "") || 0));
   }
 
   function activityIcon(row) {
@@ -90,7 +100,7 @@
   function activityMarkup(file, limit) {
     const rows = activityRows(file).slice(0, limit);
     if (!rows.length) return `<div class="animus-empty-panel">No activity has been recorded for this file yet.</div>`;
-    return `<div class="animus-activity">${rows.map((row) => `<article class="animus-activity-row"><span class="animus-activity-icon">${escape(activityIcon(row))}</span><div class="animus-activity-main"><strong>${escape(row.title)}</strong><p>${escape(row.detail === "[object Object]" ? "System activity recorded" : row.detail)}</p></div><time class="animus-activity-time">${escape(row.at ? date(row.at.slice(0, 10)) : "")}</time></article>`).join("")}</div>`;
+    return `<div class="animus-activity">${rows.map((row) => `<article class="animus-activity-row"><span class="animus-activity-icon">${escape(activityIcon(row))}</span><div class="animus-activity-main"><strong>${escape(row.title)}</strong><p>${escape(row.detail === "[object Object]" ? "System activity recorded" : row.detail)}</p>${row.actor ? `<small>${escape(row.actor)}</small>` : ""}</div><time class="animus-activity-time">${escape(row.at ? new Date(row.at).toLocaleString("en-US", { dateStyle:"short", timeStyle:"short" }) : "")}</time></article>`).join("")}</div>`;
   }
 
   function stageIndex(file) {
@@ -110,25 +120,39 @@
     const stages = ["Lead", "Contacted", "Inspection", "Estimate Sent", "Won", "In Progress", "Complete"];
     const index = stageIndex(file);
     const isClosedLost = field(file, "fileStatus") === "Job Lost / Closed";
-    return `<section class="animus-info-card animus-progress-card"><div class="animus-card-head"><h3><span class="card-mark">&#9873;</span> Job Progress</h3><button class="animus-record-button small" data-animus-edit="progress">Edit</button></div><div class="animus-progress-line">${stages.map((stage, step) => `<div class="animus-progress-step ${step < index ? "done" : step === index ? "current" : ""}"><span class="animus-progress-dot">${step < index ? "&#10003;" : ""}</span><span>${stage}</span></div>`).join("")}</div><div class="animus-status-details"><div><span>Current Status</span><strong class="${isClosedLost ? "closed-value" : ""}">${escape(field(file, "fileStatus", "New Lead"))}</strong></div><div><span>Status Detail</span><strong>${escape(field(file, "statusDetail", "Not set"))}</strong></div></div></section>`;
+    const closedPaid = file.fileStatus === "Closed / Paid";
+    const recordedStages = new Set(file.createdAt ? [0] : []);
+    if (closedPaid) for (const entry of Array.isArray(file.timeline) ? file.timeline : []) {
+      if (!entry || typeof entry !== 'object') continue;
+      for (const status of [entry.fileStatus,entry.fromStatus,entry.toStatus]) {
+        const stage = stageIndex({fileStatus:status}); if (stage >= 0) recordedStages.add(stage);
+      }
+    }
+    const done = step => step < index && (!closedPaid || recordedStages.has(step));
+    return `<section class="animus-info-card animus-progress-card"><div class="animus-card-head"><h3>Project Progress</h3><button class="animus-record-button small" data-animus-edit="progress">Update Status</button></div><div class="animus-progress-line" aria-label="Project milestones">${stages.map((stage, step) => `<div class="animus-progress-step ${done(step) ? "done" : step === index ? "current" : ""}"${step === index ? ' aria-current="step"' : ""}><span class="animus-progress-dot">${done(step) ? "&#10003;" : ""}</span><span>${stage}</span></div>`).join("")}</div><div class="animus-status-details"><div><span>Current Status</span><strong class="${isClosedLost ? "closed-value" : ""}">${escape(field(file, "fileStatus", "New Lead"))}</strong></div><div><span>Status Detail</span><strong>${escape(field(file, "statusDetail", "Not set"))}</strong></div>${file.closedAt || file.closedDate ? `<div><span>Closed Date</span><strong>${escape(date(String(file.closedAt || file.closedDate).slice(0,10)))}</strong></div>` : ""}</div></section>`;
   }
 
   function customerCard(file) {
     const phone = field(file, "clientPhone");
     const email = field(file, "clientEmail");
     const address = field(file, "projectAddress");
-    return `<section class="animus-info-card"><div class="animus-card-head"><h3><span class="card-mark">&#9787;</span> Customer</h3><button class="animus-record-button small" data-animus-edit="customer">Edit</button></div><dl class="animus-info-list"><div class="animus-info-row"><span class="item-icon">&#9742;</span><div><dt>Phone</dt><dd>${escape(phone || "Not added")}</dd></div>${phone ? `<a class="row-action" href="tel:${escape(phone.replace(/[^+\d]/g, ""))}" aria-label="Call customer">&#9742;</a>` : ""}</div><div class="animus-info-row"><span class="item-icon">&#9993;</span><div><dt>Email</dt><dd>${escape(email || "Not added")}</dd></div>${email ? `<a class="row-action" href="mailto:${escape(email)}" aria-label="Email customer">&#9993;</a>` : ""}</div><div class="animus-info-row"><span class="item-icon">&#9679;</span><div><dt>Address</dt><dd>${escape(address || "Not added")}</dd></div>${address ? `<a class="row-action" target="_blank" rel="noreferrer" href="https://www.google.com/maps/search/?api=1&amp;query=${encodeURIComponent(address)}" aria-label="Open map">&#9679;</a>` : ""}</div></dl></section>`;
+    return `<section class="animus-info-card wf-customer-card"><div class="animus-card-head"><h3>Customer Information</h3><button class="animus-record-button small" data-animus-edit="customer">Edit</button></div><strong class="wf-customer-name">${escape(file.clientName || "Unnamed Client")}</strong><dl class="wf-key-values"><div><dt>Phone</dt><dd>${phone ? `<a href="tel:${escape(phone.replace(/[^+\d]/g, ""))}">${escape(phone)}</a>` : "Not added"}</dd></div><div><dt>Email</dt><dd>${email ? `<a href="mailto:${escape(email)}">${escape(email)}</a>` : "Not added"}</dd></div><div><dt>Project Address</dt><dd>${escape(address || "Not added")}</dd></div></dl><button type="button" class="animus-record-button primary wf-full-button" data-customer-portal>Customer Portal</button></section>`;
   }
 
   function projectCard(file) {
-    return `<section class="animus-info-card"><div class="animus-card-head"><h3><span class="card-mark">&#128193;</span> Project &amp; Source</h3><button class="animus-record-button small" data-animus-edit="project">Edit</button></div><dl class="animus-info-list"><div class="animus-info-row"><span class="item-icon">&#9881;</span><div><dt>Project Type</dt><dd>${escape(field(file, "projectType", "Other"))}</dd></div></div><div class="animus-info-row"><span class="item-icon">&#128172;</span><div><dt>Lead Source</dt><dd>${escape(field(file, "leadSource", "Not added"))}</dd></div></div></dl></section>`;
+    const rows = [["Project Type", file.projectType], ["Lead Source", file.leadSource], ["Property Type", file.propertyType], ["Estimated Start", file.startDate ? date(file.startDate) : "Not set"], ["Estimated Completion", file.anticipatedCompletionDate ? date(file.anticipatedCompletionDate) : "Not set"], ["Lead Value", file.estimateTotal !== undefined && file.estimateTotal !== "" ? money(file.estimateTotal) : "Not set"]];
+    if (file.probability !== undefined && file.probability !== "") rows.push(["Probability", `${file.probability}%`]);
+    if (file.tags?.length) rows.push(["Tags", Array.isArray(file.tags) ? file.tags.join(", ") : file.tags]);
+    return `<section class="animus-info-card"><div class="animus-card-head"><h3>Key Details</h3><button class="animus-record-button small" data-animus-open="editFile">Edit</button></div><dl class="wf-key-values">${rows.filter(([label,value]) => label !== "Property Type" || value).map(([label,value]) => `<div><dt>${escape(label)}</dt><dd>${escape(value || "Not set")}</dd></div>`).join("")}</dl></section>`;
   }
 
   function nextActionCard(file) {
     const action = field(file, "nextAction");
     const due = field(file, "nextActionDate") || field(file, "followUpDate");
-    if (!action && !due) return `<section class="animus-info-card"><div class="animus-card-head"><h3><span class="card-mark">&#9678;</span> Next Action</h3><button class="animus-record-button small" data-animus-edit="action">Edit</button></div><p class="animus-next-empty">No next action is scheduled for this file.</p></section>`;
-    return `<section class="animus-info-card"><div class="animus-card-head"><h3><span class="card-mark">&#9678;</span> Next Action</h3><button class="animus-record-button small" data-animus-edit="action">Edit</button></div><div class="animus-next-inner"><div class="animus-next-highlight"><span class="animus-next-icon">&#128197;</span><div><strong>${escape(action || "Follow Up")}</strong><p>${escape(file.statusDetail || "Review project details and next steps.")}</p></div></div><div class="animus-next-meta"><div><span>Due Date</span><strong>${escape(date(due))}</strong></div><div><span>Assigned To</span><strong>${escape(assignment(file))}</strong></div></div><button class="animus-record-button primary" data-animus-complete-action>Mark Complete</button></div></section>`;
+    if (!action && !due) return `<section class="animus-info-card"><div class="animus-card-head"><h3>Next Action</h3><button class="animus-record-button small" data-animus-edit="action">Add Task</button></div><p class="animus-next-empty">No upcoming action scheduled.</p></section>`;
+    const today = new Date(); today.setHours(0,0,0,0);
+    const overdue = due && new Date(`${due}T12:00:00`) < today;
+    return `<section class="animus-info-card ${overdue ? "wf-overdue" : ""}"><div class="animus-card-head"><h3>Next Action</h3><button class="animus-record-button small" data-animus-edit="action">Edit</button></div><div class="animus-next-inner"><strong>${escape(action || "Follow Up")}</strong><div class="animus-next-meta"><div><span>${overdue ? "Overdue" : "Due Date"}</span><strong>${escape(date(due))}</strong></div><div><span>Assigned To</span><strong>${escape(assignment(file))}</strong></div></div><button class="animus-record-button small" data-animus-complete-action>Mark Complete</button></div></section>`;
   }
 
   function importantNotesCard(file) {
@@ -149,7 +173,8 @@
 
   function assignedToCard(file) {
     const employee = assignment(file);
-    return `<section class="animus-info-card animus-assigned-card"><div class="animus-card-head"><h3><span class="card-mark">&#9787;</span> Assigned To</h3><div class="animus-assigned-actions"><button class="animus-record-button small" data-animus-edit="assigned">Edit</button><button class="animus-record-button small" data-animus-open="payroll">Payroll</button></div></div><div class="animus-assigned-person"><span class="animus-assigned-icon">&#9787;</span><span><small>Employee</small><strong>${escape(employee)}</strong></span></div></section>`;
+    const employees = employee === "Unassigned" ? [] : employee.split(/[,;]/).map(name=>name.trim()).filter(Boolean);
+    return `<section class="animus-info-card animus-assigned-card"><div class="animus-card-head"><h3>Assigned To</h3><button class="animus-record-button small" data-animus-edit="assigned">Edit</button></div>${employees.length ? employees.map(name=>`<div class="animus-assigned-person"><span class="animus-assigned-icon" aria-hidden="true">${escape(initials(name))}</span><strong>${escape(name)}</strong></div>`).join("") : `<p class="animus-next-empty">No employees assigned.</p>`}</section>`;
   }
 
   function summaryMarkup(file) {
@@ -159,20 +184,58 @@
     const cells = [
       ["&#36;", "Estimate", money(estimate), "", "", "estimate"], ["&#9638;", "Paid", money(paid), "", "", "financials"], ["&#128179;", "Balance", money(balance), "", "balance", "financials"], ["&#9638;", "Expenses", money(expenseTotal(file)), "", "expenses", "expenses"], ["&#128197;", "Start Date", field(file, "startDate") ? date(file.startDate) : "Not set", field(file, "startDateReason"), "start-date", "startDate"],
     ];
-    return `<div class="animus-summary-strip">${cells.map(([icon, label, value, sub, extra, action]) => `<button class="animus-summary-cell ${extra || ""} ${action ? "clickable" : ""}"${action ? ` data-animus-summary="${action}"` : ""}><span class="animus-summary-icon">${icon}</span><span class="animus-summary-copy"><span>${escape(label)}</span><strong>${escape(value)}</strong>${sub ? `<small>${escape(sub)}</small>` : ""}</span></button>`).join("")}</div>`;
+    if (file.invoiceSent !== "Yes" && !["Sent","Deposit Paid","Balance Due","Paid"].includes(file.invoiceStatus)) cells[2][3] = "Estimate only";
+    return `<div class="animus-summary-strip">${cells.map(([icon, label, value, sub, extra, action]) => `<button type="button" class="animus-summary-cell ${extra || ""} clickable" data-animus-summary="${action}"><span class="animus-summary-copy"><span>${escape(label)}</span><strong>${escape(value)}</strong>${sub ? `<small>${escape(sub)}</small>` : ""}</span></button>`).join("")}</div>`;
   }
 
   function tabsMarkup() {
-    const tabs = [["overview", "Overview", "&#8962;"], ["estimate", "Estimate", "&#128196;"], ["financials", "Financials", "&#36;"], ["expenses", "Expenses", "&#9638;"], ["documents", "Documents", "&#128196;"], ["details", "Job Details", "&#9881;"]];
-    return `<nav class="animus-record-tabs" aria-label="Work file sections">${tabs.map(([id, label, icon]) => `<button class="animus-record-tab ${state.tab === id ? "active" : ""}" data-animus-tab="${id}"><span>${icon}</span>${label}</button>`).join("")}</nav>`;
+    const tabs = [["overview", "Overview"], ["estimate", "Estimate"], ["financials", "Financials"], ["expenses", "Expenses"], ["documents", "Documents"], ["communication", "Client Communication"], ["tasks", "Tasks"], ["details", "Job Details"], ["history", "History"]];
+    return `<nav class="animus-record-tabs" aria-label="Work file sections">${tabs.map(([id, label]) => `<button type="button" class="animus-record-tab ${state.tab === id ? "active" : ""}" data-animus-tab="${id}"${state.tab === id ? ' aria-current="page"' : ""}>${label}</button>`).join("")}</nav>`;
   }
 
   function overviewPanel(file) {
-    return `<div class="animus-work-grid animus-work-grid-focused"><div class="animus-work-column">${progressMarkup(file)}${importantNotesCard(file)}</div><div class="animus-work-column right">${nextActionCard(file)}${assignedToCard(file)}</div></div><section class="animus-info-card animus-recent-activity-card"><div class="animus-card-head"><h3><span class="card-mark">&#126;</span> Recent Activity</h3></div>${activityMarkup(file, 5)}</section>`;
+    return `<div class="wf-overview"><div class="wf-overview-main">${progressMarkup(file)}<div class="wf-overview-pair">${nextActionCard(file)}${assignedToCard(file)}</div>${importantNotesCard(file)}<section class="animus-info-card animus-recent-activity-card"><div class="animus-card-head"><h3>Recent Activity</h3><button class="animus-record-button small" data-animus-tab="history">View All</button></div>${activityMarkup(file, 5)}</section><div class="wf-overview-pair">${documentsPreview(file)}${photosPreview(file)}</div></div><aside class="wf-overview-side">${customerCard(file)}${quickActions(file)}${projectCard(file)}${expensesSummary(file)}</aside></div>`;
+  }
+
+  function quickActions(file) {
+    return `<section class="animus-info-card"><div class="animus-card-head"><h3>Quick Actions</h3></div><div class="wf-quick-actions"><button data-animus-open="estimate">Create Estimate</button><button data-animus-open="invoice">Create Invoice</button><button data-animus-edit="action">Add Task</button><button data-animus-upload-document>Upload Document</button><button data-animus-tab="communication">Send Message</button><button data-animus-open="expenses">Log Expense</button><details><summary>More Actions</summary><div><button data-animus-open="assignment">Work Order</button><button data-animus-open="payroll">Payroll</button><button data-animus-tab="details">Job Details</button><button data-animus-open="archive">Archive File</button><button class="danger" data-animus-open="delete">Delete File</button></div></details></div></section>`;
+  }
+
+  function documentsPreview(file) {
+    const docs = documentRows(file);
+    return `<section class="animus-info-card"><div class="animus-card-head"><h3>Documents <span class="wf-count">${docs.length}</span></h3><button class="animus-record-button small" data-animus-tab="documents">View All</button></div>${docs.length ? `<div class="wf-document-preview">${docs.slice(0,3).map(doc => `<button type="button" data-animus-open-document="${escape(doc.id || "")}"><strong>${escape(doc.name || "Document")}</strong><small>${escape(doc.type || "File")}${doc.createdAt ? ` · ${escape(date(doc.createdAt.slice(0,10)))}` : ""}</small></button>`).join("")}</div>` : `<p class="animus-next-empty">No documents uploaded.</p>`}<button class="animus-record-button small wf-card-footer" data-animus-upload-document>Upload Document</button></section>`;
+  }
+
+  function photosPreview(file) {
+    const photos = workPhotoDocuments(file);
+    return `<section class="animus-info-card"><div class="animus-card-head"><h3>Photos <span class="wf-count">${photos.length}</span></h3><button class="animus-record-button small" data-animus-tab="documents">View All</button></div>${photos.length ? `<div class="wf-photo-preview">${photos.slice(0,3).map(photo => `<button type="button" data-animus-open-work-photo="${escape(photo.id || "")}" aria-label="View ${escape(photo.title || "work photo")}"><img loading="lazy" src="${escape(photo.dataUrl || photo.url || "")}" alt="${escape(photo.title || "Work photo")}"></button>`).join("")}${photos.length > 3 ? `<button data-animus-tab="documents" aria-label="View all photos">+${photos.length - 3}</button>` : ""}</div>` : `<p class="animus-next-empty">No work photos yet.</p>`}<button class="animus-record-button small wf-card-footer" data-animus-upload-document>Upload Photo</button></section>`;
+  }
+
+  function expenseBreakdown(file, total) {
+    const result = { Materials:0, Labor:0, Other:0 };
+    for (const line of Array.isArray(file.expenseLines) ? file.expenseLines : []) {
+      const amount = typeof window.receiptExpenseLineAmount === "function" ? window.receiptExpenseLineAmount(line) : Number(line.amount ?? line.lineTotal ?? line.total ?? line.baseAmount) || 0;
+      const category = String(line.category || "").toLowerCase();
+      const group = /^(materials?|supplies)$/.test(category) ? "Materials" : /^(labor|labour)$/.test(category) ? "Labor" : "Other";
+      result[group] += amount;
+    }
+    return Math.abs(Object.values(result).reduce((sum,value) => sum + value,0) - total) < .01 ? result : null;
+  }
+
+  function expensesSummary(file) {
+    const total = expenseTotal(file), groups = expenseBreakdown(file,total);
+    return `<section class="animus-info-card wf-expenses-card"><div class="animus-card-head"><h3>Expenses</h3><button class="animus-record-button small" data-animus-tab="expenses">View All</button></div><button type="button" class="wf-expense-breakdown" data-animus-tab="expenses" aria-label="Open this workfile's expenses"><dl class="wf-key-values">${Object.entries(groups || {Materials:null,Labor:null,Other:null}).map(([key,value]) => `<div><dt>${key}</dt><dd>${value === null ? "Not categorized" : money(value)}</dd></div>`).join("")}<div class="wf-expense-total"><dt>Total Expenses</dt><dd>${money(total)}</dd></div></dl></button></section>`;
+  }
+
+  function communicationPanel(file) {
+    const phone = field(file,"clientPhone").replace(/[^+\d]/g,""), email = field(file,"clientEmail");
+    const entries = activityRows(file).filter(row => /\b(email|text|sms|message|call|communication)\b/i.test(`${row.kind} ${row.title} ${row.detail}`));
+    return `<section class="animus-info-card"><div class="animus-card-head"><h3>Client Communication</h3><button class="animus-record-button small" data-animus-add-note>Log Communication</button></div><div class="wf-communication-actions">${email ? `<a class="animus-record-button" href="mailto:${escape(email)}">Email Customer</a>` : ""}${phone ? `<a class="animus-record-button" href="sms:${escape(phone)}">Text Customer</a><a class="animus-record-button" href="tel:${escape(phone)}">Call Customer</a>` : ""}<button class="animus-record-button" data-customer-portal>Customer Portal</button></div>${!phone && !email ? `<p class="animus-next-empty">Add a phone number or email to contact this customer.</p>` : ""}${entries.length ? `<div class="wf-communication-history">${entries.slice(0,50).map(row => `<article><strong>${escape(row.title)}</strong><p>${escape(row.detail)}</p>${row.at ? `<time>${escape(new Date(row.at).toLocaleString("en-US"))}</time>` : ""}</article>`).join("")}</div>` : `<p class="animus-next-empty">No communication activity recorded.</p>`}</section>`;
   }
 
   function activityPanel(file) {
-    return `<div class="animus-tab-panel"><section class="animus-info-card"><div class="animus-card-head"><h3>Activity</h3><button class="animus-record-button small" data-animus-add-note>Add Note</button></div>${activityMarkup(file, 100)}</section></div>`;
+    const count = activityRows(file).length;
+    return `<div class="animus-tab-panel"><section class="animus-info-card"><div class="animus-card-head"><h3>History</h3><button class="animus-record-button small" data-animus-add-note>Add Note</button></div>${activityMarkup(file, state.activityLimit)}${count > state.activityLimit ? `<button class="animus-record-button small wf-card-footer" data-animus-more-activity>Load More (${Math.min(50,count-state.activityLimit)} of ${count-state.activityLimit})</button>` : ""}</section></div>`;
   }
 
   function estimatePanel(file) {
@@ -263,7 +326,7 @@
 
   function financialsPanel(file) {
     const estimate = Number(file.estimateTotal) || 0, paid = paidTotal(file), balance = Math.max(estimate - paid, 0), material = Number(file.materialTotal) || 0, labor = Number(file.laborTotal) || 0, expenses = expenseTotal(file);
-    const values = [["Estimate Amount", money(estimate), "", ""], ["Materials", money(material), "", ""], ["Expenses", money(expenses), "", "expenses"], ["Labor", money(labor), "", ""], ["Total Paid", money(paid), "", ""], ["Balance Owed", money(balance), balance ? "danger" : "", ""]];
+    const values = [["Estimate Amount", money(estimate), "", ""], ["Materials", money(material), "", ""], ["Expenses", money(expenses), "", "expenses"], ["Labor", money(labor), "", ""], ["Total Paid", money(paid), "", ""], [file.invoiceSent === "Yes" ? "Balance" : "Estimate Balance", money(balance), balance ? "danger" : "", ""]];
     return `<div class="animus-tab-panel"><div class="animus-financial-grid">${values.map(([label, value, tone, action]) => `<${action ? "button" : "article"} class="animus-financial-value ${tone} ${action ? "clickable" : ""}"${action ? ` type="button" data-animus-open="${action}"` : ""}><span>${label}</span><strong>${value}</strong></${action ? "button" : "article"}>`).join("")}</div><div class="animus-action-row"><button class="animus-record-button primary" data-animus-edit="financials">Edit Financials</button><button class="animus-record-button" data-animus-open="invoice">Open Invoice</button></div></div>`;
   }
 
@@ -303,7 +366,9 @@
   }
 
   function workPhotoDocuments(file) {
-    return Array.isArray(file?.workPhotos) ? file.workPhotos : [];
+    const photos = Array.isArray(file?.workPhotos) ? file.workPhotos : [];
+    const uploads = documentRows(file).filter(doc => String(doc.type || "").startsWith("image/")).map(doc => ({ ...doc, title:doc.name }));
+    return [...photos, ...uploads];
   }
 
   function workPhotoPanel(file) {
@@ -315,7 +380,7 @@
     const supplements = Array.isArray(file.supplements) ? file.supplements : [];
     const receipts = fileExpenseRecords(file).filter((entry) => receiptSource(entry) || entry.imageTitle || entry.vendor || entry.title);
     const docs = documentRows(file);
-    return `<div class="animus-tab-panel animus-documents-panel"><section class="animus-info-card"><div class="animus-card-head"><h3>Documents</h3><button class="animus-record-button primary small" data-animus-upload-document>Upload Document</button><input id="animusWorkFileDocumentUpload" type="file" hidden></div><div class="animus-document-grid">${workPhotoPanel(file)}<section class="animus-document-box"><div class="animus-document-box-head"><h4>Receipts</h4><span>${receipts.length}</span></div>${receipts.length ? `<div class="animus-document-list">${receipts.map((entry) => `<button type="button" class="animus-document-row" data-animus-open-receipt="${escape(entry.id || "")}"><span class="animus-document-icon">${receiptSource(entry) ? "IMG" : "REC"}</span><span><strong>${escape(entry.title || entry.vendor || entry.imageTitle || "Receipt")}</strong><small>${escape(date(entry.date))} · ${escape(receiptDetail(entry))}</small></span><b>${money(entry.amount)}</b></button>`).join("")}</div>` : `<div class="animus-document-empty">Receipt images and receipt details for this work file will appear here after expenses are saved.</div>`}</section><section class="animus-document-box"><div class="animus-document-box-head"><h4>Uploaded Documents</h4><span>${docs.length}</span></div>${docs.length ? `<div class="animus-document-list">${docs.map((doc) => `<button type="button" class="animus-document-row" data-animus-open-document="${escape(doc.id || "")}"><span class="animus-document-icon">${escape((doc.type || doc.name || "DOC").split("/").pop().slice(0, 3).toUpperCase())}</span><span><strong>${escape(doc.name || "Uploaded document")}</strong><small>${escape(date((doc.createdAt || "").slice(0, 10)))} · ${escape(doc.notes || doc.type || "Saved to this work file")}</small></span><b>${escape(doc.size ? `${Math.round(Number(doc.size) / 1024)} KB` : "")}</b></button>`).join("")}</div>` : `<div class="animus-document-empty">Upload contracts, drawings, photos, PDFs, or other file notes here.</div>`}</section><section class="animus-document-box animus-document-actions"><div class="animus-document-box-head"><h4>Work File Documents</h4><span>${supplements.length ? `${supplements.length} supplement${supplements.length === 1 ? "" : "s"}` : "Actions"}</span></div><div class="animus-action-row"><button class="animus-record-button" data-animus-open="estimate">Estimate</button><button class="animus-record-button" data-animus-open="invoice">Invoice</button><button class="animus-record-button" data-animus-open="assignment">Work Order</button></div></section></div></section></div>`;
+    return `<div class="animus-tab-panel animus-documents-panel"><section class="animus-info-card"><div class="animus-card-head"><h3>Documents</h3><button class="animus-record-button primary small" data-animus-upload-document>Upload Document</button></div><div class="animus-document-grid">${workPhotoPanel(file)}<section class="animus-document-box"><div class="animus-document-box-head"><h4>Receipts</h4><span>${receipts.length}</span></div>${receipts.length ? `<div class="animus-document-list">${receipts.map((entry) => `<button type="button" class="animus-document-row" data-animus-open-receipt="${escape(entry.id || "")}"><span class="animus-document-icon">${receiptSource(entry) ? "IMG" : "REC"}</span><span><strong>${escape(entry.title || entry.vendor || entry.imageTitle || "Receipt")}</strong><small>${escape(date(entry.date))} · ${escape(receiptDetail(entry))}</small></span><b>${money(entry.amount)}</b></button>`).join("")}</div>` : `<div class="animus-document-empty">No receipts saved for this workfile.</div>`}</section><section class="animus-document-box"><div class="animus-document-box-head"><h4>Uploaded Documents</h4><span>${docs.length}</span></div>${docs.length ? `<div class="animus-document-list">${docs.map((doc) => `<button type="button" class="animus-document-row" data-animus-open-document="${escape(doc.id || "")}"><span class="animus-document-icon">${escape((doc.type || doc.name || "DOC").split("/").pop().slice(0, 3).toUpperCase())}</span><span><strong>${escape(doc.name || "Uploaded document")}</strong><small>${escape(date((doc.createdAt || "").slice(0, 10)))} · ${escape(doc.notes || doc.type || "Saved to this work file")}</small></span><b>${escape(doc.size ? `${Math.round(Number(doc.size) / 1024)} KB` : "")}</b></button>`).join("")}</div>` : `<div class="animus-document-empty">No uploaded documents.</div>`}</section><section class="animus-document-box animus-document-actions"><div class="animus-document-box-head"><h4>Work File Documents</h4><span>${supplements.length ? `${supplements.length} supplement${supplements.length === 1 ? "" : "s"}` : "Actions"}</span></div><div class="animus-action-row"><button class="animus-record-button" data-animus-open="estimate">Estimate</button><button class="animus-record-button" data-animus-open="invoice">Invoice</button><button class="animus-record-button" data-animus-open="assignment">Work Order</button></div></section></div></section></div>`;
   }
 
   function detailsPanel(file) {
@@ -331,7 +396,7 @@
 
   function editorMarkup(file) {
     if (!state.editor) return "";
-    const select = (name, value, options) => `<label>${name}<select data-animus-field="${name}">${options.map((option) => `<option${option === value ? " selected" : ""}>${escape(option)}</option>`).join("")}</select></label>`;
+    const select = (name, value, options) => `<label>${name.replace(/([A-Z])/g," $1").replace(/^./,letter=>letter.toUpperCase())}<select data-animus-field="${name}">${options.map((option) => `<option${option === value ? " selected" : ""}>${escape(option)}</option>`).join("")}</select></label>`;
     const input = (name, label, value, type = "text", wide = "") => `<label class="${wide}">${label}<input data-animus-field="${name}" data-animus-original="${escape(value)}" type="${type}" value="${escape(value)}"></label>`;
     let title = "Edit File", fields = "";
     if (state.editor === "customer") fields = input("clientName", "Name", field(file, "clientName")) + input("clientPhone", "Phone", field(file, "clientPhone")) + input("clientEmail", "Email", field(file, "clientEmail"), "email") + input("projectAddress", "Address", field(file, "projectAddress"), "text", "wide");
@@ -356,26 +421,148 @@
     if (state.tab === "expenses") return expensesPanel(file);
     if (state.tab === "documents") return documentsPanel(file);
     if (state.tab === "details") return detailsPanel(file);
+    if (state.tab === "history") return activityPanel(file);
+    if (state.tab === "communication") return communicationPanel(file);
+    if (state.tab === "tasks") return nextActionCard(file);
     return overviewPanel(file);
   }
+
+  function headerMarkup(file) {
+    const metadata = [["Created", file.createdAt], ["Updated", file.updatedAt]].filter(([,value]) => value).map(([label,value]) => `${label} ${date(String(value).slice(0,10))}`);
+    const actor = file.updatedBy?.name || file.updatedBy?.email || (typeof file.updatedBy === "string" ? file.updatedBy : "");
+    if (actor) metadata.push(`by ${actor}`);
+    return `<header class="animus-record-header"><div class="animus-record-person"><div class="animus-record-avatar" aria-hidden="true">${escape(initials(file.clientName))}</div><div class="animus-record-title"><h2>${escape(file.clientName || "Unnamed Client")}</h2><p class="animus-record-subtitle">${[file.fileNumber,file.projectType,file.leadSource].filter(Boolean).map(escape).join(" &middot; ")}</p>${file.projectAddress ? `<p class="wf-header-location">${escape(file.projectAddress)}</p>` : ""}<div class="wf-header-status"><button type="button" class="animus-status-badge animus-status-${statusTone(file.fileStatus)}" data-animus-edit="progress" title="Update file status">${escape(field(file,"fileStatus","New Lead"))}</button>${file.statusDetail ? `<span>${escape(file.statusDetail)}</span>` : ""}</div>${metadata.length ? `<p class="wf-header-metadata">${metadata.map(escape).join(" &middot; ")}</p>` : ""}</div></div><div class="animus-record-actions"><button type="button" class="animus-record-button" data-animus-open="editFile">Edit File</button><button type="button" class="animus-record-button primary" data-animus-edit="action">Add Task</button><details class="animus-more-menu"><summary class="animus-record-button wf-more-trigger" aria-label="More workfile actions" title="More actions">&#8943;</summary><div class="animus-more-menu-panel"><button class="animus-record-button small" data-animus-open="assignment">Work Order</button><button class="animus-record-button small" data-animus-open="payroll">Payroll</button><button class="animus-record-button small" data-animus-open="archive">Archive File</button><button class="animus-record-button small danger" data-animus-open="delete">Delete File</button></div></details></div></header>`;
+  }
+
+  function setPanelCollapsed(collapsed) {
+    const layout = document.querySelector('.animus-work-files-layout');
+    const button = byId('animusWorkFilesCollapse');
+    layout?.classList.toggle('animus-work-files-collapsed',collapsed);
+    if (button) {
+      button.setAttribute('aria-expanded',String(!collapsed));
+      button.setAttribute('aria-label',collapsed ? 'Expand Workfiles' : 'Collapse Workfiles');
+      button.title = collapsed ? 'Expand Workfiles' : 'Collapse Workfiles';
+      button.textContent = collapsed ? '\u203a' : '\u2039';
+    }
+    const list = document.querySelector('.crm-file-list-panel');
+    if (list) for (const child of list.children) if (child !== button) { child.inert = collapsed; child.setAttribute('aria-hidden',String(collapsed)); }
+    const workspace = document.querySelector('.crm-file-workspace');
+    if (workspace) workspace.inert = !collapsed && window.innerWidth <= 900;
+  }
+
+  function writeRoute(fileId, tab, push = true) {
+    const url = new URL(location.href);
+    if (fileId) { url.searchParams.set('workfile',fileId); url.searchParams.set('fileTab',tab); }
+    else { url.searchParams.delete('workfile'); url.searchParams.delete('fileTab'); }
+    if (url.href !== location.href) history[push ? 'pushState' : 'replaceState'](history.state,'',url);
+  }
+
+  function workspaceVisible() {
+    const layout = document.querySelector('.animus-work-files-layout');
+    return layout && !layout.hidden && document.body.dataset.animusView === 'files' && !document.body.classList.contains('crm-estimator-active');
+  }
+
+  let routeRequested = new URL(location.href).searchParams.get('workfile');
+  let identity = null;
+  function isAssignedToCurrentUser(file) {
+    if (!identity) return false;
+    const ids = [identity.uid,identity.email,identity.name,identity.displayName].filter(Boolean).map(value=>String(value).trim().toLowerCase());
+    const value = file.assignedTo || file.assignedEmployee || file.employee || file.team;
+    return (Array.isArray(value) ? value : [value]).some(entry => {
+      const names = typeof entry === 'object' && entry ? [entry.id,entry.uid,entry.name,entry.email] : String(entry || '').split(/[,;]/);
+      return names.some(name=>ids.includes(String(name || '').trim().toLowerCase()));
+    });
+  }
+
+  function selectTab(tab, push = true) {
+    if (!tabIds.includes(tab)) return;
+    if (state.editor && !confirm('Discard unsaved workfile edits and change sections?')) return;
+    state.tab = tab; state.editor = '';
+    if (state.fileId) state.tabs.set(state.fileId,tab);
+    writeRoute(currentFile()?.id,tab,push);
+    renderWorkFile();
+    const workspace = document.querySelector('.crm-file-workspace');
+    if (workspace) workspace.scrollTop = 0;
+  }
+
+  window.AnimusWorkfileDetail = {
+    isAssignedToCurrentUser,
+    selected(id) {
+      routeRequested = null;
+      if (String(currentFile()?.id) !== String(id)) return;
+      renderWorkFile(); setPanelCollapsed(true); writeRoute(id,state.tab);
+      const title = document.querySelector('#animusWorkFile .animus-record-title h2');
+      title?.setAttribute('tabindex','-1'); title?.focus({preventScroll:true});
+    },
+  };
+
+  window.addEventListener('popstate',()=>{
+    if (state.editor && !confirm('Discard unsaved workfile edits and navigate?')) { writeRoute(state.fileId,state.tab); return; }
+    const url = new URL(location.href); routeRequested = url.searchParams.get('workfile');
+    state.editor = '';
+    if (!routeRequested) { window.selectAnimusWorkfile?.(null); setPanelCollapsed(false); }
+    else {
+      const tab = url.searchParams.get('fileTab');
+      state.tabs.set(routeRequested,tabIds.includes(tab) ? tab : 'overview');
+    }
+    window.switchCrmView?.('files'); window.renderCrm?.();
+  });
 
   function renderWorkFile() {
     const workspace = document.querySelector(".crm-file-workspace");
     if (!workspace) return;
     let root = document.querySelector("#animusWorkFile");
     if (!root) { root = document.createElement("section"); root.id = "animusWorkFile"; root.className = "animus-work-file"; workspace.prepend(root); }
+    if (routeRequested) {
+      if (!window.selectAnimusWorkfile?.(routeRequested)) {
+        window.selectAnimusWorkfile?.(null); state.fileId = ""; state.editor = "";
+        root.innerHTML = `<div class="animus-empty-panel" role="status">${typeof crmCloudAuthoritativeLoaded !== 'undefined' && !crmCloudAuthoritativeLoaded ? 'Loading workfile from cloud...' : 'This workfile is not available.'}</div>`;
+        return;
+      }
+      const requestedTab = new URL(location.href).searchParams.get('fileTab');
+      state.tabs.set(routeRequested,tabIds.includes(requestedTab) ? requestedTab : 'overview');
+      if (state.fileId === routeRequested) state.tab = state.tabs.get(routeRequested);
+      routeRequested = null; setPanelCollapsed(true);
+      window.switchCrmView?.('files');
+    }
     const file = currentFile();
-    if (!file) { root.innerHTML = `<div class="animus-empty-panel">Select a work file to see its details.</div>`; return; }
+    if (!file) { state.fileId = ""; state.editor = ""; document.body.classList.remove("animus-work-file-active"); root.innerHTML = `<div class="animus-empty-panel"><h2>Select a workfile</h2><p>Choose a customer project from the list.</p></div>`; setPanelCollapsed(false); return; }
+    if (state.fileId !== file.id) {
+      if (state.fileId) state.tabs.set(state.fileId,state.tab);
+      state.fileId = file.id;
+      state.tab = state.tabs.get(file.id) || "overview";
+      state.editor = "";
+      state.activityLimit = 50;
+      setPanelCollapsed(true);
+      if (workspaceVisible()) writeRoute(file.id,state.tab);
+      workspace.scrollTop = 0;
+    }
+    if (workspaceVisible() && !new URL(location.href).searchParams.has('workfile')) writeRoute(file.id,state.tab,false);
     document.body.classList.add("animus-work-file-active");
-    const phone = field(file, "clientPhone").replace(/[^+\d]/g, "");
-    const email = field(file, "clientEmail");
-    const address = field(file, "projectAddress");
-    root.innerHTML = `<button class="animus-record-back" data-animus-back>&larr; Back to CRM / Files</button>${editorMarkup(file)}<header class="animus-record-header"><div class="animus-record-person"><div class="animus-record-avatar">${escape(initials(file.clientName))}</div><div class="animus-record-title"><div class="animus-record-name-line"><h2>${escape(file.clientName || "Unnamed Client")}</h2><details class="animus-customer-info"><summary>Customer Info</summary><div class="animus-customer-info-panel"><strong>Customer Information</strong>${phone ? `<a href="tel:${escape(phone)}">Call: ${escape(field(file, "clientPhone"))}</a><a href="sms:${escape(phone)}">Text customer</a>` : `<span>Phone: Not added</span>`}${email ? `<a href="mailto:${escape(email)}">Email: ${escape(email)}</a>` : `<span>Email: Not added</span>`}${address ? `<a target="_blank" rel="noreferrer" href="https://www.google.com/maps/search/?api=1&amp;query=${encodeURIComponent(address)}">Open address in Maps</a>` : `<span>Address: Not added</span>`}<button class="animus-record-button small" data-animus-edit="customer">Edit Customer</button></div></details></div><p class="animus-record-file-number">Project # ${escape(file.fileNumber || "Not assigned")}</p><p class="animus-record-subtitle">${escape(field(file, "projectType", "Other"))} &bull; ${escape(field(file, "leadSource", "Manual"))}</p><span class="animus-status-badge animus-status-${statusTone(file.fileStatus)}">${escape(field(file, "fileStatus", "New Lead"))}</span></div></div><div class="animus-record-actions"><button class="animus-record-button" data-animus-open="editFile">Edit File</button><details class="animus-more-menu"><summary class="animus-record-button">More</summary><div class="animus-more-menu-panel"><button class="animus-record-button small" data-animus-open="archive">Archive File</button><button class="animus-record-button small danger" data-animus-open="delete">Delete File</button></div></details><button class="animus-record-button primary" data-animus-save>Save</button></div></header>${summaryMarkup(file)}${tabsMarkup()}<main class="animus-tab-panel">${panel(file)}</main>`;
+    const previousDraft = state.editor ? [...root.querySelectorAll('[data-animus-field]')].map(input=>[input.dataset.animusField,input.value]) : [];
+    root.innerHTML = `<button type="button" class="animus-record-back" data-animus-back>&larr; All Workfiles</button>${editorMarkup(file)}${headerMarkup(file)}${summaryMarkup(file)}${tabsMarkup()}<main class="animus-tab-panel">${panel(file)}</main><input id="animusWorkFileDocumentUpload" type="file" hidden>`;
     const editor = root.querySelector(".animus-inline-editor");
+    root.querySelector('[data-animus-open="editFile"]')?.insertAdjacentHTML('afterbegin','<i data-wf-icon="pencil" aria-hidden="true"></i>');
+    root.querySelector('.animus-record-actions [data-animus-edit="action"]')?.insertAdjacentHTML('afterbegin','<i data-wf-icon="plus" aria-hidden="true"></i>');
+    const more = root.querySelector('.wf-more-trigger');
+    if (more) more.innerHTML = '<i data-wf-icon="ellipsis" aria-hidden="true"></i>';
+    window.renderAnimusWorkfileIcons?.();
     const contentPanel = root.querySelector("main.animus-tab-panel");
     if (editor && state.editor === "assigned" && root.querySelector(".animus-assigned-card")) {
       root.querySelector(".animus-assigned-card").append(editor);
     } else if (editor && contentPanel) contentPanel.prepend(editor);
+    for (const [name,value] of previousDraft) {
+      const input = editor?.querySelector(`[data-animus-field="${name}"]`);
+      if (input) input.value = value;
+    }
+    if (state.editor === "progress" && previousDraft.length) {
+      const status = editor.querySelector('[data-animus-field="fileStatus"]').value;
+      const detail = editor.querySelector('[data-animus-field="statusDetail"]');
+      const value = previousDraft.find(([name])=>name === "statusDetail")?.[1];
+      const choices = CRM_STATUS_DETAILS[status] || [""];
+      detail.replaceChildren(...choices.map(choice=>new Option(choice,choice)));
+      if (choices.includes(value)) detail.value = value;
+    }
     editor?.querySelector('[data-animus-field="fileStatus"]')?.addEventListener("change", (event) => {
       const choices = CRM_STATUS_DETAILS;
       const detail = editor.querySelector('[data-animus-field="statusDetail"]');
@@ -613,11 +800,13 @@
     }
     const uploadButton = event.target.closest("[data-animus-upload-document]");
     if (uploadButton) {
-      byId("animusWorkFileDocumentUpload")?.click();
+      const input = byId("animusWorkFileDocumentUpload");
+      if (input) { input.accept = uploadButton.textContent.includes('Photo') ? 'image/*' : ''; input.click(); }
       return;
     }
+    if (event.target.closest('[data-animus-more-activity]')) { state.activityLimit += 50; renderWorkFile(); return; }
     if (!target) return;
-    if (target.dataset.animusTab) { state.tab = target.dataset.animusTab; state.editor = ""; renderWorkFile(); return; }
+    if (target.dataset.animusTab) { selectTab(target.dataset.animusTab); return; }
     if (target.dataset.animusEdit) {
       state.editor = target.dataset.animusEdit;
       renderWorkFile();
@@ -631,11 +820,11 @@
     if (target.hasAttribute("data-animus-complete-action")) { completeNextAction(); return; }
     if (target.dataset.animusOpen) { openExisting(target.dataset.animusOpen); return; }
     if (target.dataset.animusSummary) {
-      if (target.dataset.animusSummary === "estimate") openExisting("estimate");
+      if (target.dataset.animusSummary === "estimate") selectTab("estimate");
       else if (target.dataset.animusSummary === "startDate") window.openCrmStartDateModal?.();
-      else if (["financials", "details"].includes(target.dataset.animusSummary)) { state.tab = target.dataset.animusSummary; state.editor = ""; renderWorkFile(); }
+      else if (["financials", "details"].includes(target.dataset.animusSummary)) selectTab(target.dataset.animusSummary);
       else if (target.dataset.animusSummary === "payroll") openExisting("payroll");
-      else if (target.dataset.animusSummary === "expenses") openExisting("expenses");
+      else if (target.dataset.animusSummary === "expenses") selectTab("expenses");
       else { state.editor = "action"; renderWorkFile(); }
       return;
     }
@@ -650,6 +839,8 @@
       return;
     }
     if (target.hasAttribute("data-animus-back")) {
+      routeRequested = null; writeRoute(null,"overview"); setPanelCollapsed(false);
+      document.querySelectorAll('[data-workfile-list-tab]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.workfileListTab==='all')));
       if (typeof window.clearActiveCrmFileSelection === "function") window.clearActiveCrmFileSelection();
       document.querySelector(".crm-file-list-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
     }
@@ -658,6 +849,44 @@
   document.addEventListener("change", (event) => {
     if (event.target?.id === "animusWorkFileDocumentUpload") uploadWorkFileDocument(event.target);
   });
+
+  document.addEventListener('click',async event=>{
+    const toggle = event.target.closest?.('#animusWorkFilesCollapse');
+    if (toggle) setPanelCollapsed(document.querySelector('.animus-work-files-layout')?.classList.contains('animus-work-files-collapsed'));
+    const tab = event.target.closest?.('[data-workfile-list-tab]');
+    if (!tab) return;
+    document.querySelectorAll('[data-workfile-list-tab]').forEach(button=>button.setAttribute('aria-pressed',String(button===tab)));
+    if (typeof window.activateCrmFilter === 'function') window.activateCrmFilter('all');
+    if (tab.dataset.workfileListTab === 'my' && !identity) {
+      tab.disabled = true;
+      try {
+        const response = await fetch('/api/session',{cache:'no-store'}), result = await response.json();
+        if (!response.ok || !result.user) throw Error('Your account could not be verified. Retry My Work.');
+        identity = result.user;
+      } catch(error) { window.alert(error.message); }
+      finally { tab.disabled = false; }
+    }
+    window.renderCrm?.();
+  });
+
+  document.addEventListener('click',event=>{
+    if (event.target.closest?.('#crmFileList [data-file-id]')) {
+      if (state.editor && !confirm('Discard unsaved workfile edits and open another file?')) { event.preventDefault(); event.stopImmediatePropagation(); }
+      return;
+    }
+    const section = event.target.closest?.('[data-animus-shell-view], [data-crm-view]');
+    if (section && (section.dataset.animusShellView || section.dataset.crmView) !== 'files') { writeRoute(null,state.tab,false); return; }
+    if (!section) return;
+    if (state.editor && !confirm('Discard unsaved workfile edits and return to the list?')) { event.preventDefault(); event.stopImmediatePropagation(); return; }
+    state.editor = ''; routeRequested = null; writeRoute(null,'overview');
+    document.querySelectorAll('[data-workfile-list-tab]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.workfileListTab==='open')));
+    window.selectAnimusWorkfile?.(null); setPanelCollapsed(false);
+  },true);
+
+  document.addEventListener('keydown',event=>{
+    if(event.key==='Escape' && !state.editor && currentFile())setPanelCollapsed(true);
+  });
+  window.addEventListener('resize',()=>setPanelCollapsed(Boolean(document.querySelector('.animus-work-files-layout')?.classList.contains('animus-work-files-collapsed'))));
 
   const originalRenderCrm = window.renderCrm;
   if (typeof originalRenderCrm === "function") {
@@ -668,5 +897,9 @@
     };
   }
   window.addEventListener("DOMContentLoaded", renderWorkFile);
+  window.addEventListener('load',()=>setTimeout(()=>{
+    const id = new URL(location.href).searchParams.get('workfile');
+    if (id && currentFile()?.id === id) window.switchCrmView?.('files');
+  },0));
   setTimeout(renderWorkFile, 0);
 }());
