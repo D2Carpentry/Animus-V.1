@@ -1876,35 +1876,6 @@ function activeFile() {
   return crmFiles.find((file) => file.id === activeFileId) || null;
 }
 
-// Table presentation uses the same records, editor, numbering, and cloud queue.
-window.AnimusWorkfilesBridge = {
-  files() { return crmFiles.map(file => ({...Object.fromEntries(['id','fileNumber','clientName','clientPhone','clientEmail','projectAddress','fileStatus','projectType','leadSource','nextActionDate','followUpDate','assignedTo','assignedEmployee','employee','team'].map(key => [key,file[key]])),category:crmFileCategory(file),estimateTotal:file.estimateTotal??file.editableEstimate?.totals?.total,estimateExists:!!(file.editableEstimate||file.estimatePdfUrl||file.estimateUrl)})); },
-  options() { return { statuses:Object.keys(CRM_STATUS_DETAILS),types:[...CRM_PROJECT_TYPES],people:[...new Set([...crmFiles.map(file=>file.assignedTo||file.assignedEmployee||file.employee||file.team||''),...crmPayrollRows.map(row=>row.employee||'')].flatMap(value=>Array.isArray(value)?value:String(value).split(/\s*[/,]\s*/)).map(value=>String(value).trim()).filter(value=>value&&!/^unassigned$/i.test(value)))].sort() }; },
-  select(id) { const file=crmFiles.find(item=>String(item.id)===String(id));if(!file)return;flushActiveFileDraft();switchCrmView('files');activeFileId=file.id;renderCrm(); },
-  create() { newCrmFile(); },
-  edit() { window.openCrmFileIntakeEditor(); },
-  remove() { deleteActiveFile(); },
-  duplicate(id) { const file=crmFiles.find(item=>String(item.id)===String(id));if(!file)return;newCrmFile();const modal=$('animusNewFileModal');for(const key of ['clientName','clientPhone','clientEmail','projectAddress','leadSource','projectType','otherProjectType']){const input=modal.querySelector(`[data-new-file-field="${key}"]`);if(input){input.value=file[key]||'';input.dispatchEvent(new Event('change',{bubbles:true}));}} },
-  async update(ids,field,value) {
-    if(!['projectType','assignedTo','archive'].includes(field))throw Error('Unsupported workfile update.');
-    if(field==='projectType'&&!CRM_PROJECT_TYPES.includes(value))throw Error('Choose an existing project type.');
-    if(field==='assignedTo'&&!this.options().people.includes(value))throw Error('Choose an existing assignee.');
-    const key=field==='archive'?'fileStatus':field;
-    const targets=crmFiles.filter(file=>ids.includes(String(file.id))&&(field!=='archive'||!isClosedCrmFile(file)));
-    if(!targets.length)throw Error('No eligible workfiles selected.');
-    const latest=await fetchDashboardFromCloudflare();
-    if(!latest||latest.__cloudRecovery)throw Error('The current cloud copy could not be verified. No changes were submitted.');
-    for(const file of targets){const saved=latest.dashboardFiles?.find(item=>String(item.id)===String(file.id));if(!saved||JSON.stringify(saved[key]??'')!==JSON.stringify(file[key]??''))throw Error('A selected workfile changed in the cloud. Reload before retrying.');}
-    const next=field==='archive'?'Job Lost / Closed':value;
-    const patches=targets.map(file=>({id:file.id,fileNumber:file.fileNumber,[key]:next}));
-    const result=await queueDashboardCloudSave({action:'dashboardSync',dashboardFiles:patches});
-    const savedFiles=(result.dashboard||result.verification)?.dashboardFiles||[];
-    if(patches.some(patch=>!savedFiles.some(file=>String(file.id)===String(patch.id)&&file[key]===next)))throw Error('Cloudflare did not confirm every change. Reload to check the saved values.');
-    for(const file of targets)file[key]=next;
-    crmLocalChangeVersion+=1;renderCrm();
-  },
-};
-
 // Used by the Work File back control to return to the list without changing any file data.
 window.clearActiveCrmFileSelection = function clearActiveCrmFileSelection() {
   activeFileId = null;
@@ -2992,7 +2963,6 @@ function openLegacyNewCrmFileModal(fileToEdit = null) {
         activeFileId = file.id;
         renderCrm();
         window.setTimeout(() => $("crmClientName")?.focus(), 0);
-        if(!isEdit)window.AnimusWorkfiles?.open(file.id);
       } catch (createError) {
         if (error) { error.hidden = false; error.textContent = `${modal.dataset.mode === "edit" ? "Could not save this work file." : "Could not create this work file."} ${createError?.message || "Please try again."}`; }
         console.error("Work file intake save failed", createError);
@@ -3074,7 +3044,6 @@ function openNewCrmFileModal(fileToEdit = null) {
     if (mode === "new" && typeof switchCrmView === "function") switchCrmView("files");
     activeFileId = savedFile.id;
     renderCrm();
-    if(mode==='new')window.AnimusWorkfiles?.open(savedFile.id);
   });
   modal.hidden = false;
   window.setTimeout(() => modal.querySelector("[data-new-file-field='clientName']")?.focus(), 0);
@@ -3169,7 +3138,6 @@ function newCrmFile(options = {}) {
     activeFileId = file.id;
     renderCrm();
     window.setTimeout(() => $("crmClientName")?.focus(), 0);
-    window.AnimusWorkfiles?.open(file.id);
   }
   return file;
 }
