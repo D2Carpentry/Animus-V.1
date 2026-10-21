@@ -34,6 +34,7 @@ test('summary keeps canonical paid totals and distinguishes an uninvoiced estima
   const html=api.summaryMarkup({estimateTotal:100,expenseLines:[]});
   assert.ok(html.includes('$70.00'));assert.ok(html.includes('Estimate only'));
   assert.equal(api.summaryMarkup({estimateTotal:100,invoiceSent:'Yes'}).includes('Estimate only'),false);
+  assert.equal(api.summaryMarkup({estimateTotal:100,statusDetail:'Invoice Sent'}).includes('Estimate only'),false);
   for(const action of ['estimate','financials','expenses','startDate'])assert.ok(html.includes(`data-animus-summary="${action}"`));
 });
 test('header removes always-visible Save and customer badge, retains editing and real metadata',()=>{

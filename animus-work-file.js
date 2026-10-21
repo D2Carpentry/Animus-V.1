@@ -184,8 +184,12 @@
     const cells = [
       ["&#36;", "Estimate", money(estimate), "", "", "estimate"], ["&#9638;", "Paid", money(paid), "", "", "financials"], ["&#128179;", "Balance", money(balance), "", "balance", "financials"], ["&#9638;", "Expenses", money(expenseTotal(file)), "", "expenses", "expenses"], ["&#128197;", "Start Date", field(file, "startDate") ? date(file.startDate) : "Not set", field(file, "startDateReason"), "start-date", "startDate"],
     ];
-    if (file.invoiceSent !== "Yes" && !["Sent","Deposit Paid","Balance Due","Paid"].includes(file.invoiceStatus)) cells[2][3] = "Estimate only";
+    if (!hasIssuedInvoice(file)) cells[2][3] = "Estimate only";
     return `<div class="animus-summary-strip">${cells.map(([icon, label, value, sub, extra, action]) => `<button type="button" class="animus-summary-cell ${extra || ""} clickable" data-animus-summary="${action}"><span class="animus-summary-copy"><span>${escape(label)}</span><strong>${escape(value)}</strong>${sub ? `<small>${escape(sub)}</small>` : ""}</span></button>`).join("")}</div>`;
+  }
+
+  function hasIssuedInvoice(file) {
+    return file.invoiceSent === "Yes" || Boolean(file.invoiceSentAt) || ["Sent","Deposit Paid","Balance Due","Paid"].includes(file.invoiceStatus) || field(file,"statusDetail").toLowerCase() === "invoice sent";
   }
 
   function tabsMarkup() {
@@ -326,7 +330,7 @@
 
   function financialsPanel(file) {
     const estimate = Number(file.estimateTotal) || 0, paid = paidTotal(file), balance = Math.max(estimate - paid, 0), material = Number(file.materialTotal) || 0, labor = Number(file.laborTotal) || 0, expenses = expenseTotal(file);
-    const values = [["Estimate Amount", money(estimate), "", ""], ["Materials", money(material), "", ""], ["Expenses", money(expenses), "", "expenses"], ["Labor", money(labor), "", ""], ["Total Paid", money(paid), "", ""], [file.invoiceSent === "Yes" ? "Balance" : "Estimate Balance", money(balance), balance ? "danger" : "", ""]];
+    const values = [["Estimate Amount", money(estimate), "", ""], ["Materials", money(material), "", ""], ["Expenses", money(expenses), "", "expenses"], ["Labor", money(labor), "", ""], ["Total Paid", money(paid), "", ""], [hasIssuedInvoice(file) ? "Balance" : "Estimate Balance", money(balance), balance ? "danger" : "", ""]];
     return `<div class="animus-tab-panel"><div class="animus-financial-grid">${values.map(([label, value, tone, action]) => `<${action ? "button" : "article"} class="animus-financial-value ${tone} ${action ? "clickable" : ""}"${action ? ` type="button" data-animus-open="${action}"` : ""}><span>${label}</span><strong>${value}</strong></${action ? "button" : "article"}>`).join("")}</div><div class="animus-action-row"><button class="animus-record-button primary" data-animus-edit="financials">Edit Financials</button><button class="animus-record-button" data-animus-open="invoice">Open Invoice</button></div></div>`;
   }
 
