@@ -10,6 +10,9 @@ body.animus-dark-theme .revenue-dashboard,body.animus-dark-theme .revenue-dialog
 .revenue-dashboard .animus-revenue-head h1{font-size:26px}
 .revenue-dashboard .animus-revenue-head p{color:var(--rv-muted);font-size:12px;max-width:520px}
 .revenue-dashboard .animus-revenue-tools{flex-wrap:wrap;gap:7px}
+.revenue-dashboard .animus-revenue-head>div:first-child{flex:1 1 300px}
+.revenue-dashboard .animus-revenue-tools select{width:auto!important;min-width:100px;flex:0 0 auto}
+.revenue-dashboard .revenue-panel header select{width:auto!important;min-width:100px;max-width:100%;flex:0 0 auto}
 .revenue-dashboard .animus-revenue-tools>label{width:210px}
 .revenue-dashboard .animus-revenue-tools button,.revenue-dashboard .animus-revenue-tools select{height:36px}
 .revenue-dashboard .animus-revenue-kpis{grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}

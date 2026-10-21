@@ -177,6 +177,10 @@
     view.querySelector(".animus-revenue-kpis").innerHTML=[["gross","Total Gross Earnings","green"],["expenses","Total Expenses","violet"],["labor","Total Labor","blue"],["profit","Job Profit","green"],["margin","Profit Margin","amber"]].map(([key,label,tone])=>kpi("",tone,label,key==="margin"?total.margin==null?"—":`${total.margin.toFixed(1)}%`:money(total[key]),comparison(key,total[key]),key,toneForValue(total[key]))).join("");
     view.querySelector(".animus-revenue-kpis").insertAdjacentHTML("afterend",`<section class="revenue-analytics">${trendMarkup(data)}${costsMarkup(data)}${typesMarkup(data)}</section>${insightsMarkup(data)}`);
     const bars=view.querySelectorAll(".revenue-trend rect");
+    view.querySelectorAll(".revenue-trend svg>text").forEach((label,index)=>{
+      const key=data.periods[index]?.name;
+      if(/^\d{4}-\d{2}$/.test(key||""))label.textContent=new Date(`${key}-01T12:00:00`).toLocaleDateString("en-US",{month:"short",year:"2-digit"});
+    });
     data.periods.forEach((point,index)=>{
       if(point.margin==null)view.querySelectorAll(".revenue-trend circle")[index]?.setAttribute("visibility","hidden");
       const description=`${periodLabel(point.name)}: Gross ${money(point.gross)}, Profit ${money(point.profit)}, Margin ${point.margin==null?"not available":point.margin.toFixed(1)+"%"}`;
