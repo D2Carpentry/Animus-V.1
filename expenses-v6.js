@@ -75,14 +75,18 @@
     render();
     try {
       const loadedFileKeys=new Set();
+      const failedFiles=[];
+      let companyFailed=false;
       const [rows, companyRows] = await Promise.all([Promise.all(files().map(async (file) => {
-        try { const entries=await apiGet(file);loadedFileKeys.add(fileKey(file));return entries; } catch (_) { return []; }
-      })), apiGet(COMPANY_EXPENSE_FILE).catch(() => [])]);
+        try { const entries=await apiGet(file);loadedFileKeys.add(fileKey(file));return entries; } catch (_) { failedFiles.push(fileKey(file));return []; }
+      })), apiGet(COMPANY_EXPENSE_FILE).catch(() => { companyFailed=true;return []; })]);
       if (requestId !== state.requestId) return;
       state.entries = rows.flat().sort((a,b) => String(b.updatedAt || b.createdAt || "").localeCompare(String(a.updatedAt || a.createdAt || "")));
       state.companyEntries = companyRows.sort((a,b) => String(b.updatedAt || b.createdAt || "").localeCompare(String(a.updatedAt || a.createdAt || "")));
       state.loaded = true;
       state.loadedFileKeys=loadedFileKeys;
+      state.failedFiles=failedFiles;
+      state.companyFailed=companyFailed;
       if (!readOnlyReport) syncLoadedExpensesToRevenue();
     } finally {
       if (requestId === state.requestId) {
@@ -196,7 +200,7 @@
   }
 
   function fileOptions(selected) { if (state.companyMode) return `<option value="${COMPANY_EXPENSE_FILE.id}" selected>Company Expenses</option>`; return [`<option value="">Choose customer / job</option>`, `<option value="all"${selected === "all" ? " selected" : ""}>All customer files</option>`, ...files().map((file) => `<option value="${esc(fileKey(file))}"${selected === fileKey(file) ? " selected" : ""}>${esc(file.fileNumber || "Project")} — ${esc(file.clientName || "Unnamed Client")}</option>`)].join(""); }
-  function categoryOptions(value) { return ["Supplies","Materials","Fuel","Equipment","Labor","Other"].map((item) => `<option${value === item ? " selected" : ""}>${item}</option>`).join(""); }
+  function categoryOptions(value) { return [...new Set(["Supplies","Materials","Fuel","Equipment","Labor","Subcontractors","Other",value].filter(Boolean))].map((item) => `<option${value === item ? " selected" : ""}>${esc(item)}</option>`).join(""); }
   function paymentOptions(value) { return ["","Cash","Credit - Chase Business","Credit - Bank of America","Credit - Chase Personal"].map((item) => `<option value="${esc(item)}"${value === item ? " selected" : ""}>${item || "Select"}</option>`).join(""); }
 
   function tableMarkup(entries) {
@@ -260,6 +264,21 @@
     const vendors = [...new Set(currentEntries.map((entry) => entry.vendor).filter(Boolean))].sort();
     const activeTabs = [["inbox","Receipt Inbox"],["processed","Processed Expenses"],["history","Expense History"],["categories","Categories"],["vendors","Vendors"]];
     const isHome = state.mode === "home" && !state.companyMode;
+    if (isHome && !state.filters.imagesOnly && window.AnimusExpenseDashboard) {
+      window.AnimusExpenseDashboard.render(root, {
+        entries:state.entries,companyEntries:state.companyEntries,files:files(),loaded:state.loaded,loading:state.loading,
+        failedFiles:state.failedFiles,companyFailed:state.companyFailed,
+      }, {
+        render,
+        refresh:()=>loadExpenses(),
+        scan:(file,target)=>scan(file,target).catch(error=>{state.processStep='';render();window.alert(error.message||'Receipt could not be read.');}),
+        newExpense:(id='')=>{state.draft=cleanDraft({fileId:id});state.draft.fileId=id;state.selectedId='';state.editing=true;render();},
+        openFile:(id,filters={})=>{const file=findFile(id);if(!file)return;if(typeof activeFileId!=='undefined')activeFileId=file.id;state.mode='file';state.scope=fileKey(file);state.companyMode=false;state.selectedId='';state.selectedIds.clear();state.draft=null;state.editing=false;state.filters={...filters};render();},
+        openEntry:entry=>{state.mode='file';state.scope=entry.company?COMPANY_EXPENSE_FILE.id:entry.fileKey;state.companyMode=entry.company;state.selectedId=entry.id;state.selectedIds.clear();state.draft=null;state.editing=false;state.filters={};render();},
+        openWorkfile:id=>{if(typeof switchCrmView==='function')switchCrmView('files');if(window.selectAnimusWorkfile?.(id)){if(typeof renderCrm==='function')renderCrm();window.AnimusWorkfileDetail?.selected(id);}},
+      }, detailModalMarkup(), bind);
+      return;
+    }
     const targetFile = state.companyMode ? COMPANY_EXPENSE_FILE : (state.scope !== "all" ? findFile(state.scope) : null);
     const headerEntries = isHome ? state.entries : rows;
     const currentMonth = new Date().toISOString().slice(0, 7);
@@ -303,14 +322,16 @@
     document.querySelectorAll("[data-expense-item-price]").forEach((input) => { draft.items[Number(input.dataset.expenseItemPrice)].price = input.value; });
   }
 
-  async function scan(file) {
+  async function scan(file, targetOverride = '') {
     if (!file) return;
-    const targetFileId = state.companyMode ? COMPANY_EXPENSE_FILE.id : (state.scope !== "all" ? state.scope : fileKey(typeof activeFile === "function" ? activeFile() : null));
-    if (!targetFileId || (!state.companyMode && !findFile(targetFileId))) {
+    const targetFileId = targetOverride || (state.companyMode ? COMPANY_EXPENSE_FILE.id : (state.scope !== "all" ? state.scope : fileKey(typeof activeFile === "function" ? activeFile() : null)));
+    const targetIsCompany = targetFileId === COMPANY_EXPENSE_FILE.id;
+    if (!targetFileId || (!targetIsCompany && !findFile(targetFileId))) {
       window.alert("Select the customer / job first. Every receipt must be saved to a work file.");
       return;
     }
     state.scope = targetFileId;
+    state.companyMode = targetIsCompany;
     if (file.type !== "application/pdf" && !String(file.type || "").startsWith("image/")) throw new Error("Choose an image or PDF receipt.");
     state.draft = cleanDraft({ fileId: targetFileId, title:file.name, imageTitle:file.name, receiptContentType:file.type || "" });
     state.processStep = "Reading receipt"; render();
