@@ -1504,6 +1504,7 @@ async function saveDashboardToGoogle() {
     showDashboardSaveStatus("Save All is blocked until the current Cloudflare Command Center has loaded. This prevents an older browser copy from overwriting the cloud.", true);
     return;
   }
+  if (window.animusCommitPendingPriceEdit?.() === false) return;
   saveButton.disabled = true;
   saveButton.textContent = "Checking...";
   showDashboardSaveStatus("Preparing the current Command Center for a push-only cloud save...");
@@ -1540,6 +1541,7 @@ async function saveDashboardToGoogle() {
 
     const savedFiles = payload.dashboardFiles;
     rememberCloudSync(payload);
+    window.dispatchEvent(new CustomEvent("animus-price-cloud-save", {detail:{ok:true,priceRows:payload.priceRows,deletedPriceIds:payload.deletedPriceIds}}));
     const totals = dashboardTestTotals(payload.revenueRows || []);
     showDashboardSaveStatus(`Saved all data to Cloudflare. ${savedFiles.length} files and ${payload.revenueRows.length} revenue lines verified. Gross ${crmCurrency.format(totals.gross)} · Expenses ${crmCurrency.format(totals.expenses)}.`);
     saveButton.textContent = "Saved";
@@ -1548,6 +1550,7 @@ async function saveDashboardToGoogle() {
     }, 1400);
   } catch (error) {
     showDashboardSaveStatus(error.message || "Save All could not be verified. The live cloud copy was not changed.", true);
+    window.dispatchEvent(new CustomEvent("animus-price-cloud-save", {detail:{ok:false,message:error.message || "Cloud save was not confirmed. Your price edits remain on this page."}}));
   } finally {
     const currentButton = $("crmSaveDemo") || saveButton;
     currentButton.disabled = false;
@@ -6997,8 +7000,9 @@ function savePriceLineEdit(id) {
     return input ? input.value.trim() : "";
   };
   const price = parseMoney(fieldValue("defaultPrice"));
+  const { readonly: catalogOnly, ...preservedFields } = existing;
   const updated = {
-    ...(existing.readonly ? {} : existing),
+    ...preservedFields,
     id: existing.readonly ? `custom-${makeCrmId("price")}` : existing.id,
     sourceId: existing.readonly ? existing.id : existing.sourceId,
     product: fieldValue("product") || existing.product || existing.name,
