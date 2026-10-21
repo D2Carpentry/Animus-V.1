@@ -14,6 +14,7 @@
   function rows(year = crmRevenueYearFilter) {
     const all = Array.isArray(crmRevenueRows) ? [...crmRevenueRows] : [];
     return all.filter((row) => {
+      if (state.reportIds && !state.reportIds.has(String(row.id))) return false;
       const file = typeof findFileForRevenue === "function" ? findFileForRevenue(row) : null;
       const text = `${row.clientJob || ""} ${row.fileNumber || ""} ${file?.clientName || ""} ${file?.projectAddress || ""}`.toLowerCase();
       const queryMatch = !state.query || text.includes(state.query.toLowerCase());
@@ -189,6 +190,10 @@
     const chart=view.querySelector(".revenue-trend svg");
     if(chart){const axis=document.createElementNS("http://www.w3.org/2000/svg","text");axis.setAttribute("x","16");axis.setAttribute("y","14");axis.setAttribute("fill","currentColor");axis.setAttribute("font-size","10");axis.textContent=`Scale: ${money(Math.max(0,...data.periods.flatMap(p=>[p.gross,p.profit])))} maximum`;chart.append(axis);}
     const filter=view.querySelector(".animus-revenue-filter-menu");
+    if(state.reportIds){
+      view.querySelector('.animus-revenue-head').insertAdjacentHTML('afterend',`<p class="bp-workfile-scope" role="status">Report: ${safe(state.reportLabel)} <button id="revenueClearReport">Clear report filter</button></p>`);
+      view.querySelector('#revenueClearReport').onclick=()=>{state.reportIds=null;state.reportLabel='';render();};
+    }
     filter?.insertAdjacentHTML("afterbegin",`<label>Profitability<select id="revenueProfitFilter">${[["all","All margins"],["positive","Profitable"],["negative","Loss-making"],["zero","Break-even"]].map(([key,label])=>`<option value="${key}" ${key===state.profitability?"selected":""}>${label}</option>`).join("")}</select></label><label>From<input type="date" id="revenueFrom" value="${safe(state.from)}"></label><label>Through<input type="date" id="revenueTo" value="${safe(state.to)}"></label>`);
     const table=view.querySelector("table"), labels=["","Date","File Name (Job)","Customer","Type","Gross Earnings","Expenses","Labor","Net Profit","Profit Margin","Actions"];
     table.querySelector("thead tr").innerHTML=labels.map((label,index)=>headerCell(label,index,state.columns[columnNames[index]]===false?"hidden":"")).join("");
@@ -248,7 +253,7 @@
     document.querySelectorAll("[data-revenue-column]").forEach((input) => input.addEventListener("change", () => { state.columns[input.dataset.revenueColumn] = input.checked; render(); }));
     document.querySelector("#animusRevenueStatus")?.addEventListener("change", (event) => { state.status = event.target.value; state.page = 1; render(); });
     document.querySelector("#animusRevenueProject")?.addEventListener("change", (event) => { state.project = event.target.value; state.page = 1; render(); });
-    document.querySelector("#animusRevenueClearFilters")?.addEventListener("click", () => { state.status = "all"; state.project = "all"; state.profitability="all"; state.from=""; state.to=""; state.filterOpen = false; state.page=1; render(); });
+    document.querySelector("#animusRevenueClearFilters")?.addEventListener("click", () => { state.reportIds=null; state.reportLabel=''; state.status = "all"; state.project = "all"; state.profitability="all"; state.from=""; state.to=""; state.filterOpen = false; state.page=1; render(); });
     document.querySelector("#animusRevenueExport")?.addEventListener("click", () => exportCsv());
     document.querySelector("#animusAddRevenue")?.addEventListener("click", () => {
       if (typeof addRevenueRow === "function") addRevenueRow();
@@ -353,6 +358,15 @@
     // an active inline amount is included even without pressing Enter first.
     window.animusCommitPendingRevenueEdit = () => {
       if (state.edit?.id) commitEdit(state.edit.id);
+    };
+    // Reporting changes only the visible row IDs; canonical save operations stay unchanged.
+    window.animusOpenRevenueReportScope = ({rowIds,label}) => {
+      if(state.edit?.id)commitEdit(state.edit.id);
+      state.query='';state.status='all';state.project='all';state.profitability='all';state.from='';state.to='';
+      state.reportIds=new Set(rowIds.map(String));state.reportLabel=label;state.page=1;state.selected.clear();
+      crmRevenueYearFilter='all';
+      if(typeof switchCrmView==='function')switchCrmView('revenue');
+      render();
     };
     render();
   }

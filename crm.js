@@ -2000,6 +2000,10 @@ function visibleFiles() {
   const sort = $("animusWorkFileSort")?.value || "updated";
   const listTab = document.querySelector('[data-workfile-list-tab][aria-pressed="true"]')?.dataset.workfileListTab || "all";
   let files = filter === "all" ? [...crmFiles] : CRM_FILE_CATEGORY_RULES[filter] ? filesInCategory(filter) : crmFiles.filter(isOpenCrmFile);
+  if (window.animusWorkfileReportScope?.ids) {
+    const reportIds = new Set(window.animusWorkfileReportScope.ids);
+    files = files.filter(file => reportIds.has(String(file.id)));
+  }
   if (listTab === "open") files = files.filter(isOpenCrmFile);
   if (listTab === "my") files = files.filter(file => window.AnimusWorkfileDetail?.isAssignedToCurrentUser(file));
   if (search) {
@@ -2031,6 +2035,7 @@ function renderCounts() {
 }
 
 function renderFileList() {
+  window.animusRenderWorkfileReportScope?.();
   const files = visibleFiles();
   const search = String($("animusWorkFileSearch")?.value || "").trim();
   $("crmListTitle").textContent = search ? "Search Results" : $("crmFileFilter").selectedOptions[0].textContent;
@@ -3615,6 +3620,7 @@ function renderCrm() {
   renderPayroll();
   if (!$("crmExpensesView")?.hidden) renderFileExpenses();
   if (!$("crmPlaygroundView")?.hidden) window.AnimusPlayground?.render();
+  if (!$("crmBusinessView")?.hidden && typeof window.renderBusinessPerformance === "function") window.renderBusinessPerformance();
   if (document.body.dataset.animusView === "dashboard" && typeof window.animusDashboardRender === "function") {
     window.animusDashboardRender();
   }
