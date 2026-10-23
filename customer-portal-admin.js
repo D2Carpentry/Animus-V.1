@@ -1,5 +1,5 @@
 (() => {
-  const API='/api/customer-portal';
+  const API=window.ANIMUS_APP_CONFIG?'https://animus-v-1.pages.dev/api/customer-portal':'/api/customer-portal';
   const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
   let context=null,busy=false,openVersion=0;
   const dialog=document.createElement('dialog');dialog.id='customerPortalAdmin';dialog.className='portal-admin';document.body.append(dialog);
@@ -7,6 +7,7 @@
   async function call(payload){const response=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),cache:'no-store',signal:AbortSignal.timeout(90000)});const result=await response.json();if(!response.ok||!result.ok)throw Error(result.error||'Sharing could not finish.');return result;}
   async function refresh(id){const response=await fetch(`${API}?fileId=${encodeURIComponent(id)}`,{cache:'no-store'});const result=await response.json();if(!response.ok||!result.ok)throw Error(result.error||'The saved estimate could not be loaded.');context=result;return result;}
   async function open(fileId){
+    window.dispatchEvent(new CustomEvent('animus-portal-file',{detail:{fileId}}));
     if(busy)return;const version=++openVersion;
     dialog.innerHTML='<header><h2>Customer Portal</h2><button type="button" data-portal-close aria-label="Close">×</button></header><p role="status">Loading the current saved estimate...</p>';dialog.showModal();
     try{const result=await refresh(fileId);if(dialog.open&&version===openVersion)render(result);}catch(error){if(dialog.open&&version===openVersion)dialog.innerHTML=`<header><h2>Customer Portal</h2><button type="button" data-portal-close aria-label="Close">×</button></header><p role="alert">${esc(error.message)}</p>`;}
@@ -19,7 +20,7 @@
       try{
         let pdf;
         if(!file.hasAttachedPdf){if(!file.editableEstimate)throw Error('Attach an estimate PDF first.');const blob=await window.AnimusPortalPdf.create(file.editableEstimate);pdf=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(Error('The PDF could not be prepared.'));reader.readAsDataURL(blob);});}
-        const created=await call({action:'create',fileId:file.id,estimateHash:result.estimateHash,expiresDays:Number(document.getElementById('portalExpiry').value),pdf});
+        const created=await call({action:'create',fileId:file.id,estimateHash:result.estimateHash,expiresDays:Number(document.getElementById('portalExpiry').value),pdf,projectAccess:document.getElementById('portalProjectAccess')?.checked===true});
         const link=document.getElementById('portalLink');link.value=created.url;document.getElementById('portalCreated').hidden=false;
         document.getElementById('copyPortalLink').onclick=async()=>{try{await navigator.clipboard.writeText(created.url);document.getElementById('portalAdminError').textContent='Link copied.';}catch{link.focus();link.select();document.getElementById('portalAdminError').textContent='Select and copy the private link.';}};
         document.getElementById('openPortalLink').onclick=()=>window.open(created.url,'_blank','noopener');
@@ -36,7 +37,7 @@
     if(!confirm('Revoke this customer link? It will stop opening the estimate.'))return;
     button.disabled=true;try{await call({action:'revoke',id:button.dataset.revokePortal});button.closest('.portal-issued').querySelector('small').textContent='Revoked';button.remove();}catch(error){document.getElementById('portalAdminError').textContent=error.message;button.disabled=false;}
   });
-  document.addEventListener('click',event=>{const button=event.target.closest('[data-customer-portal]');if(button){const file=typeof activeFile==='function'?activeFile():null;if(file)open(file.id);}});
+  document.addEventListener('click',event=>{const button=event.target.closest('[data-customer-portal]');if(button){const file=typeof activeFile==='function'?activeFile():null;if(file)(window.AnimusPortalManagement?.open||open)(file.id);}});
   window.addEventListener('message',event=>{if(event.origin!==location.origin||event.source!==document.getElementById('crmEstimatorFrame')?.contentWindow||event.data?.type!=='animus-open-customer-portal')return;const file=typeof activeFile==='function'?activeFile():null;if(!file||file.id!==event.data.fileId)return;open(file.id);});
   window.AnimusCustomerPortal={open};
   // Keep the new action within the workfile's existing Estimate & Documents toolbar.

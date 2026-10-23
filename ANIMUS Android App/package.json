@@ -1,6 +1,6 @@
 {
   "name": "animus-android",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "private": true,
   "type": "module",
   "scripts": {
@@ -36,7 +36,9 @@
     "firebase": "12.19.0",
     "jose": "6.2.12",
     "lucide": "^0.468.0",
-    "pdfjs-dist": "6.4.299"
+    "pdfjs-dist": "6.4.299",
+    "three": "0.186.1",
+    "tus-js-client": "4.3.1"
   },
   "overrides": {
     "@firebase/firestore": {

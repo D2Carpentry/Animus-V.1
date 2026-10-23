@@ -1,33 +1,46 @@
 import {createIcons,FileText,ArrowRight,Download,X,Minus,Plus,LockKeyhole} from '../ANIMUS Android App/node_modules/lucide/dist/esm/lucide.js';
-import {loadCustomer,loadPdf} from './portal-source.js';
+import {loadCustomer,loadPdf,selectDocument,portalRequest} from './portal-source.js';
+import {mountProject} from './project-ui.js';
+import {getPortalNavigation} from './project-history.js';
 const $=id=>document.getElementById(id);
 createIcons({icons:{FileText,ArrowRight,Download,X,Minus,Plus,LockKeyhole}});
-let pdf=null,loadingTask=null,bytes=null,zoom=1,renderVersion=0,renderTask=null,observer=null,opening=false,downloadUrl='',returnFocus=null;
+let pdf=null,loadingTask=null,bytes=null,zoom=1,renderVersion=0,prepareVersion=0,renderTask=null,observer=null,opening=false,downloadUrl='',returnFocus=null;
 const viewer=$('pdfViewer');
+const navigation=getPortalNavigation();
+navigation.subscribe(route=>{
+  if(route.overlay?.type==='pdf'){
+    selectDocument(route.overlay.id||'');$('viewerTitle').textContent=route.overlay.title||'Your Estimate';
+    if(!viewer.open){viewer.showModal();zoom=1;preparePdf();}
+  }else if(viewer.open)viewer.close();
+});
 window.addEventListener('d2-render-status',event=>{$('pdfStatus').querySelector('p').textContent=event.detail;});
 async function loadAccess(){
   $('accessError').hidden=true;$('retryAccess').hidden=true;$('welcomeBusy').hidden=false;$('viewEstimate').disabled=true;
-  try{const customer=await loadCustomer();$('welcomeTitle').textContent=`Welcome, ${customer.firstName}.`;$('welcomeCopy').textContent="We've prepared your personalized estimate for review. From here, you can explore the project details, ask questions, and approve your estimate whenever you're ready.";$('viewEstimate').disabled=false;}
+  try{const customer=await loadCustomer();$('welcomeTitle').textContent=`Welcome, ${customer.firstName}.`;$('welcomeCopy').textContent="We've prepared your personalized estimate for review. From here, you can explore the project details, ask questions, and approve your estimate whenever you're ready.";$('viewEstimate').disabled=false;await mountProject({customer,request:portalRequest,openDocument});}
   catch(error){$('welcomeTitle').textContent=error.status===401?'Your private estimate.':'Welcome.';$('welcomeCopy').textContent=error.status===401?'This link is unavailable. Please reopen your private link or contact D2 for a new one.':'We could not prepare your portal just now.';$('accessError').textContent=error.status===401?'Your link may have expired or been replaced.':'Please check your connection and try again.';$('accessError').hidden=false;$('retryAccess').hidden=error.status===401;}
   finally{$('welcomeBusy').hidden=true;}
 }
 function errorPdf(message){renderVersion++;observer?.disconnect();renderTask?.cancel();$('pdfPages').replaceChildren();$('pdfStatus').hidden=true;$('pdfError').hidden=false;$('pdfErrorText').textContent=message;$('zoomBar').hidden=true;}
 async function preparePdf(){
-  if(opening)return;opening=true;$('pdfStatus').hidden=false;$('pdfError').hidden=true;$('downloadPdf').disabled=true;$('downloadError').hidden=true;
+  const version=++prepareVersion;const current=()=>version===prepareVersion&&viewer.open;
+  opening=true;$('pdfStatus').hidden=false;$('pdfError').hidden=true;$('downloadPdf').disabled=true;$('downloadError').hidden=true;
   renderVersion++;observer?.disconnect();renderTask?.cancel();pdf=null;$('pdfPages').replaceChildren();$('zoomBar').hidden=true;
   try{
     $('pdfStatus').querySelector('p').textContent='Loading your estimate...';
-    const loaded=await loadPdf();if(loaded.byteLength>25*1024*1024)throw Error('This document is too large to display here. Please contact D2.');
+    const loaded=await loadPdf();if(!current())return;if(loaded.byteLength>25*1024*1024)throw Error('This document is too large to display here. Please contact D2.');
     if(new TextDecoder().decode(loaded.slice(0,5))!=='%PDF-')throw Error('The estimate is not available as a PDF. Please contact D2.');
     $('pdfStatus').querySelector('p').textContent='Opening document...';
-    bytes=new Uint8Array(loaded);const lib=await import('./pdf.mjs');lib.GlobalWorkerOptions.workerSrc=new URL('./pdf.worker.mjs',import.meta.url).href;
-    const previous=loadingTask;pdf=null;loadingTask=null;await previous?.destroy();const task=lib.getDocument({data:bytes.slice(),isEvalSupported:false,enableXfa:false,enableScripting:false,useSystemFonts:true});loadingTask=task;let timer;
-    try{pdf=await Promise.race([task.promise,new Promise((_,reject)=>{timer=setTimeout(()=>{task.destroy();reject(Error('Document loading timed out.'));},30000);})]);}finally{clearTimeout(timer);}
+    const documentBytes=new Uint8Array(loaded);const lib=await import('./pdf.mjs');if(!current())return;lib.GlobalWorkerOptions.workerSrc=new URL('./pdf.worker.mjs',import.meta.url).href;
+    const previous=loadingTask;pdf=null;loadingTask=null;await previous?.destroy();if(!current())return;bytes=documentBytes;const task=lib.getDocument({data:documentBytes.slice(),isEvalSupported:false,enableXfa:false,enableScripting:false,useSystemFonts:true});loadingTask=task;let timer,documentPdf;
+    try{documentPdf=await Promise.race([task.promise,new Promise((_,reject)=>{timer=setTimeout(()=>{task.destroy();reject(Error('Document loading timed out.'));},30000);})]);}finally{clearTimeout(timer);}
+    if(!current()){await task.destroy();return;}pdf=documentPdf;
     if(pdf.numPages>100)throw Error('This document is too long to display here. Please contact D2.');
     $('pageCount').textContent=`${pdf.numPages} ${pdf.numPages===1?'page':'pages'}`;$('downloadPdf').disabled=false;$('zoomBar').hidden=false;$('pdfStatus').hidden=true;
     await renderPages();
-  }catch(error){if(location.hostname==='127.0.0.1')console.error('Local portal PDF check:',error.message);bytes=null;errorPdf(error.status===401?'Your private link is no longer available. Please request a new link from D2.':error.message?.includes('Please contact D2')?error.message:'Please check your connection and try again. Your original estimate has not been changed.');}
-  finally{opening=false;if(viewer.open&&!viewer.contains(document.activeElement))$('closeViewer').focus();}
+    if(!current())return;
+    const viewed=navigation.current().overlay;if(viewed?.type==='pdf'&&viewed.id)portalRequest('seen',{versionId:viewed.id}).catch(()=>{});
+  }catch(error){if(!current())return;if(location.hostname==='127.0.0.1')console.error('Local portal PDF check:',error.message);bytes=null;errorPdf(error.status===401?'Your private link is no longer available. Please request a new link from D2.':error.message?.includes('Please contact D2')?error.message:'Please check your connection and try again. Your original estimate has not been changed.');}
+  finally{if(current()){opening=false;if(!viewer.contains(document.activeElement))$('closeViewer').focus();}}
 }
 async function renderPages(){
   if(!pdf||!viewer.open)return;const documentPdf=pdf;const version=++renderVersion;observer?.disconnect();renderTask?.cancel();$('pdfPages').replaceChildren();
@@ -49,10 +62,14 @@ async function renderPages(){
   });}},{root:$('pdfScroll'),rootMargin:'500px'});
   for(const figure of pages.keys())observer.observe(figure);
 }
-$('viewEstimate').onclick=()=>{returnFocus=document.activeElement;viewer.showModal();zoom=1;preparePdf();};
+$('viewEstimate').onclick=()=>openDocument(null);
+async function openDocument(version){
+  selectDocument(version?.id||'');$('viewerTitle').textContent=version?.title||'Your Estimate';returnFocus=document.activeElement;
+  navigation.openOverlay('pdf',{id:version?.id||'',title:version?.title||'Your Estimate'});
+}
 $('closeViewer').onclick=()=>viewer.close();
 viewer.addEventListener('click',event=>{if(event.target===viewer){const r=viewer.getBoundingClientRect();if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)viewer.close();}});
-viewer.addEventListener('close',()=>{renderVersion++;observer?.disconnect();renderTask?.cancel();returnFocus?.focus();});
+viewer.addEventListener('close',()=>{prepareVersion++;opening=false;renderVersion++;observer?.disconnect();renderTask?.cancel();const previous=loadingTask;loadingTask=null;pdf=null;bytes=null;previous?.destroy().catch(()=>{});if(navigation.current().overlay?.type==='pdf')navigation.closeOverlay();if(returnFocus?.isConnected)returnFocus.focus();});
 $('retryAccess').onclick=loadAccess;$('retryPdf').onclick=preparePdf;
 const redraw=()=>renderPages().catch(()=>errorPdf('This document could not be displayed. Try loading it again.'));
 $('zoomIn').onclick=()=>{zoom=Math.min(2.5,zoom+.25);redraw();};$('zoomOut').onclick=()=>{zoom=Math.max(.75,zoom-.25);redraw();};$('fitWidth').onclick=()=>{zoom=1;redraw();};

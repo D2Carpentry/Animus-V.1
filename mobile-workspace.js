@@ -67,9 +67,19 @@ renderRevenue=function(){
 const renderDetailMobileBase=renderDetail;
 renderDetail=function(){
   renderDetailMobileBase();const file=activeFile();if(!file)return;
-  $('fileDetail').insertAdjacentHTML('beforeend','<div class="workspace-file-actions"><button type="button" id="mobileEditCustomer">Edit customer / status</button><button type="button" id="mobileEditDocuments">Prepare document</button></div>');
+  $('fileDetail').insertAdjacentHTML('beforeend','<div class="workspace-file-actions"><button type="button" id="mobileCustomerPortal">Customer Portal</button><button type="button" id="mobileEditCustomer">Edit customer / status</button><button type="button" id="mobileEditDocuments">Prepare document</button></div>');
+  $('mobileCustomerPortal').onclick=()=>window.AnimusPortalManagement.open(file.id).catch(error=>notify(error.message,true));
   $('mobileEditCustomer').onclick=()=>editMobileFile(file);
   $('mobileEditDocuments').onclick=()=>openMobileEstimator(file);
+};
+window.AnimusMobilePortalWorkflow=(flow,id)=>{
+  const file=state.files.find(row=>row.id===id);if(!file)throw Error('Reopen this workfile before continuing.');
+  activeFileId=file.id;openView('detail');
+  if(flow==='financials')openMobileFinancials();
+  else if(['schedule','task'].includes(flow))editMobileFile(file);
+  else if(['estimate','invoice','supplement'].includes(flow)){
+    openMobileEstimator(file);mobileEditorSession.mode=flow;$('mobileEditorMode').value=flow;
+  }
 };
 function openMobileEstimator(file){
   if(!file){

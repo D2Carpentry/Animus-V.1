@@ -1,3 +1,4 @@
+import {registerPortalVersion,customerWorkspace,adminWorkspace,portalSummary} from './_portal-workspace.js';
 const ORIGIN='https://animus-v-1.pages.dev';
 const prefix='portal/links/';
 const headers={'Cache-Control':'private, no-store','Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff'};
@@ -21,12 +22,13 @@ async function readBody(request,limit){
   const bytes=new Uint8Array(size);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.length;}
   try{return JSON.parse(new TextDecoder().decode(bytes));}catch{error('Invalid request.');}
 }
-async function currentFile(bucket,id){const object=await bucket.get('dashboard/latest.json');if(!object)error('Current CRM records are unavailable.',503);const data=JSON.parse(await object.text());const file=data.dashboardFiles?.find(file=>file.id===id);if(!file)error('Workfile not found.',404);return file;}
+async function currentFile(bucket,id){const object=await bucket.get('dashboard/latest.json');if(!object)error('Current CRM records are unavailable.',503);const data=typeof object.json==='function'?await object.json():JSON.parse(await object.text());const file=data.dashboardFiles?.find(file=>file.id===id);if(!file)error('Workfile not found.',404);return file;}
 export async function onPortalAdmin({request,env,data}){
   if(data?.animusIdentity?.role!=='admin')return reply({ok:false,error:'Administrator required.'},403);
   const bucket=env.ANIMUS_BUCKET;if(!bucket)return reply({ok:false,error:'Cloud storage unavailable.'},503);
   try{
     if(request.method==='GET'){
+      if(new URL(request.url).searchParams.get('summary')==='1')return reply({ok:true,...await portalSummary(bucket)});
       const id=new URL(request.url).searchParams.get('fileId');if(!id)error('Select a workfile.');
       const file=await currentFile(bucket,id);const estimateHash=await estimateFingerprint(file);
       const links=[];let cursor;
@@ -34,7 +36,13 @@ export async function onPortalAdmin({request,env,data}){
       return reply({ok:true,file:{id:file.id,clientName:file.clientName,fileNumber:file.fileNumber,estimateStatus:file.estimateStatus,editableEstimate:file.editableEstimate||null,hasAttachedPdf:Boolean(file.estimatePdfUrl||file.estimateUrl||file.editableEstimate?.pdfUrl||file.editableEstimate?.documentUrl)},estimateHash,links:links.sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)))});
     }
     if(request.method!=='POST')return reply({ok:false,error:'Method not allowed.'},405);
-    const body=await readBody(request,18*1024*1024);
+    const body=await readBody(request,36*1024*1024);
+    const workspaceActions=new Set(['workspace','uploadAsset','adminAsset','adminDocument','publishDocument','streamUpload','streamStatus','streamPreview','streamDelete','videoUploadStart','videoUploadPart','videoUploadComplete','videoUploadCancel','videoPreview','videoArchiveHold','videoRestore','reply','requestStatus','publishUpdate','publishAsset','publishDesign','publishRecord','publishVideo','archive','milestone','updateMilestone','checklistItem','learningResource','reviewInvitation','selectionOption','markRead','settings']);
+    if(workspaceActions.has(body.action)){
+      const file=await currentFile(bucket,body.fileId);
+      const result=await adminWorkspace({bucket,file,body,env,actor:data.animusIdentity.email||'Administrator'});
+      return result instanceof Response?result:reply({ok:true,...result});
+    }
     if(body.action==='revoke'){
       if(!/^[a-f0-9]{64}$/.test(body.id||''))error('Invalid link.');
       const object=await bucket.get(prefix+body.id+'.json');if(!object)error('Link not found.',404);
@@ -57,6 +65,10 @@ export async function onPortalAdmin({request,env,data}){
     const token=tokenValue();const id=await digest(token);const createdAt=new Date().toISOString();const expiresAt=new Date(Date.now()+expiresDays*86400000).toISOString();
     const key=`portal/documents/${id}.pdf`;await bucket.put(key,pdf,{httpMetadata:{contentType:'application/pdf'}});
     const grant={fileId:file.id,firstName:String(file.clientName||'').trim().split(/\s+/)[0]||'there',estimateId:String(file.editableEstimate?.estimateNumber||file.fileNumber||''),estimateStatus:String(file.estimateStatus||''),pdfKey:key,createdAt,expiresAt,revokedAt:''};
+    if(body.projectAccess===true){
+      const version=await registerPortalVersion(bucket,file,{id,hash,kind:'estimate',pdfKey:key,amount:file.editableEstimate?.totals?.total??file.estimateTotal,date:file.editableEstimate?.estimateDate||''});
+      grant.projectAccess=true;grant.versionId=version.id;grant.customerId=id;
+    }
     await bucket.put(prefix+id+'.json',JSON.stringify(grant),{customMetadata:{fileId:file.id,createdAt,expiresAt},httpMetadata:{contentType:'application/json'}});
     return reply({ok:true,id,url:`${ORIGIN}/client/#${token}`,expiresAt});
   }catch(cause){return reply({ok:false,error:cause.status?cause.message:'Portal sharing is temporarily unavailable. Your CRM records were not changed.'},cause.status||503);}
@@ -65,11 +77,14 @@ export function createPortalAccess({origin=ORIGIN,now=()=>Date.now()}={}){
   return async({request,env})=>{
     try{
       const url=new URL(request.url);
-      if(request.method!=='POST')return reply({ok:false,error:'Method not allowed.'},405);
-      if(url.search||request.headers.get('Origin')!==origin)return reply({ok:false,error:'This request is not permitted.'},403);
-      if(!request.headers.get('Content-Type')?.startsWith('application/json'))return reply({ok:false,error:'Invalid request.'},400);
-      const body=await readBody(request,4096);
-      if(!['session','pdf'].includes(body.action))error('Invalid request.');
+      const media=request.method==='GET'&&url.searchParams.has('video');
+      if(request.method!=='POST'&&!media)return reply({ok:false,error:'Method not allowed.'},405);
+      if(media){if([...url.searchParams.keys()].some(k=>!['video','accessId'].includes(k))||url.searchParams.getAll('video').length!==1||url.searchParams.getAll('accessId').length!==1||request.headers.get('Sec-Fetch-Site')&&request.headers.get('Sec-Fetch-Site')!=='same-origin'||request.headers.get('Origin')&&request.headers.get('Origin')!==origin)return reply({ok:false,error:'This request is not permitted.'},403);}
+      else if(url.search||request.headers.get('Origin')!==origin)return reply({ok:false,error:'This request is not permitted.'},403);
+      if(!media&&!request.headers.get('Content-Type')?.startsWith('application/json'))return reply({ok:false,error:'Invalid request.'},400);
+      const body=media?{action:'videoBytes',videoId:url.searchParams.get('video'),accessId:url.searchParams.get('accessId'),range:request.headers.get('Range')||''}:await readBody(request,9*1024*1024);
+      if(['session','pdf'].includes(body.action)&&JSON.stringify(body).length>4096)error('Request too large.',413);
+      if(!['session','pdf','project','document','asset','video','videoBytes','upload','message','request','approve','decline','checklist','appointment','selection','preferences','seen'].includes(body.action)||body.action==='videoBytes'&&!media)error('Invalid request.');
       const cookies=(request.headers.get('Cookie')||'').split(';').map(value=>value.trim()).filter(value=>value.startsWith('__Secure-d2-portal='));
       if(cookies.length>1)error('Reopen your private estimate link.',401);
       const token=body.action==='session'&&body.token?body.token:cookies[0]?.slice('__Secure-d2-portal='.length);
@@ -81,9 +96,14 @@ export function createPortalAccess({origin=ORIGIN,now=()=>Date.now()}={}){
       if(grant.pdfKey!==`portal/documents/${id}.pdf`)error('Estimate temporarily unavailable.',503);
       if(body.action==='session'){
         const maxAge=Math.max(1,Math.min(3600,Math.floor((Date.parse(grant.expiresAt)-now())/1000)));
-        return reply({ok:true,firstName:grant.firstName,estimateTitle:'Your Estimate',accessId:id},200,{'Set-Cookie':`__Secure-d2-portal=${token}; Path=/client-access; HttpOnly; Secure; SameSite=Strict; Max-Age=${maxAge}`});
+        return reply({ok:true,firstName:grant.firstName,estimateTitle:'Your Estimate',accessId:id,...(grant.projectAccess?{projectAccess:true,versionId:grant.versionId}:{})},200,{'Set-Cookie':`__Secure-d2-portal=${token}; Path=/client-access; HttpOnly; Secure; SameSite=Strict; Max-Age=${maxAge}`});
       }
       if(body.accessId!==id)error('Reopen the private link for this estimate.',401);
+      if(body.action!=='pdf'){
+        const file=await currentFile(env.ANIMUS_BUCKET,grant.fileId);
+        const result=await customerWorkspace({bucket:env.ANIMUS_BUCKET,file,grant,accessId:id,body,env});
+        return result instanceof Response?result:reply({ok:true,...result});
+      }
       const pdf=await env.ANIMUS_BUCKET.get(grant.pdfKey);if(!pdf)error('Your estimate PDF is temporarily unavailable. Please try again or contact D2.',404);
       return new Response(pdf.body,{headers:{...headers,'Content-Type':'application/pdf','Content-Disposition':'inline; filename="D2-Estimate.pdf"','Content-Security-Policy':"sandbox; default-src 'none'"}});
     }catch(cause){return reply({ok:false,error:cause.status?cause.message:'Your estimate is temporarily unavailable. Please try again.'},cause.status||503);}

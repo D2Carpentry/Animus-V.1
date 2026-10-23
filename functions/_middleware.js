@@ -1,4 +1,4 @@
-// node_modules/jose/dist/webapi/lib/buffer_utils.js
+// ANIMUS Android App/node_modules/jose/dist/webapi/lib/buffer_utils.js
 var encoder = new TextEncoder();
 var decoder = new TextDecoder();
 var strictDecoder = new TextDecoder("utf-8", { fatal: true });
@@ -40,7 +40,7 @@ function decodeBase64(encoded, url = false) {
   return bytes;
 }
 
-// node_modules/jose/dist/webapi/util/errors.js
+// ANIMUS Android App/node_modules/jose/dist/webapi/util/errors.js
 var JOSEError = class extends Error {
   static code = "ERR_JOSE_GENERIC";
   code = "ERR_JOSE_GENERIC";
@@ -92,7 +92,7 @@ var JWSSignatureVerificationFailed = class extends JOSEError {
   }
 };
 
-// node_modules/jose/dist/webapi/util/base64url.js
+// ANIMUS Android App/node_modules/jose/dist/webapi/util/base64url.js
 var invalid = "The input to be decoded is not correctly encoded.";
 function decode(input) {
   try {
@@ -102,7 +102,7 @@ function decode(input) {
   }
 }
 
-// node_modules/jose/dist/webapi/lib/validate.js
+// ANIMUS Android App/node_modules/jose/dist/webapi/lib/validate.js
 function isObject(input) {
   if (typeof input != "object" || input === null || Object.prototype.toString.call(input) !== "[object Object]")
     return false;
@@ -179,7 +179,7 @@ function validateB64(protectedHeader, extensions) {
   return true;
 }
 
-// node_modules/jose/dist/webapi/lib/key.js
+// ANIMUS Android App/node_modules/jose/dist/webapi/lib/key.js
 var tag = (key) => key[Symbol.toStringTag];
 var jwkMatchesOp = (entry, key, usage) => {
   const { alg } = entry;
@@ -315,7 +315,7 @@ async function rawKey(key, expected, usage, extractable = false) {
   return key instanceof Uint8Array && (key = await crypto.subtle.importKey("raw", key, expected, extractable, [usage])), checkCryptoKey(key, expected, usage), key;
 }
 
-// node_modules/jose/dist/webapi/lib/key_descriptor.js
+// ANIMUS Android App/node_modules/jose/dist/webapi/lib/key_descriptor.js
 function table(entries) {
   const out = { __proto__: null };
   for (const alg in entries)
@@ -323,7 +323,7 @@ function table(entries) {
   return out;
 }
 
-// node_modules/jose/dist/webapi/lib/jwe_algorithms.js
+// ANIMUS Android App/node_modules/jose/dist/webapi/lib/jwe_algorithms.js
 var wrap = [
   ["encrypt", "wrapKey"],
   ["decrypt", "unwrapKey"]
@@ -424,7 +424,7 @@ var ENC = table({
   "A256CBC-HS512": contentEncryption(512, true)
 });
 
-// node_modules/jose/dist/webapi/lib/jws_algorithms.js
+// ANIMUS Android App/node_modules/jose/dist/webapi/lib/jws_algorithms.js
 var sig = [["verify"], ["sign"]];
 function hmac(bits) {
   const subtle = { name: "HMAC", hash: `SHA-${bits}` };
@@ -494,7 +494,7 @@ function jwsAlgorithm(alg) {
   return entry;
 }
 
-// node_modules/jose/dist/webapi/lib/jws_verify.js
+// ANIMUS Android App/node_modules/jose/dist/webapi/lib/jws_verify.js
 function prepareVerify(options) {
   return [options && validateAlgorithms("algorithms", options.algorithms), options?.crit];
 }
@@ -546,7 +546,7 @@ async function verifyCompact(jws, shared, key) {
   return verifySignature({ payload, protected: protectedHeader, signature }, shared, key, encodeCompactUnencodedPayload);
 }
 
-// node_modules/jose/dist/webapi/lib/jwt_claims_set.js
+// ANIMUS Android App/node_modules/jose/dist/webapi/lib/jwt_claims_set.js
 var epoch = (date) => Math.floor(date.getTime() / 1e3);
 var multipliers = {
   s: 1,
@@ -632,7 +632,7 @@ function validateClaimsSet(protectedHeader, encodedPayload, options = {}) {
   return payload;
 }
 
-// node_modules/jose/dist/webapi/jwt/verify.js
+// ANIMUS Android App/node_modules/jose/dist/webapi/jwt/verify.js
 async function jwtVerify(jwt, key, options) {
   const [verified, b64] = await verifyCompact(jwt, prepareVerify(options), key);
   if (!b64)
@@ -641,7 +641,7 @@ async function jwtVerify(jwt, key, options) {
   return { ...verified, payload };
 }
 
-// node_modules/jose/dist/webapi/lib/key_algorithm.js
+// ANIMUS Android App/node_modules/jose/dist/webapi/lib/key_algorithm.js
 var algArgument = '"alg" (Algorithm)';
 function unsupportedAlg(source = 'JWK "alg" (Algorithm) Parameter') {
   throw new JOSENotSupported(`Invalid or unsupported ${source} value`);
@@ -650,7 +650,7 @@ function keyAlgorithm(alg, source) {
   return (typeof alg == "string" ? JWS[alg] ?? JWE[alg] : void 0) ?? unsupportedAlg(source);
 }
 
-// node_modules/jose/dist/webapi/lib/asn1.js
+// ANIMUS Android App/node_modules/jose/dist/webapi/lib/asn1.js
 var bytesEqual = (a, b) => {
   if (a.byteLength !== b.length)
     return false;
@@ -763,14 +763,14 @@ var fromX509 = (pem, alg, options) => {
   return genericImport("spki", spki, alg, options);
 };
 
-// node_modules/jose/dist/webapi/key/import.js
+// ANIMUS Android App/node_modules/jose/dist/webapi/key/import.js
 async function importX509(x509, alg, options) {
   if (typeof x509 != "string" || x509.indexOf("-----BEGIN CERTIFICATE-----") !== 0)
     throw new TypeError('"x509" must be X.509 formatted string');
   return fromX509(x509, alg, options);
 }
 
-// node_modules/jose/dist/webapi/util/decode_jwt.js
+// ANIMUS Android App/node_modules/jose/dist/webapi/util/decode_jwt.js
 function decodeJwt(jwt) {
   if (typeof jwt != "string")
     throw new JWTInvalid("JWTs must use Compact JWS serialization, JWT must be a string");
@@ -798,7 +798,7 @@ function decodeJwt(jwt) {
   return result;
 }
 
-// auth-worker/verify.mjs
+// ANIMUS Android App/auth-worker/verify.mjs
 var certificateUrl = "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com";
 var certificateCache = null;
 var pendingCertificates = null;
@@ -850,7 +850,7 @@ function createAdministratorVerifier(keyResolver = firebaseKey) {
   };
 }
 
-// security/live-administrator.mjs
+// ANIMUS Android App/security/live-administrator.mjs
 function unavailable() {
   return Object.assign(new Error("Account status verification unavailable."), { status: 503 });
 }
@@ -896,7 +896,7 @@ function createLiveAdministratorVerifier({ verifyIdentity = createAdministratorV
   };
 }
 
-// security/browser-session.mjs
+// ANIMUS Android App/security/browser-session.mjs
 var sessionCookie = "__Host-animus";
 var origin = "https://animus-v-1.pages.dev";
 var stateMethods = /* @__PURE__ */ new Set(["POST", "PUT", "PATCH", "DELETE"]);
@@ -918,9 +918,9 @@ function browserIdentityRequest(request) {
   return new Request(request, { headers });
 }
 
-// security/pages-html.mjs
+// ANIMUS Android App/security/pages-html.mjs
 var publicFiles = /* @__PURE__ */ new Set(["/signin", "/signin/", "/signin/index.html", "/signin/sign-in.js", "/signin/sign-in.css", "/auth-preview", "/auth-preview/", "/auth-preview/index.html", "/auth-preview/sign-in.js", "/auth-preview/sign-in.css", "/auth-preview/build-info.json", "/crm-access.js", "/assets/animus-sidebar-logo.png", "/assets/animus-logo.svg", "/icon.svg", "/service-worker.js"]);
-var portalFiles = /* @__PURE__ */ new Set(["/client", "/client/", "/client/index.html", "/client/portal.css", "/client/portal.bundle.js", "/client/d2-logo.png", "/client/pdf.mjs", "/client/pdf.worker.mjs", "/client-access"]);
+var portalFiles = /* @__PURE__ */ new Set(["/client", "/client/", "/client/index.html", "/client/portal.css", "/client/project.css", "/client/project-layout.css", "/client/portal.bundle.js", "/client/model-viewer.bundle.js", "/client/stream-player.js", "/client/d2-logo.png", "/client/pdf.mjs", "/client/pdf.worker.mjs", "/client-access"]);
 function publicAsset(path) {
   return publicFiles.has(path) || portalFiles.has(path) || /^\/downloads\/animus-android-(?:preview|live)-\d+\.\d+\.\d+\.apk$/.test(path);
 }
@@ -938,7 +938,7 @@ function createPagesAccess({ verify = createLiveAdministratorVerifier(), rewrite
       headers2.set("Referrer-Policy", "no-referrer");
       headers2.set("X-Content-Type-Options", "nosniff");
       headers2.set("X-Frame-Options", "DENY");
-      headers2.set("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self' blob:; font-src 'self' blob: data:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'");
+      headers2.set("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' data: blob:; frame-src https://iframe.videodelivery.net; worker-src 'self' blob:; font-src 'self' blob: data:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'");
       headers2.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
       return new Response(response2.body, { status: response2.status, headers: headers2 });
     }

@@ -8,17 +8,20 @@
   <title>D2 | Your Private Client Portal</title>
   <link rel="icon" href="/client/d2-logo.png">
   <link rel="stylesheet" href="/client/portal.css">
+  <link rel="stylesheet" href="/client/project.css">
+  <link rel="stylesheet" href="/client/project-layout.css">
+  <script src="/client/stream-player.js" defer></script>
   <script src="/client/portal.bundle.js" type="module"></script>
 </head>
 <body>
-  <header class="company-header"><img src="/client/d2-logo.png" alt="D2 logo" width="112" height="82"><span class="company-name">D2 Carpentry &amp; Design</span></header>
+  <header class="company-header"><img src="/client/d2-logo.png" alt="D2" width="112" height="82"><span class="company-name">Carpentry &amp; Design</span></header>
   <main>
     <section class="welcome" aria-labelledby="welcomeTitle">
       <p class="eyebrow">YOUR PRIVATE CLIENT PORTAL</p>
       <h1 id="welcomeTitle">Welcome.</h1>
       <p id="welcomeCopy" class="introduction">Preparing your private estimate...</p>
       <p id="accessError" class="error" role="alert" hidden></p>
-      <button id="viewEstimate" class="primary" type="button" disabled><i data-lucide="file-text" aria-hidden="true"></i><span>View My Estimate</span><i data-lucide="arrow-right" aria-hidden="true"></i></button>
+      <button id="viewEstimate" class="primary" type="button" disabled><i data-lucide="file-text" aria-hidden="true"></i><span>View Estimate</span><i data-lucide="arrow-right" aria-hidden="true"></i></button>
       <button id="retryAccess" class="text-button" type="button" hidden>Try again</button>
       <span id="welcomeBusy" class="loading-line" role="status">Loading your information</span>
     </section>

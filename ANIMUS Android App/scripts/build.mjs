@@ -24,7 +24,7 @@ const pushUrl = process.env.ANIMUS_PUSH_URL || '';
 if (pushUrl && new URL(pushUrl).protocol !== 'https:') throw new Error('Push service must use HTTPS.');
 await mkdir(path.join(out, 'assets'), { recursive: true });
 await mkdir(path.join(out,'vendor'),{recursive:true});
-for (const name of ['mobile-cloud.css','mobile-workspace.js','mobile-workspace.css','mobile-estimator.html','mobile-estimator.css','materials-database.js','animus-document-export.js','vendor/jspdf.umd.min.js','vendor/html2canvas.min.js','assets/d2-logo.png', 'assets/animus-logo.svg', 'assets/animus-sidebar-logo.png', 'icon.svg']) {
+for (const name of ['mobile-cloud.css','mobile-workspace.js','mobile-workspace.css','mobile-estimator.html','mobile-estimator.css','materials-database.js','animus-document-export.js','vendor/jspdf.umd.min.js','vendor/html2canvas.min.js','assets/d2-logo.png', 'assets/animus-logo.svg', 'assets/animus-sidebar-logo.png', 'icon.svg','customer-portal-admin.js','customer-portal-admin.css','portal-management.bundle.js','portal-management.css','portal-pdf-renderer-client.js','portal-estimate-renderer.html']) {
   await access(path.join(source, name));
   await copyFile(path.join(source, name), path.join(out, name));
 }
