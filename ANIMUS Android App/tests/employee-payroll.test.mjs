@@ -14,6 +14,23 @@ test('roster includes all three employees and assignments create jobs without in
   const before=JSON.stringify(files),result=plain(model.summaries(files,[]));assert.deepEqual(result.map(row=>row.name),['David','Lara','Manny']);
   assert.equal(result[0].jobs[0].fileId,'one');assert.equal(result[1].jobs[0].fileId,'two');assert.equal(result[2].jobs.length,0);assert.equal(result[0].paid,0);assert.equal(JSON.stringify(files),before);
 });
+test('multiple workfile assignees each see the job without duplicating another employee payment',()=>{
+  const saved=apply(snapshot(),{action:'editFile',id:'one',values:{assignedTo:'David, Lara, Manny'},expected:{assignedTo:'David'}});
+  const result=plain(model.summaries(saved.dashboard.dashboardFiles,[{id:'p1',employee:'David',fileId:'one',total:100,status:'Paid'}]));
+  for(const person of result)assert.equal(person.jobs.filter(job=>job.fileId==='one').length,1);
+  assert.deepEqual(result.map(person=>person.paid),[100,0,0]);
+});
+test('checkbox dropdown retains multiple selections, updates the saved value, and supports clearing all',async()=>{
+  const source=await readFile(new URL('../../animus-work-file.js',import.meta.url),'utf8');
+  const ui={window:{AnimusEmployees:model},escape:value=>String(value).replace(/&/g,'&amp;').replace(/"/g,'&quot;'),assignment:file=>model.assignedNames(file).join(', ')||'Unassigned'};
+  vm.runInNewContext(source.slice(source.indexOf('  function employeeSelect('),source.indexOf('  function editorMarkup(')),ui);
+  const html=ui.employeeSelect({assignedTo:'David, Manny'});assert.equal((html.match(/type="checkbox"/g)||[]).length,3);assert.equal((html.match(/ checked/g)||[]).length,2);assert.ok(!html.includes('<select'));
+  const value={value:'David, Manny'},summary={},boxes=['David','Lara','Manny'].map(name=>({value:name,addEventListener(_name,fn){this.changed=fn;}}));
+  const picker={querySelector:selector=>selector==='summary'?summary:value,querySelectorAll:()=>boxes};
+  ui.bindEmployeeSelect({querySelector:()=>picker});assert.deepEqual(boxes.map(box=>box.checked),[true,false,true]);
+  boxes[1].checked=true;boxes[1].changed();assert.equal(value.value,'David, Lara, Manny');assert.equal(summary.textContent,value.value);
+  boxes.forEach(box=>box.checked=false);boxes[0].changed();assert.equal(value.value,'');assert.equal(summary.textContent,'Choose employees');
+});
 test('paid, pending and historical jobs are separated by stable workfile ID, never customer name',()=>{
   const rows=[{id:'p1',employee:' david ',fileId:'one',date:'2026-10-01',total:100,status:'Paid'},{id:'p2',employee:'David',fileId:'two',date:'2026-10-02',total:50,status:'Paid'},{id:'p3',employee:'David',fileId:'one',date:'2026-10-03',total:75,status:'Pending'}];
   const david=plain(model.summaries(files,rows))[0];assert.equal(david.jobs.length,2);assert.equal(david.jobs.find(job=>job.fileId==='one').paid,100);assert.equal(david.jobs.find(job=>job.fileId==='two').paid,50);assert.equal(david.paid,150);assert.equal(david.pending,75);assert.deepEqual(david.payments.map(row=>row.runningPaid),[100,150]);

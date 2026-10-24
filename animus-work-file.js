@@ -400,9 +400,16 @@
   }
 
   function employeeSelect(file){
-    const selected=assignment(file)==='Unassigned'?'':assignment(file);
-    const names=[...new Set([...(window.AnimusEmployees?.roster||['David','Lara','Manny']),...(selected?[selected]:[])])];
-    return `<label class="wide">Assigned To<select data-animus-field="assignedTo"><option value="">Unassigned</option>${names.map(name=>`<option value="${escape(name)}"${name===selected?' selected':''}>${escape(name)}</option>`).join('')}</select></label>`;
+    const selected=assignment(file)==='Unassigned'?[]:assignment(file).split(/[,;]/).map(name=>name.trim()).filter(Boolean);
+    const names=[...new Set([...(window.AnimusEmployees?.roster||['David','Lara','Manny']),...selected])];
+    return `<fieldset class="wide wf-employee-picker"><legend>Assigned To</legend><input type="hidden" data-animus-field="assignedTo" value="${escape(selected.join(', '))}"><details><summary>${escape(selected.join(', ')||'Choose employees')}</summary><div class="wf-employee-options" role="group" aria-label="Assigned employees">${names.map(name=>`<label><input type="checkbox" data-animus-assignee value="${escape(name)}"${selected.includes(name)?' checked':''}><span>${escape(name)}</span></label>`).join('')}</div></details></fieldset>`;
+  }
+  function bindEmployeeSelect(editor){
+    const picker=editor?.querySelector('.wf-employee-picker');if(!picker)return;
+    const value=picker.querySelector('[data-animus-field="assignedTo"]'),boxes=[...picker.querySelectorAll('[data-animus-assignee]')];
+    const selected=value.value.split(/[,;]/).map(name=>name.trim());
+    boxes.forEach(box=>{box.checked=selected.includes(box.value);box.addEventListener('change',()=>{value.value=boxes.filter(box=>box.checked).map(box=>box.value).join(', ');picker.querySelector('summary').textContent=value.value||'Choose employees';});});
+    picker.querySelector('summary').textContent=value.value||'Choose employees';
   }
   function editorMarkup(file) {
     if (!state.editor) return "";
@@ -477,7 +484,7 @@
   function isAssignedToCurrentUser(file) {
     if (!identity) return false;
     const ids = [identity.uid,identity.email,identity.name,identity.displayName].filter(Boolean).map(value=>String(value).trim().toLowerCase());
-    const value = file.assignedTo || file.assignedEmployee || file.employee || file.team;
+    const value = Object.hasOwn(file,'assignedTo') ? file.assignedTo : file.assignedEmployee || file.employee || file.team;
     return (Array.isArray(value) ? value : [value]).some(entry => {
       const names = typeof entry === 'object' && entry ? [entry.id,entry.uid,entry.name,entry.email] : String(entry || '').split(/[,;]/);
       return names.some(name=>ids.includes(String(name || '').trim().toLowerCase()));
@@ -565,6 +572,7 @@
       const input = editor?.querySelector(`[data-animus-field="${name}"]`);
       if (input) input.value = value;
     }
+    bindEmployeeSelect(editor);
     if (state.editor === "progress" && previousDraft.length) {
       const status = editor.querySelector('[data-animus-field="fileStatus"]').value;
       const detail = editor.querySelector('[data-animus-field="statusDetail"]');
