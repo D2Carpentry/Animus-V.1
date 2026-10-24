@@ -232,10 +232,26 @@
     return `<section class="animus-info-card wf-expenses-card"><div class="animus-card-head"><h3>Expenses</h3><button class="animus-record-button small" data-animus-tab="expenses">View All</button></div><button type="button" class="wf-expense-breakdown" data-animus-tab="expenses" aria-label="Open this workfile's expenses"><dl class="wf-key-values">${Object.entries(groups || {Materials:null,Labor:null,Other:null}).map(([key,value]) => `<div><dt>${key}</dt><dd>${value === null ? "Not categorized" : money(value)}</dd></div>`).join("")}<div class="wf-expense-total"><dt>Total Expenses</dt><dd>${money(total)}</dd></div></dl></button></section>`;
   }
 
+  function textCustomerAction(phone){
+    return `<a class="animus-record-button" href="https://messages.google.com/web/" target="_blank" rel="noopener noreferrer" data-animus-text-customer="${escape(phone)}" title="Open Google Messages and copy customer phone number">Text Customer</a>`;
+  }
+  async function copyTextCustomerNumber(link){
+    const phone=link.dataset.animusTextCustomer;
+    const status=link.closest('section')?.querySelector('[data-animus-text-status]');
+    if(!/^\+?\d{7,15}$/.test(phone||''))return;
+    if(status)status.hidden=false;
+    try{
+      if(!navigator.clipboard?.writeText)throw Error('Clipboard unavailable');
+      await navigator.clipboard.writeText(phone);
+      if(status)status.textContent='Customer number copied. Paste it into Google Messages to start or find the conversation.';
+    }catch{
+      if(status)status.textContent=`Number could not be copied automatically. Copy ${phone} into Google Messages before sending.`;
+    }
+  }
   function communicationPanel(file) {
     const phone = field(file,"clientPhone").replace(/[^+\d]/g,""), email = field(file,"clientEmail");
     const entries = activityRows(file).filter(row => /\b(email|text|sms|message|call|communication)\b/i.test(`${row.kind} ${row.title} ${row.detail}`));
-    return `<section class="animus-info-card"><div class="animus-card-head"><h3>Client Communication</h3><button class="animus-record-button small" data-animus-add-note>Log Communication</button></div><div class="wf-communication-actions">${email ? `<a class="animus-record-button" href="mailto:${escape(email)}">Email Customer</a>` : ""}${phone ? `<a class="animus-record-button" href="sms:${escape(phone)}">Text Customer</a><a class="animus-record-button" href="tel:${escape(phone)}">Call Customer</a>` : ""}<button class="animus-record-button" data-customer-portal>Customer Portal</button></div>${!phone && !email ? `<p class="animus-next-empty">Add a phone number or email to contact this customer.</p>` : ""}${entries.length ? `<div class="wf-communication-history">${entries.slice(0,50).map(row => `<article><strong>${escape(row.title)}</strong><p>${escape(row.detail)}</p>${row.at ? `<time>${escape(new Date(row.at).toLocaleString("en-US"))}</time>` : ""}</article>`).join("")}</div>` : `<p class="animus-next-empty">No communication activity recorded.</p>`}</section>`;
+    return `<section class="animus-info-card"><div class="animus-card-head"><h3>Client Communication</h3><button class="animus-record-button small" data-animus-add-note>Log Communication</button></div><div class="wf-communication-actions">${email ? `<a class="animus-record-button" href="mailto:${escape(email)}">Email Customer</a>` : ""}${phone ? `${textCustomerAction(phone)}<a class="animus-record-button" href="tel:${escape(phone)}">Call Customer</a>` : ""}<button class="animus-record-button" data-customer-portal>Customer Portal</button></div><p class="wf-text-status" data-animus-text-status role="status" hidden></p>${!phone && !email ? `<p class="animus-next-empty">Add a phone number or email to contact this customer.</p>` : ""}${entries.length ? `<div class="wf-communication-history">${entries.slice(0,50).map(row => `<article><strong>${escape(row.title)}</strong><p>${escape(row.detail)}</p>${row.at ? `<time>${escape(new Date(row.at).toLocaleString("en-US"))}</time>` : ""}</article>`).join("")}</div>` : `<p class="animus-next-empty">No communication activity recorded.</p>`}</section>`;
   }
 
   function activityPanel(file) {
@@ -784,6 +800,8 @@
   }
 
   document.addEventListener("click", (event) => {
+    const textCustomer=event.target.closest('[data-animus-text-customer]');
+    if(textCustomer){void copyTextCustomerNumber(textCustomer);return;}
     if (!event.target.closest("details")) {
       document.querySelectorAll(".animus-work-file details[open]").forEach((menu) => { menu.open = false; });
     }

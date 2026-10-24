@@ -52,9 +52,9 @@ test('photo previews reuse uploaded image documents without copying or modifying
   const {api}=model();const file={workPhotos:[{id:'p1',title:'Photo'}],workFileDocuments:[{id:'d1',type:'image/png',name:'Image'},{id:'d2',type:'application/pdf',name:'Contract'}]};
   const before=JSON.stringify(file);assert.equal(api.workPhotoDocuments(file).length,2);assert.ok(api.photosPreview(file).includes('data-animus-open-work-photo="d1"'));assert.equal(JSON.stringify(file),before);
 });
-test('communication uses actual logged events and native contact actions, not a second message store',()=>{
+test('communication uses actual logged events and Google Messages, not a second message store',()=>{
   const {api}=model();const html=api.communicationPanel({clientPhone:'2395550100',timeline:[{title:'Email sent',text:'Actual communication',at:'2026-10-20T12:00:00Z'},{title:'Status change',text:'In Progress'}]});
-  assert.ok(html.includes('Actual communication'));assert.ok(html.includes('sms:2395550100'));assert.equal(html.includes('Status change'),false);
+  assert.ok(html.includes('Actual communication'));assert.ok(html.includes('href="https://messages.google.com/web/"'));assert.ok(html.includes('data-animus-text-customer="2395550100"'));assert.ok(html.includes('tel:2395550100'));assert.equal(html.includes('Status change'),false);
   assert.ok(api.communicationPanel({}).includes('No communication activity recorded'));
 });
 test('legacy activity timestamps sort chronologically without changing saved history',()=>{
