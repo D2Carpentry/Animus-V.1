@@ -34,6 +34,7 @@
   }
 
   function assignment(file) {
+    if(window.AnimusEmployees)return window.AnimusEmployees.assignedNames(file).join(', ')||'Unassigned';
     const value = file?.assignedTo || file?.assignedEmployee || file?.employee || file?.team;
     const names = (Array.isArray(value) ? value : [value]).map(entry => typeof entry === "object" && entry ? entry.name || entry.displayName || entry.email : entry).filter(Boolean);
     return names.join(", ") || "Unassigned";
@@ -398,6 +399,11 @@
     return `<div class="animus-tab-panel"><section class="animus-info-card"><div class="animus-card-head"><h3>Job Details</h3><button class="animus-record-button primary small" data-animus-edit="details">Edit Job Details</button></div><div class="animus-detail-grid">${groups.map(([title, rows]) => `<section class="animus-detail-card"><h4>${escape(title)}</h4><dl class="animus-info-list">${rows.map(([label, value]) => `<div class="animus-detail-pair"><dt>${escape(label)}</dt><dd>${escape(value)}</dd></div>`).join("")}</dl></section>`).join("")}</div></section></div>`;
   }
 
+  function employeeSelect(file){
+    const selected=assignment(file)==='Unassigned'?'':assignment(file);
+    const names=[...new Set([...(window.AnimusEmployees?.roster||['David','Lara','Manny']),...(selected?[selected]:[])])];
+    return `<label class="wide">Assigned To<select data-animus-field="assignedTo"><option value="">Unassigned</option>${names.map(name=>`<option value="${escape(name)}"${name===selected?' selected':''}>${escape(name)}</option>`).join('')}</select></label>`;
+  }
   function editorMarkup(file) {
     if (!state.editor) return "";
     const select = (name, value, options) => `<label>${name.replace(/([A-Z])/g," $1").replace(/^./,letter=>letter.toUpperCase())}<select data-animus-field="${name}">${options.map((option) => `<option${option === value ? " selected" : ""}>${escape(option)}</option>`).join("")}</select></label>`;
@@ -411,8 +417,8 @@
       const selectedStatus = field(file, "fileStatus", "New Lead");
       fields = select("fileStatus", selectedStatus, statuses) + select("statusDetail", field(file, "statusDetail"), statusDetails[selectedStatus] || [field(file, "statusDetail")]);
     }
-    if (state.editor === "action") fields = input("nextAction", "Next Action", field(file, "nextAction"), "text", "wide") + input("nextActionDate", "Due Date", field(file, "nextActionDate") || field(file, "followUpDate"), "date") + input("assignedTo", "Assigned To", assignment(file));
-    if (state.editor === "assigned") fields = input("assignedTo", "Employee name", assignment(file) === "Unassigned" ? "" : assignment(file), "text", "wide");
+    if (state.editor === "action") fields = input("nextAction", "Next Action", field(file, "nextAction"), "text", "wide") + input("nextActionDate", "Due Date", field(file, "nextActionDate") || field(file, "followUpDate"), "date") + employeeSelect(file);
+    if (state.editor === "assigned") fields = employeeSelect(file);
     if (state.editor === "financials") fields = input("estimateTotal", "Estimate Amount", Number(file.estimateTotal) || "", "number") + input("materialTotal", "Materials", Number(file.materialTotal) || "", "number") + input("laborTotal", "Labor", Number(file.laborTotal) || "", "number") + input("totalPaidOverride", "Total Paid (Manual)", file.totalPaidOverride !== undefined && file.totalPaidOverride !== "" ? Number(file.totalPaidOverride) : paidTotal(file), "number") + input("initialDeposit", "Initial Deposit", Number(file.initialDeposit) || "", "number") + input("midpointDeposit", "Midpoint Deposit", Number(file.midpointDeposit) || "", "number") + input("finalPaymentAmount", "Final Payment", Number(file.finalPaymentAmount) || "", "number");
     if (state.editor === "details") fields = input("inspectionDate", "Inspection Date", field(file, "inspectionDate"), "date") + input("inspectionTime", "Inspection Time", field(file, "inspectionTime"), "time") + input("startDate", "Start Date", field(file, "startDate"), "date") + input("followUpDate", "Follow-Up Date", field(file, "followUpDate"), "date") + input("anticipatedCompletionDate", "Anticipated Completion", field(file, "anticipatedCompletionDate"), "date") + select("arrivalWindow", field(file, "arrivalWindow", "Open"), ["Open", "7:00 AM", "8:00 AM", "9:00 AM", "10:00 AM", "Afternoon"]) + (field(file, "leadSource").toLowerCase() === "angi" ? input("leadFee", "Lead Fee", Number(file.leadFee) || "", "number") : "");
     title = state.editor === "financials" ? "Edit Financials" : state.editor === "details" ? "Edit Job Details" : state.editor === "assigned" ? "Assign Employee" : "Edit File";
@@ -578,6 +584,8 @@
     const file = currentFile();
     if (!file) return;
     const fields = [...document.querySelectorAll("[data-animus-field]")];
+    const assignmentEdit=['assigned','action'].includes(state.editor);
+    const previousValues=Object.fromEntries(fields.map(input=>[input.dataset.animusField,file[input.dataset.animusField]??null]));
     const totalPaidField = fields.find((input) => input.dataset.animusField === "totalPaidOverride");
     fields.forEach((input) => {
       const key = input.dataset.animusField;
@@ -592,26 +600,29 @@
       if (file.totalPaidOverride !== "") file.totalPaidOverride = Number(file.totalPaidOverride) || 0;
       if (typeof window.syncFileLaborToRevenue === "function") window.syncFileLaborToRevenue(file);
     }
-    if (typeof window.addSystemNote === "function") window.addSystemNote(file, "Work file updated.");
-    if (state.editor === "assigned") {
+    if (!assignmentEdit && typeof window.addSystemNote === "function") window.addSystemNote(file, "Work file updated.");
+    if (assignmentEdit) {
       crmLocalChangeVersion += 1;
       const button = document.querySelector("[data-animus-save-editor]");
       button.disabled = true;
       button.textContent = "Saving...";
       try {
-        window.saveCrmFiles({ syncExpenses:false });
-        const result = await window.queueDashboardCloudSave({ action:"dashboardSync", dashboardFiles:[{ id:file.id, fileNumber:file.fileNumber, assignedTo:file.assignedTo, timeline:file.timeline }] });
-        const saved = (result?.dashboard || result?.verification)?.dashboardFiles?.find((entry) => entry.id === file.id);
+        const values=Object.fromEntries(fields.map(input=>[input.dataset.animusField,file[input.dataset.animusField]]));
+        const response=await fetch('/api/mobile-workspace',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'editFile',id:file.id,values,expected:previousValues}),cache:'no-store'});
+        const result=await response.json();if(!response.ok||!result.ok)throw Error(result.error||'Assignment save did not finish.');
+        const saved = result.record;
         if (!saved || ("assignedTo" in saved && saved.assignedTo !== file.assignedTo)) throw new Error("Cloudflare did not confirm the assignment.");
+        file.updatedAt=saved.updatedAt;
         window.showDashboardSaveStatus?.("Assignment saved to Cloudflare.");
       } catch (error) {
+        for(const [key,value] of Object.entries(previousValues)){if(value===null)delete file[key];else file[key]=value;}
         button.disabled = false;
         button.textContent = "Retry Save";
         window.showDashboardSaveStatus?.(`${error.message} Your assignment remains in the editor. Retry Save.`, true);
         return;
       }
     }
-    if (typeof window.saveCrmFiles === "function") window.saveCrmFiles();
+    if (!assignmentEdit && typeof window.saveCrmFiles === "function") window.saveCrmFiles();
     state.editor = "";
     if (typeof window.renderCrm === "function") window.renderCrm(); else renderWorkFile();
   }

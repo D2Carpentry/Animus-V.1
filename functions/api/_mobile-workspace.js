@@ -2,8 +2,13 @@ const fail=(message,status=400)=>{throw Object.assign(new Error(message),{status
 const copy=value=>JSON.parse(JSON.stringify(value));
 const same=(a,b)=>JSON.stringify(a??null)===JSON.stringify(b??null);
 const amount=value=>{const n=Number(value);if(!Number.isFinite(n)||n<0||n>1e9)fail('Enter a valid non-negative amount.');return n;};
+function payrollSnapshot(row){
+  if(!row)return null;
+  const numeric=value=>Number(String(value??'').replace(/[$,\s]/g,''))||0;
+  return {id:row.id,revenueId:row.revenueId||'',date:row.date||'',fileId:row.fileId||'',fileNumber:row.fileNumber||'',clientJob:row.clientJob||'',employee:row.employee||'',role:row.role||'',hours:numeric(row.hours),rate:numeric(row.rate),total:numeric(row.total)||numeric(row.hours)*numeric(row.rate),status:row.status==='Paid'?'Paid':'Pending',notes:row.notes||''};
+}
 export const mobileStatuses=['New Lead','Contact Established','Contact Attempted','Inspection Completed','In Negotiation','Pending Start','In Progress','Completed-Pending Payment','Closed / Paid','Job Lost / Closed'];
-const customerFields=['clientName','clientPhone','clientEmail','projectAddress','leadSource','leadFee','projectType','otherProjectType','fileStatus','statusDetail','nextAction','nextActionDate','inspectionDate','inspectionTime','startDate','followUpDate','anticipatedCompletionDate'];
+const customerFields=['clientName','clientPhone','clientEmail','projectAddress','leadSource','leadFee','projectType','otherProjectType','fileStatus','statusDetail','nextAction','nextActionDate','inspectionDate','inspectionTime','startDate','followUpDate','anticipatedCompletionDate','assignedTo'];
 function check(current,expected,fields){
   if(!expected||typeof expected!=='object')fail('Reopen this record before editing.',409);
   for(const field of fields)if(!Object.hasOwn(expected,field)||!same(current[field],expected[field]))fail('This record changed on another device. Your entries are unchanged. Reopen it to review the latest copy.',409);
@@ -39,6 +44,25 @@ export function applyMobileWorkspace(dashboard,payload,now=new Date().toISOStrin
   }else if(action==='editFile'){
     record=next.dashboardFiles.find(f=>f.id===payload.id);if(!record)fail('Workfile not found. Refresh the file list.',404);
     const values=cleanCustomer(payload.values);check(record,payload.expected,Object.keys(values));Object.assign(record,values,{updatedAt:now});
+  }else if(action==='savePayroll'||action==='deletePayroll'){
+    next.payrollRows??=[];
+    if(typeof payload.id!=='string'||!payload.id||payload.id.length>180)fail('Invalid payroll identifier.');
+    const index=next.payrollRows.findIndex(row=>row.id===payload.id),previous=index<0?null:next.payrollRows[index];
+    if(!same(payrollSnapshot(previous),payrollSnapshot(payload.expected)))fail('This payroll entry changed. Reopen it before saving.',409);
+    if(action==='deletePayroll'){
+      if(!previous)fail('Payroll entry not found.',404);
+      next.payrollRows.splice(index,1);next.deletedPayrollIds=[...new Set([...(next.deletedPayrollIds||[]),payload.id])];record={id:payload.id};
+    }else{
+      if((next.deletedPayrollIds||[]).includes(payload.id))fail('This payroll entry was deleted. Add a new entry instead.',409);
+      const v=payload.values||{},employee=String(v.employee||'').trim();
+      if(!employee||employee.length>120)fail('Choose an employee.');
+      if(!['Paid','Pending'].includes(v.status))fail('Choose Paid or Pending.');
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(v.date||'')||!Number.isFinite(Date.parse(v.date+'T12:00:00Z'))||new Date(v.date+'T12:00:00Z').toISOString().slice(0,10)!==v.date)fail('Choose a valid payroll date.');
+      const file=v.fileId?next.dashboardFiles.find(file=>file.id===v.fileId):null;
+      if(v.fileId&&!file)fail('Workfile not found. Choose its current saved file.',404);
+      record={...(previous||{}),id:payload.id,employee,fileId:file?.id||'',fileNumber:file?.fileNumber||(!previous?.fileId?previous?.fileNumber||'':''),clientJob:file?.clientName||previous?.clientJob||'',role:String(v.role||'').slice(0,180),date:v.date,hours:amount(v.hours),rate:amount(v.rate),total:amount(v.total),status:v.status,notes:String(v.notes||'').slice(0,8000)};
+      if(index<0)next.payrollRows.unshift(record);else next.payrollRows[index]=record;
+    }
   }else if(action==='savePrice'||action==='deletePrice'){
     const index=next.priceRows.findIndex(row=>row.id===payload.id);const previous=index<0?null:next.priceRows[index];
     if(!same(previous,payload.expected))fail('This price changed. Reopen it before saving.',409);
